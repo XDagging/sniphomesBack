@@ -92,12 +92,20 @@ app.use(cors({
 // process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 // development certificate
+// const options = {
+//     key: fs.readFileSync('C:\\Program Files\\Git\\usr\\bin\\key.pem'),
+//     cert: fs.readFileSync('C:\\Program Files\\Git\\usr\\bin\\certificate.pem'),
+//     // Remove this line once done with production
+//     rejectUnauthorized: false
+// };
+
+
+// production certificate
+
 const options = {
-    key: fs.readFileSync('C:\\Program Files\\Git\\usr\\bin\\key.pem'),
-    cert: fs.readFileSync('C:\\Program Files\\Git\\usr\\bin\\certificate.pem'),
-    // Remove this line once done with production
-    rejectUnauthorized: false
-};
+    key: fs.readFileSync('/etc/letsencrypt/live/api.sniphomes.com/privkey.pem'),
+    cert: fs.readFileSync('/etc/letsencrypt/live/api.sniphomes.com/fullchain.pem'),
+}
 
 const server = https.createServer(options, app);
 // const server = http.createServer(options, app);
