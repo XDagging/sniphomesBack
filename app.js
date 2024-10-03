@@ -79,13 +79,23 @@ function authenticateUser(req) {
     });
 }
 
+// LocalHOST CORS
+// app.use(cors({
+//     origin: "http://localhost:3000",
+//     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+//     credentials: true
+// }))
+
+
+
+
+// Production CORS
 
 app.use(cors({
     origin: "https://sniphomes.com",
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
     credentials: true
 }))
-
 
 
 
