@@ -358,7 +358,11 @@ app.post("/webhook", async (req, res) => {
 
         case 'customer.subscription.deleted': {
             const subscription = await stripe.subscriptions.retrieve(data.object.id);
+
+            console.log("So heres the subscription shit: " + subscription)
             const user = await User.findOne({ customerId: subscription.customer });
+
+            console.log("heres the user found", user)
 
             user.subscription.active = false;
             await user.save();
