@@ -360,11 +360,14 @@ app.post("/webhook", async (req, res) => {
             const subscription = await stripe.subscriptions.retrieve(data.object.id);
 
             console.log("So heres the subscription shit: " + subscription)
-            const user = await User.findOne({ customerId: subscription.customer });
+            const user = await User.findOneAndUpdate({ customerId: subscription.customer })
 
             console.log("heres the user found", user)
 
-            user.subscription.active = false;
+            user.subscription = {
+                active: false,
+                renewalDate: user.subscription.renewalDate
+            } 
             await user.save();
             break;
         }
