@@ -12,13 +12,13 @@ const session = require("express-session");
 const MemoryStore = require('memorystore')(session)
 const fs = require("fs")
 const https = require("https")
-const stripe = require('stripe')('sk_test_51Q4qXiEIBr27Yq48ovmj7Y4vFzqO8LyZsJtFeqZDw7r8eHOFYqbkw5I8Hsr9VYRVkcEIaCM2tZ8eA2FkqJSbCtNp00aFgl6k6V');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 
 
 
 var AWS = require("aws-sdk");
-const { send } = require('process');
+// const { send } = require('process');
 
 
 
@@ -101,7 +101,7 @@ app.use(cors({
 
 // process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
-// development certificate
+// // development certificate
 // const options = {
 //     key: fs.readFileSync('C:\\Program Files\\Git\\usr\\bin\\key.pem'),
 //     cert: fs.readFileSync('C:\\Program Files\\Git\\usr\\bin\\certificate.pem'),
@@ -283,6 +283,10 @@ const UserSchema = new mongoose.Schema({
     },
     forgotCode: {
         type: Number
+    },
+    customerId: {
+        type: String,
+        required: true
     }
 })
 
@@ -334,7 +338,7 @@ app.post("/sendVerify", (req,res) => {
             }))
         } else {
             
-                
+           
     
 
 
@@ -1027,54 +1031,13 @@ app.post("/requestDemo", (req,res) => {
 })
 
 
-app.post("/create-checkout-session", async (req,res) => {
-    const {priceId} = req.body
 
-    authenticateUser(req).then(async (id) => {
-        if (id === "No user found") {
-            res.status(403).send(JSON.stringify({
-                code: "err",
-                message: "not logged in"
-            }))
-        } else {
-
-
-            const session = await stripe.checkout.sessions.create({
-                mode: 'subscription',
-                line_items: [
-                  {
-                    price: priceId,
-                    // For metered billing, do not pass quantity
-                    quantity: 1,
-                  },
-                ],
-                metadata: {
-                    uuid: id
-                },
-                // {CHECKOUT_SESSION_ID} is a string literal; do not change it!
-                // the actual Session ID is returned in the query parameter when your customer
-                // is redirected to the success page.
-                success_url: 'https://sniphomes.com/main',
-                cancel_url: 'https://sniphomes.com/pricing',
-              });
-              
-              // Redirect to the URL returned on the Checkout Session.
-              // With express, you can redirect with:
-                res.json({url: session.url});
-            
-        }
-    })
-
-    
-
-})
 
 app.post("/webhook", async (req, res) => {
     let data;
     let eventType;
-    const eventReturn = req.body
     // Check if webhook signing is configured.
-    const webhookSecret = '{{STRIPE_WEBHOOK_SECRET}}';
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET_KEY
     if (webhookSecret) {
       // Retrieve the event by verifying the signature using the raw body and secret.
       let event;
@@ -1093,15 +1056,67 @@ app.post("/webhook", async (req, res) => {
       // Extract the object from the event.
       data = event.data;
       eventType = event.type;
-    } else {
-      // Webhook signing is recommended, but if the secret is not configured in `config.js`,
-      // retrieve the event data directly from the request body.
-      data = req.body.data;
-      eventType = req.body.type;
     }
-    const uuid = eventReturn.data.object.metadata.uuid
     switch (eventType) {
-      case 'checkout.session.completed':
+      case 'checkout.session.completed': {
+
+
+        const session = await stripe.checkout.sessions.retrieve(
+            data.object.id,
+            {
+                expand: ['line_items']
+            }
+        )
+        const customerId = session?.customer;
+        const customer = await stripe.customers.retrieve(customerId);
+        const priceId = session?.line_items?.data[0]?.price.id;
+
+        if (customer.email) {
+            User.findOne({emailHash: md5(customer["email"].toLowercase())}).then((user,err) => {
+                if (err) {
+                    console.log(err)
+                    // Something went wrong here :(
+                } else {
+                    if (user !== null) {
+                        User.findOneAndUpdate({uuid: user.uuid}, {subscription: {active: true, renewalDate: Date.now()}, credits: 2000, customerId: customerId}).then(() => {
+                            console.log("We got paid!");
+                            return
+                        })
+                    }
+                }
+            })
+        } else {
+            console.log("No user found")
+        }
+
+
+        
+
+
+
+
+
+
+
+      }
+
+
+      case 'customer.subscription.deleted': {
+        const subscription = await stripe.subscriptions.retrieve(data.object.id);
+
+
+        const user = await User.findOne({customerId: subscription.customer});
+
+        user.subscription.active = false;
+
+        await user.save();
+
+        break;
+
+
+      }
+
+
         // Payment is successful and the subscription is created.
         // You should provision the subscription and save the customer ID to your database.
         
@@ -1110,30 +1125,18 @@ app.post("/webhook", async (req, res) => {
 
         
 
-        User.findOne({uuid: uuid}, {subscription: {active: true, renewalDate: Date.now() + 2628288000}}).then(() => {})
+    
         
 
 
 
 
-        break;
-      case 'invoice.paid':
-
-        User.findOne({uuid: uuid}, {subscription: {active: true, renewalDate: Date.now() + 2628288000}}).then(() => {})
-
-        // Continue to provision the subscription as payments continue to be made.
-        // Store the status in your database and check when a user accesses your service.
-        // This approach helps you avoid hitting rate limits.
-        break;
-      case 'invoice.payment_failed':
-
-        User.findOne({uuid: uuid}, {subscription: {active: false, renewalDate: Date.now()}}).then(() => {})
+       
+      
 
 
-        // The payment failed or the customer does not have a valid payment method.
-        // The subscription becomes past_due. Notify your customer and send them to the
-        // customer portal to update their payment information.
-        break;
+
+        
       default:
         // Unhandled event type
     }
