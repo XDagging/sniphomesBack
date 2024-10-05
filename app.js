@@ -1036,113 +1036,74 @@ app.use('/webhook', bodyParser.raw({ type:"application/json"}))
 app.post("/webhook", async (req, res) => {
     let data;
     let eventType;
-    // Check if webhook signing is configured.
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET_KEY
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET_KEY;
+
     if (webhookSecret) {
-      // Retrieve the event by verifying the signature using the raw body and secret.
-      let event;
-      let signature = req.headers["stripe-signature"];
-  
-      try {
-        event = stripe.webhooks.constructEvent(
-          req.body.text(),
-          signature,
-          webhookSecret
-        );
-      } catch (err) {
-        console.log(`⚠️  Webhook signature verification failed.`);
-        return res.sendStatus(400);
-      }
-      // Extract the object from the event.
-      data = event.data;
-      eventType = event.type;
-    }
-    switch (eventType) {
-      case 'checkout.session.completed': {
+        let event;
+        let signature = req.headers["stripe-signature"];
+        
+        console.log(`Signature: ${signature}`);
+        console.log(`Raw Body: ${req.body.toString()}`);
 
-
-        const session = await stripe.checkout.sessions.retrieve(
-            data.object.id,
-            {
-                expand: ['line_items']
-            }
-        )
-        const customerId = session?.customer;
-        const customer = await stripe.customers.retrieve(customerId);
-        const priceId = session?.line_items?.data[0]?.price.id;
-
-        if (customer.email) {
-            User.findOne({emailHash: md5(customer["email"].toLowercase())}).then((user,err) => {
-                if (err) {
-                    console.log(err)
-                    // Something went wrong here :(
-                } else {
-                    if (user !== null) {
-                        User.findOneAndUpdate({uuid: user.uuid}, {subscription: {active: true, renewalDate: Date.now()}, credits: 2000, customerId: customerId}).then(() => {
-                            console.log("We got paid!");
-                            return
-                        })
-                    }
-                }
-            })
-        } else {
-            console.log("No user found")
+        try {
+            event = stripe.webhooks.constructEvent(
+                req.body,
+                signature,
+                webhookSecret
+            );
+        } catch (err) {
+            console.log(`⚠️  Webhook signature verification failed.`, err.message);
+            return res.sendStatus(400);
         }
 
-
-        
-
-
-
-
-
-
-
-      }
-
-
-      case 'customer.subscription.deleted': {
-        const subscription = await stripe.subscriptions.retrieve(data.object.id);
-
-
-        const user = await User.findOne({customerId: subscription.customer});
-
-        user.subscription.active = false;
-
-        await user.save();
-
-        break;
-
-
-      }
-
-
-        // Payment is successful and the subscription is created.
-        // You should provision the subscription and save the customer ID to your database.
-        
-
-
-
-        
-
-    
-        
-
-
-
-
-       
-      
-
-
-
-        
-      default:
-        // Unhandled event type
+        data = event.data;
+        eventType = event.type;
     }
-  
+
+    switch (eventType) {
+        case 'checkout.session.completed': {
+            const session = await stripe.checkout.sessions.retrieve(
+                data.object.id,
+                { expand: ['line_items'] }
+            );
+            const customerId = session?.customer;
+            const customer = await stripe.customers.retrieve(customerId);
+            const priceId = session?.line_items?.data[0]?.price.id;
+
+            if (customer.email) {
+                User.findOne({ emailHash: md5(customer["email"].toLowerCase()) }).then((user, err) => {
+                    if (err) {
+                        console.log(err);
+                    } else {
+                        if (user !== null) {
+                            User.findOneAndUpdate({ uuid: user.uuid }, { subscription: { active: true, renewalDate: Date.now() }, credits: 2000, customerId: customerId }).then(() => {
+                                console.log("We got paid!");
+                                return;
+                            });
+                        }
+                    }
+                });
+            } else {
+                console.log("No user found");
+            }
+            break;
+        }
+
+        case 'customer.subscription.deleted': {
+            const subscription = await stripe.subscriptions.retrieve(data.object.id);
+            const user = await User.findOne({ customerId: subscription.customer });
+
+            user.subscription.active = false;
+            await user.save();
+            break;
+        }
+
+        default:
+            console.log(`Unhandled event type ${eventType}`);
+    }
+
     res.sendStatus(200);
-  });
+});
 
 
 
