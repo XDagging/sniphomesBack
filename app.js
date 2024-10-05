@@ -298,7 +298,7 @@ const Demo = new mongoose.model("Demo", DemoSchema)
 
 
 
-app.use('/webhook', bodyParser.raw({ type:"application/json"}))
+app.use('/webhook', express.raw({ type:"application/json"}))
 
 app.post("/webhook", async (req, res) => {
     let data;
