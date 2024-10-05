@@ -1045,7 +1045,7 @@ app.post("/webhook", async (req, res) => {
   
       try {
         event = stripe.webhooks.constructEvent(
-          req.body,
+          req.body.text(),
           signature,
           webhookSecret
         );
