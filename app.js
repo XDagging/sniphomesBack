@@ -1031,7 +1031,7 @@ app.post("/requestDemo", (req,res) => {
 })
 
 
-
+app.use('/webhook', bodyParser.raw({ type:"application/json"}))
 
 app.post("/webhook", async (req, res) => {
     let data;
