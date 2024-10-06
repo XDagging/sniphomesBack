@@ -501,7 +501,7 @@ function callSomeone(phoneNumber, agentName, agentArea, agentAction, uuid) {
 
     client.calls
         .create({
-            url: "https://sniphomes.com/xml",
+            url: "https://api.sniphomes.com/xml",
             to: `+1${phoneNumber}`,
             from: `+12403660377`,
         })
