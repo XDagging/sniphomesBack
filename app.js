@@ -13,12 +13,19 @@ const MemoryStore = require('memorystore')(session)
 const fs = require("fs")
 const https = require("https")
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-
+const Call = require("./Call.js");
 
 
 
 var AWS = require("aws-sdk");
 // const { send } = require('process');
+
+
+
+
+
+
+
 
 
 
@@ -470,6 +477,59 @@ app.post("/sendVerify", (req,res) => {
 
 
 })
+
+
+
+
+// Call Routes;
+
+
+app.post("/xml", (req,res) => {
+    console.log("xml called");
+    res.sendFile(__dirname + "/call.xml");
+})
+
+
+
+
+function callSomeone(phoneNumber, agentName, agentArea, agentAction, uuid) {
+
+
+    client.calls
+        .create({
+            url: "https://sniphomes.com/xml",
+            to: `+1${phoneNumber}`,
+            from: `+12403660377`,
+        })
+        .then((call) => {
+            dynamicCalls[call.sid] = new Call(
+                call.sid,
+                phoneNumber,
+                agentAction,
+                agentArea,
+                agentName,
+                uuid
+            );
+            globalSid = call.sid;
+
+            console.log(call);
+            
+        });
+    
+
+    
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 // Check for valid parameters
@@ -1066,18 +1126,7 @@ app.post("/requestDemo", (req,res) => {
                     newDemo.save()
 
 
-                    const body = `Hello\n\nNew Demo Request for number: ${phoneNumber}`
-
-
-                    sendMail(process.env.ADMINEMAIL, `New Demo Request ${phoneNumber}`, body)
-
-                    
-
-                    res.status(200).send(JSON.stringify({
-                        code: "ok",
-                        message: "demo requested"
-                    }))
-
+                    callSomeone(phoneNumber, "Marta", "Prince County", "sell", "demo")
 
 
 
