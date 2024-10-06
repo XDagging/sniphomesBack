@@ -122,7 +122,7 @@ class Call {
 
     async hangup() {
 
-        if (uuid === "demo") {
+        if (this.uuid === "demo") {
             client.calls(this.callSid).update({ status: "completed" });
             return
         } else {

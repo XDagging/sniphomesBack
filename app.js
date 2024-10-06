@@ -202,6 +202,10 @@ const DemoSchema = new mongoose.Schema({
     },
     phoneNumber: {
         type: String
+    },
+    phoneNumberHash: {
+        type: String,
+        index: true
     }
 
 })
@@ -1208,7 +1212,7 @@ app.post("/requestDemo", (req,res) => {
         
 
 
-        Demo.findOne({emailHash: md5(email)}).then((user,err) => {
+        Demo.findOne({phoneNumberHash: md5(phoneNumber)}).then((user,err) => {
             if (err) {
                 console.log(err)
                 res.status(500).send(JSON.stringify({
@@ -1218,12 +1222,11 @@ app.post("/requestDemo", (req,res) => {
             } else {
             
                 if (user === null) {
-
-
                     const newDemo = new Demo({
                         email: cmod.encrypt(email),
                         emailHash: md5(email),
                         phoneNumber: cmod.encrypt(phoneNumber.toString()),
+                        phoneNumberHash: md5(phoneNumber.toString()),
                         name: cmod.encrypt(name)
                     })
 
