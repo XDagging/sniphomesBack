@@ -15,6 +15,10 @@ const https = require("https")
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const Call = require("./Call.js");
 
+
+
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
 const client = require("twilio")(accountSid, authToken);
 
 var AWS = require("aws-sdk");
