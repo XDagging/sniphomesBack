@@ -559,7 +559,7 @@ wss.on("connection", function (ws) {
 
     ws.on("close", () => {
         console.log("The connection was closed and interval was cleared");
-        clearInterval(interval);
+        
     });
 
     ws.on("message", (message) => {
