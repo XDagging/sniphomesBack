@@ -493,7 +493,7 @@ app.post("/xml", (req,res) => {
     res.sendFile(__dirname + "/call.xml");
 })
 
-
+const dynamicCalls = {};
 
 
 function callSomeone(phoneNumber, agentName, agentArea, agentAction, uuid) {
@@ -523,6 +523,106 @@ function callSomeone(phoneNumber, agentName, agentArea, agentAction, uuid) {
 
     
 }
+
+
+
+
+
+
+
+const wss = new WebSocket.Server({ server: server });
+
+// Data needs to become a map with key value pairs of arrays.
+
+// 9BWtsMINqrJLrRacOk9x Southern have a great day
+// XB0fDUnXU5powFXDhCwa british account
+
+// ZuvB6LuOVtnnHRsCEquq REALLY DOWN TO EARTH VOICE
+// 03vEurziQfq3V8WZhQvn BLACK WOMAN
+
+var streamId = "";
+
+var twilioWs = "";
+
+
+// 2000 is the prev number
+
+wss.on("connection", function (ws) {
+    // technically anyone could just connect and then we r fucked so we need to figure out a better way to do this in the future. For testing is fine though.
+    twilioWs = ws;
+
+    console.log("Just connected");
+
+    ws.on("close", () => {
+        console.log("The connection was closed and interval was cleared");
+        clearInterval(interval);
+    });
+
+    ws.on("message", (message) => {
+        try {
+            let parsedMsg = JSON.parse(message.toString());
+            streamId = parsedMsg.streamSid;
+
+            if (parsedMsg.event === "start") {
+                const callSid = parsedMsg["start"]["callSid"];
+                // Ensure the callSid exists in dynamicCalls
+
+                // dynamicCalls[callSid].setWebsocket(ws);
+
+                // Renaming the class instance key from callSid to streamId
+                dynamicCalls[streamId] = dynamicCalls[callSid];
+                dynamicCalls[streamId].streamSid = streamId;
+                delete dynamicCalls[callSid];
+
+                dynamicCalls[streamId].startInterval();
+                dynamicCalls[streamId].setWebsocket(ws);
+            } else if (parsedMsg.event === "stop") {
+                console.log("The call has ended");
+                dynamicCalls[streamId].stopProcessing();
+            } else if (
+                parsedMsg.event === "media" &&
+                parsedMsg.media &&
+                parsedMsg.media.track === "inbound"
+            ) {
+                if (parsedMsg.media.payload !== undefined) {
+                    if (!dynamicCalls[streamId].aiTalking) {
+                        dynamicCalls[streamId].addData(
+                            parsedMsg.sequenceNumber,
+                            parsedMsg.media.payload,
+                        );
+                    } else {
+                        dynamicCalls[streamId].resetData();
+                    }
+                }
+            }
+        } catch (e) {
+            console.log("Error parsing message:", e);
+        }
+    });
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
