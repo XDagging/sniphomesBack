@@ -450,7 +450,7 @@ class Call {
 
                 const buyBool =
                     "Ask the person what budget their budget is and how many people they plan to move in with. Redirect them to the manager if they give one, but push for both answers. if .DO NOT ASK ANY OTHER QUESTIONS.";
-                const sellBool = `Tell the person about ${personOperating} area and ask them if they are homeowners. If so, ask them for the following info: would they be willing to sell their house, and if so, for how much? Ask how many bedrooms/bathrooms the house is and how long they've been there. If they answer at least 1 of those questions, redirect to mananger. DO NOT ASK ANY OTHER QUESTIONS.`;
+                const sellBool = `Tell the person about ${personOperating} area and ask them if they are homeowners. If so, ask them for the following info: would they be willing to sell their house, and if so, for how much? How many people do you live with currently (if they ask why we are asking, it is to grasp how large the home)? If they answer at least 1 of those questions, redirect to mananger. DO NOT ASK ANY OTHER QUESTIONS.`;
 
                 if (personLook.toLowerCase() === "sell") {
                     promptBool = sellBool;

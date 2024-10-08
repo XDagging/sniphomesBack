@@ -397,6 +397,12 @@ app.post("/webhook", async (req, res) => {
 
 
 
+app.get("/sitemap", async(req,res) => {
+    res.sendFile(__dirname + "/sitemap.xml")
+})
+
+
+
 
 
 app.use(bodyParser.json({limit: "10mb"}))
