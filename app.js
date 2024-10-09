@@ -1218,7 +1218,7 @@ app.post("/requestDemo", (req,res) => {
         
 
 
-        Demo.findOne({phoneNumberHash: md5(phoneNumber)}).then((user,err) => {
+        Demo.findOne({phoneNumberHash: md5(phoneNumber.trim())}).then((user,err) => {
             if (err) {
                 console.log(err)
                 res.status(500).send(JSON.stringify({
