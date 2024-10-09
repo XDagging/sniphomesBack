@@ -301,7 +301,6 @@ const UserSchema = new mongoose.Schema({
     },
     customerId: {
         type: String,
-        required: true
     }
 })
 
@@ -722,6 +721,7 @@ app.post("/register", (req,res) => {
                                         phoneNumber: cmod.encrypt(phoneNumber),
                                         state: cmod.encrypt(state),
                                         operatingArea: [],
+                                        customerId: "",
                                         aiSettings: {
                                             name: "Bob",
                                             thresholdValue: 0.7,
@@ -737,7 +737,7 @@ app.post("/register", (req,res) => {
                                             renewalDate: 0,
 
                                         },
-                                        customerId: "",
+                                        
                                     })
 
 
