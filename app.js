@@ -737,7 +737,7 @@ app.post("/register", (req,res) => {
                                             renewalDate: 0,
 
                                         },
-                                        customerId: null,
+                                        customerId: "",
                                     })
 
 
