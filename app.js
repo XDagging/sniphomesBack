@@ -736,7 +736,8 @@ app.post("/register", (req,res) => {
                                             // This unix timestamp
                                             renewalDate: 0,
 
-                                        }
+                                        },
+                                        customerId: null,
                                     })
 
 
