@@ -9,17 +9,21 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google-cloud/speech": "^6.7.0",
     "@google/generative-ai": "^0.21.0",
-    "aws-sdk": "^2.1691.0",
+    "aws-sdk": "^2.1692.0",
     "bcrypt": "^5.1.1",
     "cryptr": "^6.3.0",
     "dotenv": "^16.4.5",
+    "email-reply-parser": "^1.8.2",
     "express-session": "^1.18.0",
     "md5": "^2.3.0",
     "mongoose": "^8.6.3",
-    "nodemailer": "^6.9.15",
+    "nodemailer": "^6.9.16",
     "stripe": "^17.1.0",
     "twilio": "^5.3.3",
-    "uuid": "^10.0.0"
-  }
+    "uuid": "^10.0.0",
+    "ws": "^8.18.0"
+  },
+  "type":"commonjs"
 }

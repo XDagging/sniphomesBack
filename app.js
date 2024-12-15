@@ -17,9 +17,14 @@ const Call = require("./Call.js");
 const WebSocket = require("ws");
 
 
+
+const {processOutreach, replyToEmail} = require("./utils.js")
+
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const client = require("twilio")(accountSid, authToken);
+
+
 
 var AWS = require("aws-sdk");
 // const { send } = require('process');
@@ -91,42 +96,49 @@ function authenticateUser(req) {
 }
 
 // LocalHOST CORS
-// app.use(cors({
-//     origin: "http://localhost:3000",
-//     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-//     credentials: true
-// }))
+
+let options;
 
 
+
+if (process.env.NODE_ENV === "DEV") {
+    console.log('\x1b[31m%s\x1b[0m', 'Currently in development mode (switch to PROD when deploying)'); 
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+    options = {
+        key: fs.readFileSync('C:\\Users\\marac\\code\\hackathon-quhacks\\key.pem'),
+        cert: fs.readFileSync('C:\\Users\\marac\\code\\hackathon-quhacks\\cert.pem'),
+        // Remove this line once done with production
+        rejectUnauthorized: false
+    };
+
+    app.use(cors({
+        origin: "http://localhost:3000",
+        methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+        credentials: true
+    }))
+} else {
+    options = {
+            key: fs.readFileSync('/etc/letsencrypt/live/api.sniphomes.com/privkey.pem'),
+            cert: fs.readFileSync('/etc/letsencrypt/live/api.sniphomes.com/fullchain.pem'),
+    }
+
+    app.use(cors({
+        origin: "https://sniphomes.com",
+        methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+        credentials: true
+    }))
+}
 
 
 // Production CORS
 
-app.use(cors({
-    origin: "https://sniphomes.com",
-    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-    credentials: true
-}))
 
 
 
-// process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-
-// // development certificate
-// const options = {
-//     key: fs.readFileSync('C:\\Program Files\\Git\\usr\\bin\\key.pem'),
-//     cert: fs.readFileSync('C:\\Program Files\\Git\\usr\\bin\\certificate.pem'),
-//     // Remove this line once done with production
-//     rejectUnauthorized: false
-// };
 
 
-// production certificate
 
-const options = {
-    key: fs.readFileSync('/etc/letsencrypt/live/api.sniphomes.com/privkey.pem'),
-    cert: fs.readFileSync('/etc/letsencrypt/live/api.sniphomes.com/fullchain.pem'),
-}
+
 
 const server = https.createServer(options, app);
 // const server = http.createServer(options, app);
@@ -1280,6 +1292,90 @@ app.post("/requestDemo", (req,res) => {
 
 
 
+})
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Demo Testing:
+
+
+app.post("/internalEmail", (req,res) => {
+    const internalCredential = req.body.credential || null;
+
+    if (internalCredential === process.env.RECEIVE_CREDENTIAL) {
+        try {
+            
+            const {message, sender, receiver, messageId} = req.body;
+    
+            if (message || sender || receiver || conversationId) {
+
+
+
+                replyToEmail(receiver, sender, transcript, subject, messageId);
+
+
+
+
+                
+    
+    
+            } else {
+                res.status(400).send(JSON.stringify({
+                    code: "err",
+                    message: "invalid request"
+                }))
+            }
+    
+    
+    
+    
+    
+    
+    
+        } catch(e) {
+            console.log(e);
+
+            res.status(400).send(JSON.stringify({
+                code: "err",
+                message: "invalid request"
+            }))
+        }
+    } else {
+        res.status(404).send(JSON.stringify({
+            code: "err",
+            message: "invalid password or not found"
+        }))
+    }
+
+
+    
+})
+
+
+
+
+app.post('/doOutreach', (req,res) => {
+    try {
+        const internalCredential = req.body.credential || null;
+
+
+    } catch(e) {
+        console.log(e)
+        res.status(404).send(JSON.stringify({
+            code: "err",
+            message: "not found"
+        }))
+    }
 })
 
 
