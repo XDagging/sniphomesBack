@@ -1311,7 +1311,7 @@ app.post("/requestDemo", (req,res) => {
 
 app.post("/internalEmail", (req,res) => {
     const internalCredential = req.body.credential || null;
-
+    console.log(internalCredential)
     if (internalCredential === process.env.RECEIVE_CREDENTIAL) {
         try {
             
