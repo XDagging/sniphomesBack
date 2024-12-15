@@ -1320,9 +1320,9 @@ app.post("/internalEmail", (req,res) => {
     
             if (message || sender || receiver || conversationId) {
 
+                // replace RE with the actualy subject later but for now this is fine
 
-
-                replyToEmail(receiver, sender, transcript, subject, messageId);
+                replyToEmail(receiver, sender, message, "RE", messageId);
 
 
 
