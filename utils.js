@@ -217,7 +217,7 @@ Heres the transcript of the conversation so far (including the latest message):
   
   console.log(result.response.text())
 
-  const finalizedText = result.response.text()
+  const finalizedText = result.response.text() + "\n" + transcript
 
   let replySender = sendEmail.split("@")[0] + "@" + sendEmail.split("@")[1]
   // const messageId = "CAJHLaOmpWXQ53EKA842yhtPQbgrDmdprays-Dnqj4AsdDgn6Aw@mail.gmail.com"
