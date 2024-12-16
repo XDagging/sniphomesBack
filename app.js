@@ -1316,13 +1316,13 @@ app.post("/internalEmail", (req,res) => {
     if (internalCredential === process.env.RECEIVE_CREDENTIAL) {
         try {
             
-            const {message, sender, receiver, messageId} = req.body;
+            const {message, sender, receiver, messageId, subject} = req.body;
     
-            if (message || sender || receiver || conversationId) {
+            if (message || sender || receiver || subject) {
 
                 // replace RE with the actualy subject later but for now this is fine
 
-                replyToEmail(receiver, sender, message, "RE", messageId);
+                replyToEmail(receiver, sender, message, subject, messageId);
 
 
 
