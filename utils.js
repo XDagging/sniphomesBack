@@ -35,7 +35,7 @@ async function deliverMail(to, from, message, subject, messageId) {
   const response = await transporter.sendMail({
     from: from, 
     to: to,
-    replyTo: to,
+    // replyTo: to,
     subject: subject,
     text: message,
     inReplyTo: messageId,
