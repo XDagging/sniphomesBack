@@ -246,6 +246,8 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   // external (boolean)
   // message (string)
   // sendEmail          
+
+  console.log(transcript);
   let iterableTranscript = processEmailChain(transcript);
 
   let readableTranscript = ""
