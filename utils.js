@@ -142,6 +142,101 @@ function processEmailChain(transcript) {
 }
 
 
+const y = `On Mon, Dec 16, 2024 at 7:03 PM <john@sniphomes.com> wrote:
+Hi Fried Chicken,
+
+Thanks for your email and understanding my preference for a phone call. I appreciate you wanting to communicate primarily via email.
+
+Regarding your request for a crime report on Bethesda,  I can't provide a formal crime report, as I'm not a law enforcement official. However, I can share some publicly available information regarding crime statistics in Bethesda.  Websites like the Montgomery County Police Department website offer crime data and statistics.  This information can give you a general overview of crime rates in the area.
+
+To give you the most accurate and up-to-date information about the property and neighborhood, including addressing any specific safety concerns you may have, a brief email exchange might not be sufficient.  Many details are easier to explain and clarify verbally.  For example, discussing nuances of comparable sales data or explaining financing options in detail is much more efficient over a call.
+
+If you're still hesitant about a phone call, please list your specific questions about the property and the neighborhood, and I'll do my best to answer them via email.  However, keep in mind that some questions may require more detailed answers that are best suited for a conversation.
+
+Let me know how you'd like to proceed.
+
+Best regards,
+
+John
+(Assistant to Sebastian)
+
+Hmm no im sorry i can't do phone calls (they just don't do it for me).
+could you give me a quick crime report of bethesda?
+
+On Mon, Dec 16, 2024 at 7:01 PM <john@sniphomes.com> wrote:
+
+> Hi Fried Chicken,
+>
+> Thanks for your email! I understand you'd prefer to communicate via email,
+> but some details about the affordable house are best discussed in a quick
+> phone call.  Things like neighborhood specifics, comparable sales data, and
+> potential financing options are easier to explain and clarify verbally.
+>
+> To help you get a better feel for this property, I can share some photos
+> and a detailed property description via email. However, a brief call would
+> allow me to answer all your questions thoroughly and efficiently.
+>
+> Would you reconsider a short call?  Even 15 minutes could make a big
+> difference. If not, please let me know your specific questions, and I'll do
+> my best to answer them via email.  I'm available for a call Tuesday
+> afternoon after 2 PM or Wednesday morning before 11 AM.  Let me know what
+> works best for you.
+>
+> Looking forward to hearing from you!
+>
+> Best regards,
+>
+> John
+> (Assistant to Sebastian)
+>
+> Hmm. Honestly i donty want to hop on a call. id much prefer to just email.
+>
+> On Mon, Dec 16, 2024 at 7:00 PM <john@sniphomes.com> wrote:
+>
+> > Hi Fried Chicken,
+> >
+> > Thanks for reaching out! I'm interested in learning more about the
+> > affordable house you mentioned.  To give you the best information and
+> > answer all your questions, a quick phone call would be ideal.  I can then
+> > provide details about the property, including specifics not easily
+> conveyed
+> > in an email, like neighborhood features and potential financing options.
+> >
+> > Would you be available for a brief call sometime this week?  I'm free
+> > Tuesday afternoon after 2 PM or Wednesday morning before 11 AM.
+> > Alternatively, please let me know what times work best for you.
+> >
+> > Looking forward to speaking with you soon!
+> >
+> > Best regards,
+> >
+> > John
+> > (Assistant to Sebastian)
+> >
+> > I'm interested. tell me more
+> >
+> > On Mon, Dec 16, 2024 at 6:59 PM <john@sniphomes.com> wrote:
+> >
+> > > Hey Sebastian
+> > >
+> > > I'm Fried Chicken, a local real estate agent in undefined.
+> > >
+> > > There's an affordable house nearby that's recently been put on sale.
+> > >
+> > > I'd be delighted to chat with you more about it.
+> > >
+> > >
+> > >
+> > > Let me know soon,
+> > > Fried Chicken
+> > > Real Estate
+> > >
+> >
+>`
+
+
+// console.log(processEmailChain(y));
+
 
 
 
@@ -217,8 +312,27 @@ Heres the transcript of the conversation so far (including the latest message):
   
   console.log(result.response.text())
 
-  const finalizedText = result.response.text() + "\n" + transcript
+  const today = new Date();
+  let formattedDate = today.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    month: 'long', 
+    day: 'numeric', 
+    year: 'numeric' 
+  });
+  let finalizedDate = ""
+  formattedDate.split(",").map((val, i) => {
+    if (i===0) {
+      finalizedDate += val.substring(0,3) + ","
+    } else if (i !== formattedDate.split(",").length-1) {
+      finalizedDate += val + ",";
+    } else {
+      finalizedDate += val;
+    }
+      
+  })
 
+  const finalizedText = result.response.text() + `\n\nOn ${finalizedDate} at ${new Date().toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })} ${receiveEmail.split("@")[0]} <${receiveEmail}> wrote:\n` + transcript 
+  // On Thu, Dec 12, 2024 at 7:27 PM XDagging <xdagging@gmail.com> wrote:
   let replySender = sendEmail.split("@")[0] + "@" + sendEmail.split("@")[1]
   // const messageId = "CAJHLaOmpWXQ53EKA842yhtPQbgrDmdprays-Dnqj4AsdDgn6Aw@mail.gmail.com"
   console.log(replySender)
@@ -267,7 +381,16 @@ const x = 'get out of here buddy\n' +
 // console.log(x)
 // replyToEmail("john@sniphomes.com", "xdagging@gmail.com", x, 'RE', "CAJHLaOm=fme2_eVZiV+B=1M6DC5U11sj6XcBkr0An4wdqq=6Sg@mail.gmail.com")
 
-// processOutreach()
+
+const testData = [{
+  name: 'Sebastian',
+  email: "xdagging@gmail.com",
+  action: "buy",
+  agentName: "Fried Chicken",
+}]
+// [{name, email area, action, agentName}]
+
+// processOutreach(testData)
 
 //  [{external: false, message: "hello im a real estate agent named john and i saw you own a house at 9212 cedarcrest dr and wanted to talk more about your property"}, {external: true, message: "idk im not too sure if i want to talk about my property"}]
 
