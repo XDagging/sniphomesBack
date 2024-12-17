@@ -118,11 +118,15 @@ function processEmailChain(transcript) {
         
     }
     parsedChain = parsedChain.split("\n\n")
-
+    console.log(parsedChain)
     let fullTranscript = []
     parsedChain.map((item, i) => {
         if ((item.indexOf("@") > 0) && (item.indexOf("<") > 0) && (item.indexOf("wrote:") > 0)) {
-            fullTranscript.push({sender: item.split("<")[1].split(" ")[0].trim(), message: ""})
+
+
+              fullTranscript.push({sender: item.split("<")[1].split(" ")[0].trim(), message: item.split("wrote:\n")[1] || ""})
+            
+            
         } else {
   
     if (i === 0) {
@@ -142,100 +146,35 @@ function processEmailChain(transcript) {
 }
 
 
-const y = `On Mon, Dec 16, 2024 at 7:03 PM <john@sniphomes.com> wrote:
-Hi Fried Chicken,
+const y = `Wednesday morning works for me.
 
-Thanks for your email and understanding my preference for a phone call. I appreciate you wanting to communicate primarily via email.
+On Mon, Dec 16, 2024 at 9:16 PM <john@sniphomes.com> wrote:
 
-Regarding your request for a crime report on Bethesda,  I can't provide a formal crime report, as I'm not a law enforcement official. However, I can share some publicly available information regarding crime statistics in Bethesda.  Websites like the Montgomery County Police Department website offer crime data and statistics.  This information can give you a general overview of crime rates in the area.
-
-To give you the most accurate and up-to-date information about the property and neighborhood, including addressing any specific safety concerns you may have, a brief email exchange might not be sufficient.  Many details are easier to explain and clarify verbally.  For example, discussing nuances of comparable sales data or explaining financing options in detail is much more efficient over a call.
-
-If you're still hesitant about a phone call, please list your specific questions about the property and the neighborhood, and I'll do my best to answer them via email.  However, keep in mind that some questions may require more detailed answers that are best suited for a conversation.
-
-Let me know how you'd like to proceed.
-
-Best regards,
-
-John
-(Assistant to Sebastian)
-
-Hmm no im sorry i can't do phone calls (they just don't do it for me).
-could you give me a quick crime report of bethesda?
-
-On Mon, Dec 16, 2024 at 7:01 PM <john@sniphomes.com> wrote:
-
-> Hi Fried Chicken,
+> Hey there!
 >
-> Thanks for your email! I understand you'd prefer to communicate via email,
-> but some details about the affordable house are best discussed in a quick
-> phone call.  Things like neighborhood specifics, comparable sales data, and
-> potential financing options are easier to explain and clarify verbally.
+> Thanks for reaching out!  To best help you find the perfect house, I need
+> a little more information about what you're looking for.  Things like your
+> budget, desired location, and the type of property you're interested in
+> (house, condo, etc.) would be incredibly helpful.
 >
-> To help you get a better feel for this property, I can share some photos
-> and a detailed property description via email. However, a brief call would
-> allow me to answer all your questions thoroughly and efficiently.
->
-> Would you reconsider a short call?  Even 15 minutes could make a big
-> difference. If not, please let me know your specific questions, and I'll do
-> my best to answer them via email.  I'm available for a call Tuesday
-> afternoon after 2 PM or Wednesday morning before 11 AM.  Let me know what
-> works best for you.
+> A quick phone call would be the best way to discuss your needs and show
+> you some properties that match your criteria.  Would you be free for a
+> brief chat sometime this week?  I'm available Tuesday afternoon or Thursday
+> morning.  Let me know what works best for you!
 >
 > Looking forward to hearing from you!
 >
 > Best regards,
 >
 > John
-> (Assistant to Sebastian)
 >
-> Hmm. Honestly i donty want to hop on a call. id much prefer to just email.
 >
-> On Mon, Dec 16, 2024 at 7:00 PM <john@sniphomes.com> wrote:
->
-> > Hi Fried Chicken,
-> >
-> > Thanks for reaching out! I'm interested in learning more about the
-> > affordable house you mentioned.  To give you the best information and
-> > answer all your questions, a quick phone call would be ideal.  I can then
-> > provide details about the property, including specifics not easily
-> conveyed
-> > in an email, like neighborhood features and potential financing options.
-> >
-> > Would you be available for a brief call sometime this week?  I'm free
-> > Tuesday afternoon after 2 PM or Wednesday morning before 11 AM.
-> > Alternatively, please let me know what times work best for you.
-> >
-> > Looking forward to speaking with you soon!
-> >
-> > Best regards,
-> >
-> > John
-> > (Assistant to Sebastian)
-> >
-> > I'm interested. tell me more
-> >
-> > On Mon, Dec 16, 2024 at 6:59 PM <john@sniphomes.com> wrote:
-> >
-> > > Hey Sebastian
-> > >
-> > > I'm Fried Chicken, a local real estate agent in undefined.
-> > >
-> > > There's an affordable house nearby that's recently been put on sale.
-> > >
-> > > I'd be delighted to chat with you more about it.
-> > >
-> > >
-> > >
-> > > Let me know soon,
-> > > Fried Chicken
-> > > Real Estate
-> > >
-> >
+> On Tue, December 17, 2024 at 2:16 AM xdagging <xdagging@gmail.com> wrote:
+> hey what houses do you got pal!
 >`
 
 
-// console.log(processEmailChain(y));
+console.log(processEmailChain(y));
 
 
 
@@ -292,7 +231,7 @@ Example Response Template:
 
 Thank you for reaching out! .
 
-I’d love to discuss this further and provide tailored advice to help with your real estate goals. When would be a good time for a quick call? I'm available anytime, or we can find another time that works for you.
+I’d love to discuss this further and provide tailored advice to help with your real estate goals. When would be a good time for a quick call?
 
 Just provide me your phone number and I'll reach out
 
