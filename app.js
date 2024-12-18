@@ -1184,7 +1184,7 @@ app.post("/updatePassword", (req,res) => {
                                 })
                             }
                         })
-                    } else {z
+                    } else {
                         res.status(403).send(JSON.stringify({
                             code: "err",
                             message: "invalid code"

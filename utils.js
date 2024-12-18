@@ -102,14 +102,7 @@ function processOutreach(data) {
 
 
           const response = await deliverMail(piece.email, "john@sniphomes.com", bodyMessage + "\n\n" + bodyFooter, bodySubject)
-        
-          // const response = await transporter.sendMail({
-          //   from: "john@sniphomes.com", 
-          //   to: piece.email,
-          //   subject: bodySubject,
-          //   text: bodyMessage + "\n\n" + bodyFooter,
-          //   // attachments: []
-          // })
+      
           console.log(response)
         } else {
           console.log("Incomplete data:",i)
@@ -254,20 +247,20 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   Keep responses short unless it is necessary for it to be long
   Don't leave any brackets at all. 
   Don't include a footer at all (things like sincerely or best regards)
+  You are always available to call
+  Respond in JSON format {message: String, planCall: Boolean, scheduleCall: String, shouldRespond: Boolean}
+  If you don't think that you need to respond to an email, put the shouldRespond value as false (this could happen once you plan a call or after a farewell)
+  If you receive a date for a planned call, put the scheduleCall value with the following: month/day/year hour:minute AM/PM
+  
   Example Response Template:
-  "Hey,
+
+  {
+    message: "Hey," + \n\n + "Thank you for reaching out!" + \n\n + "I'd love to dicuss this further and provide tailored advice to help with your real estate goals. When would be a good time for a quick call?" + \n\n + "Just provide me your phone number and I'll reach out."
+    planCall: true,
+    scheduleCall: 12/18/2024 4:18 PM,
+    shouldRespond: true,
+  }
   
-  Thank you for reaching out! .
-  
-  I’d love to discuss this further and provide tailored advice to help with your real estate goals. When would be a good time for a quick call?
-  
-  Just provide me your phone number and I'll reach out
-  
-  Looking forward to connecting soon!
-  
-  Best regards,
-  John
-  "
   
   Here's the latest message: ${transcript[transcript[0]]}
   
@@ -291,20 +284,23 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   Keep responses short unless it is necessary for it to be long
   Don't leave any brackets at all. 
   Don't include a footer at all (things like sincerely or best regards)
+  Put the character (backslash + n) when you want to go to the next line
+
+    You are always available to call
+  Respond in JSON format {message: String, planCall: Boolean, scheduleCall: String, shouldRespond: Boolean}
+  If you don't think that you need to respond to an email, put the shouldRespond value as false (this could happen once you plan a call or after a farewell)
+  If you receive a date for a planned call, put the scheduleCall value with the following: month/day/year hour:minute AM/PM
+  
   Example Response Template:
-  "Hey,
+
+  {
+    message: "Hey," + \n\n + "Thank you for reaching out!" + \n\n + "I'd love to dicuss this further and provide tailored advice to help with your real estate goals. When would be a good time for a quick call?" + \n\n + "Just provide me your phone number and I'll reach out."
+    planCall: true,
+    scheduleCall: 12/18/2024 4:18 PM,
+    shouldRespond: true,
+  }
   
-  Thank you for reaching out! .
   
-  I’d love to discuss this further and provide tailored advice to help with your real estate goals. When would be a good time for a quick call?
-  
-  Just provide me your phone number and I'll reach out
-  
-  Looking forward to connecting soon!
-  
-  Best regards,
-  John
-  "
   
   Here's the latest message: ${transcript[transcript[0]]}
   
@@ -318,9 +314,12 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
 
 
 
-  const result = await model.generateContent(prompt)
+  const result = await model.generateContent(prompt);
 
-  
+
+
+
+                                                        
   console.log(result.response.text())
 
   const today = new Date();
@@ -342,12 +341,19 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
       
   })
 
-  const finalizedText = result.response.text() + "\n\n" + (isBuying ? "Best Regards," : "Looking forward to your response,") + "\n" + name + `\n\nOn ${finalizedDate} at ${new Date().toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })} ${receiveEmail.split("@")[0]} <${receiveEmail}> wrote:\n` + transcript 
+  const finalizedText = result.response.text() 
+
+  const w =  "\n\n" + (isBuying ? "Best Regards," : "Looking forward to your response,") + "\n" + name + `\n\nOn ${finalizedDate} at ${new Date().toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })} ${receiveEmail.split("@")[0]} <${receiveEmail}> wrote:\n` + transcript 
   // On Thu, Dec 12, 2024 at 7:27 PM XDagging <xdagging@gmail.com> wrote:
+  // console.log(finalizedText.split("{")[1].split("}")[0])
+  const processJson = JSON.parse("{"+ finalizedText.split("{")[1].split("}")[0] + "}")
+  processJson.message = processJson.message + w
+
+
   let replySender = sendEmail.split("@")[0] + "@" + sendEmail.split("@")[1]
   // const messageId = "CAJHLaOmpWXQ53EKA842yhtPQbgrDmdprays-Dnqj4AsdDgn6Aw@mail.gmail.com"
   console.log(replySender)
-  deliverMail(receiveEmail, replySender, finalizedText, subject, messageId)
+  deliverMail(receiveEmail, replySender, processJson.message, subject, messageId)
 
 
 
@@ -396,13 +402,13 @@ const x = 'get out of here buddy\n' +
 const testData = [{
   name: 'Sebastian',
   email: "xdagging@gmail.com",
-  action: "buy",
+  action: "sell",
   agentName: "Fried Chicken",
   area: "Bethesda"
 }]
 // [{name, email area, action, agentName}]
 
-processOutreach(testData)
+// processOutreach(testData)
 
 //  [{external: false, message: "hello im a real estate agent named john and i saw you own a house at 9212 cedarcrest dr and wanted to talk more about your property"}, {external: true, message: "idk im not too sure if i want to talk about my property"}]
 
