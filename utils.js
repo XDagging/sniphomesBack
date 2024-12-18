@@ -50,14 +50,13 @@ function processOutreach(data) {
     // Action means buying or selling
 
 
-    data.forEach(async (piece) => {
+    data.forEach(async (piece,i) => {
 
         if (piece.action.toLowerCase() === "buy") {
 
             const bodyMessage = `Hey ${piece.name}\n\nI'm ${piece.agentName}, a local real estate agent in ${piece.area}.\n\nThere's an affordable house nearby that's recently been put on sale.\n\nI'd be delighted to chat with you more about it.`
-
-            const bodyFooter = `\n\nLet me know soon,\n${piece.agentName}\nReal Estate`
-            const bodySubject = `New home in ${piece.area}`
+            const bodyFooter = `\n\nLooking forward to your response,\n${piece.agentName}\nReal Estate`;
+            const bodySubject = `New home in ${piece.area}`;
 
 
             const response = await deliverMail(piece.email, "john@sniphomes.com", bodyMessage + "\n\n" + bodyFooter, bodySubject)
@@ -96,6 +95,24 @@ function processOutreach(data) {
 
             
 
+        } else if (piece.action.toLowerCase() === "sell") {
+          const bodyMessage = `Hey ${piece.name}\n\nI'm ${piece.agentName}, a local real estate agent in ${piece.area}.\n\nI saw that you lived in ${piece.area} and was wondering if selling your home is something you'd be open to, the market right now is huge.\n\nI'd be delighted to chat with you more about it.`
+          const bodyFooter = `\n\nBest Regards,\n${piece.agentName}\nReal Estate`;
+          const bodySubject = `${piece.area} is booming`;
+
+
+          const response = await deliverMail(piece.email, "john@sniphomes.com", bodyMessage + "\n\n" + bodyFooter, bodySubject)
+        
+          // const response = await transporter.sendMail({
+          //   from: "john@sniphomes.com", 
+          //   to: piece.email,
+          //   subject: bodySubject,
+          //   text: bodyMessage + "\n\n" + bodyFooter,
+          //   // attachments: []
+          // })
+          console.log(response)
+        } else {
+          console.log("Incomplete data:",i)
         }
         
 
@@ -182,10 +199,13 @@ console.log(processEmailChain(y));
 async function replyToEmail(sendEmail, receiveEmail, transcript, subject,messageId) {
   // We are assuming that transcript if a list with an object with two keys in it
 
+  // best regards = selling
+  // looking forwards to your response = buyer
+
   // external (boolean)
   // message (string)
   // sendEmail          
-
+  const name = sendEmail.split("@")[0].toLowerCase().substring(0,1).toUpperCase() + sendEmail.split("@")[0].toLowerCase().substring(1)
   console.log(transcript);
   let iterableTranscript = processEmailChain(transcript);
 
@@ -195,9 +215,21 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   // console.log("Heres the readable transcript:", readableTranscript)
 
 
+  
+  let isBuying
+
   iterableTranscript.map((item) => {
     if ((item.sender === sendEmail) || (item.sender === null)) {
+        
         readableTranscript += `You: ${item.message}`
+        if (item.message.toLowerCase().indexOf("best regards") > 0) {
+          isBuying = false;
+        } else {
+          isBuying = true;
+        }
+
+
+
     } else {
         readableTranscript += `Other person: ${item.message}`
     }
@@ -205,49 +237,86 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   })
   console.log(iterableTranscript)
 
-
-
-
-
-  const prompt = `
-
-
+  console.log("We think that this is a buying conversation",isBuying)
+  let prompt = "";
+  if (isBuying) {
+    prompt = `
+    You are an AI acting as "John," an assistant for a professional real estate agent. You are tasked with responding to email inquiries in a friendly, professional, and engaging tone.
+    You're goal is also to see if they are in the market to buy a house, and if so, schedule a call with them.
   
+  You will be provided with the transcript of the email exchange. Based on the context, craft a reply that:
   
-  You are an AI acting as "John," an assistant for a professional real estate agent. You are tasked with responding to email inquiries in a friendly, professional, and engaging tone. Your primary goal is to encourage the person you're corresponding with to schedule a phone call with you or the real estate agent.
-
-You will be provided with the transcript of the email exchange. Based on the context, craft a reply that:
-
-Addresses the person's questions or concerns.
-Highlights the value of a phone call to discuss their real estate needs further.
-Includes a clear call-to-action to schedule a phone call, offering specific times or a link to schedule one.
-Maintains a warm and approachable tone that builds trust and rapport.
-Keep responses concise yet detailed enough to demonstrate professionalism and expertise. Always end the message in a way that invites further communication.
-Keep responses short unless it is necessary for it to be long
-Don't leave any brackets at all. 
-
-Example Response Template:
-"Hey,
-
-Thank you for reaching out! .
-
-I’d love to discuss this further and provide tailored advice to help with your real estate goals. When would be a good time for a quick call?
-
-Just provide me your phone number and I'll reach out
-
-Looking forward to connecting soon!
-
-Best regards,
-John
-"
-
-Here's the latest message: ${transcript[transcript[0]]}
-
-Heres the transcript of the conversation so far (including the latest message): 
-
-  ${readableTranscript}
+  Addresses the person's questions or concerns.
+  Highlights the value of a phone call to discuss their real estate needs further.
+  Includes a clear call-to-action to schedule a phone call, offering specific times or a link to schedule one.
+  Maintains a warm and approachable tone that builds trust and rapport.
+  Keep responses concise yet detailed enough to demonstrate professionalism and expertise. Always end the message in a way that invites further communication.
+  Keep responses short unless it is necessary for it to be long
+  Don't leave any brackets at all. 
+  Don't include a footer at all (things like sincerely or best regards)
+  Example Response Template:
+  "Hey,
   
-  `
+  Thank you for reaching out! .
+  
+  I’d love to discuss this further and provide tailored advice to help with your real estate goals. When would be a good time for a quick call?
+  
+  Just provide me your phone number and I'll reach out
+  
+  Looking forward to connecting soon!
+  
+  Best regards,
+  John
+  "
+  
+  Here's the latest message: ${transcript[transcript[0]]}
+  
+  Heres the transcript of the conversation so far (including the latest message): 
+  
+    ${readableTranscript}
+    
+    `
+  } else {
+    prompt = `
+    You are an AI acting as "John," an assistant for a professional real estate agent. You are tasked with responding to email inquiries in a friendly, professional, and engaging tone.
+    You're goal is also to see if they are in the market to sell their house, and if so, schedule a call with them.
+  
+  You will be provided with the transcript of the email exchange. Based on the context, craft a reply that:
+  
+  Addresses the person's questions or concerns.
+  Highlights the value of a phone call to discuss their real estate needs further.
+  Includes a clear call-to-action to schedule a phone call, offering specific times or a link to schedule one.
+  Maintains a warm and approachable tone that builds trust and rapport.
+  Keep responses concise yet detailed enough to demonstrate professionalism and expertise. Always end the message in a way that invites further communication.
+  Keep responses short unless it is necessary for it to be long
+  Don't leave any brackets at all. 
+  Don't include a footer at all (things like sincerely or best regards)
+  Example Response Template:
+  "Hey,
+  
+  Thank you for reaching out! .
+  
+  I’d love to discuss this further and provide tailored advice to help with your real estate goals. When would be a good time for a quick call?
+  
+  Just provide me your phone number and I'll reach out
+  
+  Looking forward to connecting soon!
+  
+  Best regards,
+  John
+  "
+  
+  Here's the latest message: ${transcript[transcript[0]]}
+  
+  Heres the transcript of the conversation so far (including the latest message): 
+  
+    ${readableTranscript}
+    
+    `
+
+  }
+
+
 
   const result = await model.generateContent(prompt)
 
@@ -273,7 +342,7 @@ Heres the transcript of the conversation so far (including the latest message):
       
   })
 
-  const finalizedText = result.response.text() + `\n\nOn ${finalizedDate} at ${new Date().toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })} ${receiveEmail.split("@")[0]} <${receiveEmail}> wrote:\n` + transcript 
+  const finalizedText = result.response.text() + "\n\n" + (isBuying ? "Best Regards," : "Looking forward to your response,") + "\n" + name + `\n\nOn ${finalizedDate} at ${new Date().toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })} ${receiveEmail.split("@")[0]} <${receiveEmail}> wrote:\n` + transcript 
   // On Thu, Dec 12, 2024 at 7:27 PM XDagging <xdagging@gmail.com> wrote:
   let replySender = sendEmail.split("@")[0] + "@" + sendEmail.split("@")[1]
   // const messageId = "CAJHLaOmpWXQ53EKA842yhtPQbgrDmdprays-Dnqj4AsdDgn6Aw@mail.gmail.com"
@@ -329,10 +398,11 @@ const testData = [{
   email: "xdagging@gmail.com",
   action: "buy",
   agentName: "Fried Chicken",
+  area: "Bethesda"
 }]
 // [{name, email area, action, agentName}]
 
-// processOutreach(testData)
+processOutreach(testData)
 
 //  [{external: false, message: "hello im a real estate agent named john and i saw you own a house at 9212 cedarcrest dr and wanted to talk more about your property"}, {external: true, message: "idk im not too sure if i want to talk about my property"}]
 
