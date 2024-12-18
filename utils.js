@@ -256,13 +256,13 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
 
   {
     message: "Hey," + \n\n + "Thank you for reaching out!" + \n\n + "I'd love to dicuss this further and provide tailored advice to help with your real estate goals. When would be a good time for a quick call?" + \n\n + "Just provide me your phone number and I'll reach out."
-    planCall: true,
+    planCall: false,
     scheduleCall: 12/18/2024 4:18 PM,
     shouldRespond: true,
   }
   
   
-  Here's the latest message: ${transcript[transcript[0]]}
+  Here's the latest message: ${iterableTranscript[0]}
   
   Heres the transcript of the conversation so far (including the latest message): 
   
@@ -302,7 +302,7 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   
   
   
-  Here's the latest message: ${transcript[transcript[0]]}
+  Here's the latest message: ${iterableTranscript[0]}
   
   Heres the transcript of the conversation so far (including the latest message): 
   
@@ -403,12 +403,12 @@ const testData = [{
   name: 'Sebastian',
   email: "xdagging@gmail.com",
   action: "sell",
-  agentName: "Fried Chicken",
-  area: "Bethesda"
+  agentName: "Smith",
+  area: "Orange County"
 }]
 // [{name, email area, action, agentName}]
 
-// processOutreach(testData)
+processOutreach(testData)
 
 //  [{external: false, message: "hello im a real estate agent named john and i saw you own a house at 9212 cedarcrest dr and wanted to talk more about your property"}, {external: true, message: "idk im not too sure if i want to talk about my property"}]
 
