@@ -1431,10 +1431,10 @@ app.post('/doOutreach', async (req,res) => {
                     }))
                 } else {
                     if (user) {
-                        const senderEmail = user.aiSettings.name + "@sniphomes.com"
-                        const idList = await processOutreach(data, senderEmail);
-                        
-                        idList.map((id,i) => {
+                        const senderEmail = user.aiSettings.name + "@sniphomes.com";
+                        processOutreach(data, senderEmail).then((idList) => {
+                            console.log(idList)
+                            idList.map((id,i) => {
                             const newThread = new Thread({
                                 messageId: id,
                                 sender: senderEmail,
@@ -1446,12 +1446,14 @@ app.post('/doOutreach', async (req,res) => {
 
                             newThread.save()
 
-                        })
+                            })
 
-                        res.status(200).send(JSON.stringify({
-                            code: "ok",
-                            message: "success"
-                        }))
+                            res.status(200).send(JSON.stringify({
+                                code: "ok",
+                                message: "success"
+                            }))
+                        })
+                        
 
 
 

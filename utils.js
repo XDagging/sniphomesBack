@@ -44,8 +44,10 @@ async function deliverMail(to, from, message, subject, messageId) {
   return response
 }
 
-function processOutreach(data, senderEmail,) {
-  console.log(data)
+function processOutreach(data, senderEmail) {
+  return new Promise((resolve) => {
+
+    console.log(data)
     // Data Schema: [{name, email area, action, agentName}]
     // Action means buying or selling
     let messageIdList = []
@@ -104,9 +106,10 @@ function processOutreach(data, senderEmail,) {
             const bodySubject = `${piece.area} is booming`;
 
 
-            const response = await deliverMail(piece.email, "john@sniphomes.com", bodyMessage + "\n\n" + bodyFooter, bodySubject)
+            const response = await deliverMail(piece.email, senderEmail, bodyMessage + "\n\n" + bodyFooter, bodySubject)
       
             console.log(response)
+            messageIdList.push(response.messageId);
         } else {
           console.log("Incomplete data:",i)
         }
@@ -117,7 +120,10 @@ function processOutreach(data, senderEmail,) {
 
     })
 
-    return messageIdList;
+    resolve(messageIdList);
+    
+  })
+  
 }
 
 
@@ -427,14 +433,14 @@ const x = 'get out of here buddy\n' +
 // replyToEmail("john@sniphomes.com", "xdagging@gmail.com", x, 'RE', "CAJHLaOm=fme2_eVZiV+B=1M6DC5U11sj6XcBkr0An4wdqq=6Sg@mail.gmail.com")
 
 
-const testData = [{
-  name: 'Sebastian',
-  email: "xdagging@gmail.com",
-  action: "sell",
-  agentName: "Smith",
-  area: "Orange County",
-  emailSender: "john@sniphomes.com"
-}]
+// const testData = [{
+//   name: 'Sebastian',
+//   email: "xdagging@gmail.com",
+//   action: "sell",
+//   agentName: "Smith",
+//   area: "Orange County",
+//   emailSender: "john@sniphomes.com"
+// }]
 // [{name, email area, action, agentName}]
 
 // processOutreach(testData,"john@sniphomes.com")
