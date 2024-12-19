@@ -44,7 +44,7 @@ async function deliverMail(to, from, message, subject, messageId) {
   return response
 }
 
-function processOutreach(data, senderEmail) {
+function processOutreach(data, senderEmail, senderName) {
   return new Promise((resolve) => {
 
     console.log(data)
@@ -56,8 +56,8 @@ function processOutreach(data, senderEmail) {
 
         if (piece.action.toLowerCase() === "buy") {
             
-            const bodyMessage = `Hey ${piece.name}\n\nI'm ${piece.agentName}, a local real estate agent in ${piece.area}.\n\nThere's an affordable house nearby that's recently been put on sale.\n\nI'd be delighted to chat with you more about it.`
-            const bodyFooter = `\n\nLooking forward to your response,\n${piece.agentName}\nReal Estate`;
+            const bodyMessage = `Hey ${piece.name}\n\nI'm ${senderName}, a local real estate agent in ${piece.area}.\n\nThere's an affordable house nearby that's recently been put on sale.\n\nI'd be delighted to chat with you more about it.`
+            const bodyFooter = `\n\nLooking forward to your response,\n${senderName}\nReal Estate`;
             const bodySubject = `New home in ${piece.area}`;
 
 
@@ -101,8 +101,8 @@ function processOutreach(data, senderEmail) {
             
 
         } else if (piece.action.toLowerCase() === "sell") {
-            const bodyMessage = `Hey ${piece.name}\n\nI'm ${piece.agentName}, a local real estate agent in ${piece.area}.\n\nI saw that you lived in ${piece.area} and was wondering if selling your home is something you'd be open to, the market right now is huge.\n\nI'd be delighted to chat with you more about it.`
-            const bodyFooter = `\n\nBest Regards,\n${piece.agentName}\nReal Estate`;
+            const bodyMessage = `Hey ${piece.name}\n\nI'm ${senderName}, a local real estate agent in ${piece.area}.\n\nI saw that you lived in ${piece.area} and was wondering if selling your home is something you'd be open to, the market right now is huge.\n\nI'd be delighted to chat with you more about it.`
+            const bodyFooter = `\n\nBest Regards,\n${senderName}\nReal Estate`;
             const bodySubject = `${piece.area} is booming`;
 
 

@@ -1432,7 +1432,7 @@ app.post('/doOutreach', async (req,res) => {
                 } else {
                     if (user) {
                         const senderEmail = user.aiSettings.name + "@sniphomes.com";
-                        processOutreach(data, senderEmail).then((idList) => {
+                        processOutreach(data, senderEmail, user.aiSettings.name).then((idList) => {
                             console.log(idList)
                             idList.map((id,i) => {
                             const newThread = new Thread({
