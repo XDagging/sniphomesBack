@@ -16,6 +16,16 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const Call = require("./Call.js");
 const WebSocket = require("ws");
 
+const {GoogleGenerativeAI} = require("@google/generative-ai");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
+
+const model = genAI.getGenerativeModel({
+    model: "gemini-1.5-flash",
+    generationConfig: {
+        temperature: 0.2,
+        // 0.2
+    },  
+  });
 
 
 const {processOutreach, replyToEmail} = require("./utils.js")
@@ -27,6 +37,8 @@ const client = require("twilio")(accountSid, authToken);
 
 
 var AWS = require("aws-sdk");
+const e = require('express');
+const { FeedbackInstance } = require('twilio/lib/rest/assistants/v1/assistant/feedback.js');
 // const { send } = require('process');
 
 
@@ -316,11 +328,36 @@ const UserSchema = new mongoose.Schema({
     }
 })
 
+const ThreadSchema = new mongoose.Schema({
+    messageId: {
+        type: String,
+        unique: false,
+
+    },
+    sender: {
+        type: String,
+        unique: false,
+    },
+    receiver: {
+        type: String,
+        unique: false,
+    }, 
+    callFeature: {
+        type: Boolean,
+        unique: true,
+    },
+    area: {
+        type: String,
+        unique: false,
+    }
+})
+
 
 const User = new mongoose.model("User", UserSchema)
 const Code = new mongoose.model("Code", codeSchema)
 const Lead = new mongoose.model("Lead", LeadSchema)
 const Demo = new mongoose.model("Demo", DemoSchema)
+const Thread = new mongoose.model("Thread", ThreadSchema)
 
 
 
@@ -737,6 +774,7 @@ app.post("/register", (req,res) => {
                                         aiSettings: {
                                             name: "Bob",
                                             thresholdValue: 0.7,
+                                            callFeature: false,
                                         },
                                         dashboardStats: {
                                             textsSent: 0,
@@ -1301,7 +1339,7 @@ app.post("/requestDemo", (req,res) => {
 
 
 
-
+const bookedCalls = new Map();
 
 
 
@@ -1365,9 +1403,89 @@ app.post("/internalEmail", (req,res) => {
 
 
 
-app.post('/doOutreach', (req,res) => {
+app.post('/doOutreach', async (req,res) => {
     try {
-        const internalCredential = req.body.credential || null;
+        const {internalCredential, uuid, data, area} = req.body;
+
+
+        // const uuid = req.body.uuid;
+        // const data = req.body.data;
+
+
+        // Data is a list with json
+
+        // 
+
+
+
+
+        if (internalCredential === req.body.RECEIVE_CREDENTIAL) {
+
+            User.findOne({uuid: uuid}).then(async (user,err) => {
+                if (err) {
+                    console.log(err)
+                    res.status(400).send(JSON.stringify({
+                        code: "err",
+                        message: "invalid request"
+                    }))
+                } else {
+                    if (user) {
+                        const senderEmail = user.aiSettings.name + "@sniphomes.com"
+                        const idList = await processOutreach(data, senderEmail);
+                        
+                        idList.map((id,i) => {
+                            const newThread = new Thread({
+                                messageId: id,
+                                sender: senderEmail,
+                                receiver: data[i].email,
+                                callFeature: user.aiSetting.callFeature,
+                                area: area,
+
+                            })
+
+                            newThread.save()
+
+                        })
+
+                        res.status(200).send(JSON.stringify({
+                            code: "ok",
+                            message: "success"
+                        }))
+
+
+
+
+                    } else {
+
+                        res.status(403).send(JSON.stringify({
+                            code: "err",
+                            message: "invalid uuid"
+                        }))
+
+
+                    }
+                }
+            })
+            
+
+
+
+        } else {
+            res.status(404).send(JSON.stringify({
+                code: "err",
+                message: "not found"
+            }))
+            return
+        }
+        
+
+
+
+
+        
+
+
+
 
 
     } catch(e) {
@@ -1380,29 +1498,85 @@ app.post('/doOutreach', (req,res) => {
 })
 
 
+async function summarizeLeadDetails(transcript, email) {
+
+    let readableTranscript = "";
+    for (let i=transcript.length-1; i>0; i--) {
+        if (email === transcript[i].sender) {
+            readableTranscript += "Me: " + transcript[i].message
+        } else {
+            readableTranscript += "Other Person: " + transcript[i].message;
+        }
+        readableTranscript += "\n\n"
+        
+    }
+
+    const content = await model.generateContent("You will be provided an email transcript of a conversation. I want you to pinpoint a 3 sentence summary of the conversation (especially the conclusion of the conversation). These conversations are real estate cold emails so don't mention that as the person reading the summary will already have that context.")
+    return content;
+}
 
 
 
 
+function processLeadConversion(messageId, transcript) {
+    if (messageId) {    
+
+        Thread.findOne({messageId: messageId}).then(async(thread, err) => {
+            if (err) {
+                console.log(err)
+                return err
+            } else {
+                if (thread) {
+
+                    // If they have the demo feature enabled
+
+
+                    if (thread.callFeature) {
+                        const newLead = new Lead({
+                            uuid: "",
+                            date: Date.now(),
+                            
+                            
+                        })
 
 
 
+                    } else {
+                        // Send Email
+                        const leadDetails = await summarizeLeadDetails(transcript, thread.sender);
+
+                        const newLead = new Lead({
+                            uuid: thread.uuid,
+                            date: new Date.now(),
+                            area: thread.area,
+                            leadDetails: leadDetails,
+                            transcript: transcript,
+                        });
+
+                        newLead.save();
+
+                        return;
+                
+                    }
+                    
+                } else {
+                    console.log("Message Id is invalid");
+                    return;
+
+                }
+            }
+        })
 
 
 
+    } else {
+        console.log("Process Lead Conversion went wrong")
+        return
+    }
 
 
 
-
-
-
-
-
-
-
-
-
-
+}
 
 
 
@@ -1431,7 +1605,7 @@ server.listen(process.env.PORT, (req,res) => {
 
 
 
-
+module.exports = {callSomeone, processLeadConversion}
 
 
 

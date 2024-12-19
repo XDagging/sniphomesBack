@@ -4,7 +4,7 @@ const nodemailer = require("nodemailer")
 const {GoogleGenerativeAI} = require("@google/generative-ai");
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
 const EmailReplyParser = require("email-reply-parser");
-
+const {callSomeone, bookedCalls} = require("./app")
 const REGION = "us-east-1"
 
 const model = genAI.getGenerativeModel({
@@ -44,22 +44,22 @@ async function deliverMail(to, from, message, subject, messageId) {
   return response
 }
 
-function processOutreach(data) {
+function processOutreach(data, senderEmail,) {
   console.log(data)
     // Data Schema: [{name, email area, action, agentName}]
     // Action means buying or selling
-
+    let messageIdList = []
 
     data.forEach(async (piece,i) => {
 
         if (piece.action.toLowerCase() === "buy") {
-
+            
             const bodyMessage = `Hey ${piece.name}\n\nI'm ${piece.agentName}, a local real estate agent in ${piece.area}.\n\nThere's an affordable house nearby that's recently been put on sale.\n\nI'd be delighted to chat with you more about it.`
             const bodyFooter = `\n\nLooking forward to your response,\n${piece.agentName}\nReal Estate`;
             const bodySubject = `New home in ${piece.area}`;
 
 
-            const response = await deliverMail(piece.email, "john@sniphomes.com", bodyMessage + "\n\n" + bodyFooter, bodySubject)
+            const response = await deliverMail(piece.email, senderEmail, bodyMessage + "\n\n" + bodyFooter, bodySubject)
           
             // const response = await transporter.sendMail({
             //   from: "john@sniphomes.com", 
@@ -68,7 +68,10 @@ function processOutreach(data) {
             //   text: bodyMessage + "\n\n" + bodyFooter,
             //   // attachments: []
             // })
-            console.log(response)
+            console.log(response.messageId);
+
+            messageIdList.push(response.messageId);
+            // return response.messageId;
 
             // const params = {
             //     Destination: {
@@ -96,14 +99,14 @@ function processOutreach(data) {
             
 
         } else if (piece.action.toLowerCase() === "sell") {
-          const bodyMessage = `Hey ${piece.name}\n\nI'm ${piece.agentName}, a local real estate agent in ${piece.area}.\n\nI saw that you lived in ${piece.area} and was wondering if selling your home is something you'd be open to, the market right now is huge.\n\nI'd be delighted to chat with you more about it.`
-          const bodyFooter = `\n\nBest Regards,\n${piece.agentName}\nReal Estate`;
-          const bodySubject = `${piece.area} is booming`;
+            const bodyMessage = `Hey ${piece.name}\n\nI'm ${piece.agentName}, a local real estate agent in ${piece.area}.\n\nI saw that you lived in ${piece.area} and was wondering if selling your home is something you'd be open to, the market right now is huge.\n\nI'd be delighted to chat with you more about it.`
+            const bodyFooter = `\n\nBest Regards,\n${piece.agentName}\nReal Estate`;
+            const bodySubject = `${piece.area} is booming`;
 
 
-          const response = await deliverMail(piece.email, "john@sniphomes.com", bodyMessage + "\n\n" + bodyFooter, bodySubject)
+            const response = await deliverMail(piece.email, "john@sniphomes.com", bodyMessage + "\n\n" + bodyFooter, bodySubject)
       
-          console.log(response)
+            console.log(response)
         } else {
           console.log("Incomplete data:",i)
         }
@@ -113,6 +116,8 @@ function processOutreach(data) {
 
 
     })
+
+    return messageIdList;
 }
 
 
@@ -251,7 +256,8 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   Respond in JSON format {message: String, planCall: Boolean, scheduleCall: String, shouldRespond: Boolean}
   If you don't think that you need to respond to an email, put the shouldRespond value as false (this could happen once you plan a call or after a farewell)
   If you receive a date for a planned call, put the scheduleCall value with the following: month/day/year hour:minute AM/PM
-  
+  If you receive a phone number for a planned call, put the phone number in the phoneNumber field.
+  If the person is available to text in that instant, put the scheduleCall value as "now"
   Example Response Template:
 
   {
@@ -259,6 +265,7 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
     planCall: false,
     scheduleCall: 12/18/2024 4:18 PM,
     shouldRespond: true,
+    phoneNumber: null;
   }
   
   
@@ -290,7 +297,7 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   Respond in JSON format {message: String, planCall: Boolean, scheduleCall: String, shouldRespond: Boolean}
   If you don't think that you need to respond to an email, put the shouldRespond value as false (this could happen once you plan a call or after a farewell)
   If you receive a date for a planned call, put the scheduleCall value with the following: month/day/year hour:minute AM/PM
-  
+   If the person is available to text in that instant, put the scheduleCall value as "now"
   Example Response Template:
 
   {
@@ -343,12 +350,33 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
 
   const finalizedText = result.response.text() 
 
+  
+
   const w =  "\n\n" + (isBuying ? "Best Regards," : "Looking forward to your response,") + "\n" + name + `\n\nOn ${finalizedDate} at ${new Date().toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })} ${receiveEmail.split("@")[0]} <${receiveEmail}> wrote:\n` + transcript 
   // On Thu, Dec 12, 2024 at 7:27 PM XDagging <xdagging@gmail.com> wrote:
   // console.log(finalizedText.split("{")[1].split("}")[0])
   const processJson = JSON.parse("{"+ finalizedText.split("{")[1].split("}")[0] + "}")
   processJson.message = processJson.message + w
+  if ((planCall)) {
 
+
+    processLeadConversion(messageId, iterableTranscript.unshift({
+      sender: replySender, message: result.response.text()
+    }));
+    // if (scheduleCall === "now") {
+    //   callSomeone(processJson.phoneNumber, name, null, (isBuying ? "buy": "sell"), receiveEmail)
+    // } else {
+    //   const timeNow = Date.now();
+    //   const timeThen = new Date(scheduleCall).getTime();
+    //   const timeout = setTimeout(() => {
+    //     callSomeone(processJson.phoneNumber, name, null, (isBuying ? "buy": "sell"), receiveEmail)
+
+    //   },timeNow-timeThen)
+
+    //   bookedCalls.set(receiveEmail, timeout);
+    // }
+     
+  }
 
   let replySender = sendEmail.split("@")[0] + "@" + sendEmail.split("@")[1]
   // const messageId = "CAJHLaOmpWXQ53EKA842yhtPQbgrDmdprays-Dnqj4AsdDgn6Aw@mail.gmail.com"
@@ -404,11 +432,12 @@ const testData = [{
   email: "xdagging@gmail.com",
   action: "sell",
   agentName: "Smith",
-  area: "Orange County"
+  area: "Orange County",
+  emailSender: "john@sniphomes.com"
 }]
 // [{name, email area, action, agentName}]
 
-processOutreach(testData)
+// processOutreach(testData,"john@sniphomes.com")
 
 //  [{external: false, message: "hello im a real estate agent named john and i saw you own a house at 9212 cedarcrest dr and wanted to talk more about your property"}, {external: true, message: "idk im not too sure if i want to talk about my property"}]
 
