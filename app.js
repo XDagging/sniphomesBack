@@ -1407,7 +1407,8 @@ app.post('/doOutreach', async (req,res) => {
     try {
         const {internalCredential, uuid, data, area} = req.body;
 
-
+        console.log(internalCredential)
+        // console.log(processLeadConversion)
         // const uuid = req.body.uuid;
         // const data = req.body.data;
 
@@ -1419,7 +1420,7 @@ app.post('/doOutreach', async (req,res) => {
 
 
 
-        if (internalCredential === req.body.RECEIVE_CREDENTIAL) {
+        if (internalCredential === process.env.RECEIVE_CREDENTIAL) {
 
             User.findOne({uuid: uuid}).then(async (user,err) => {
                 if (err) {
