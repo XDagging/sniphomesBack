@@ -261,7 +261,7 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   You are always available to call
   Respond in JSON format {message: String, planCall: Boolean, scheduleCall: String, shouldRespond: Boolean}
   If you don't think that you need to respond to an email, put the shouldRespond value as false (this could happen once you plan a call or after a farewell)
-  If you receive a date for a planned call, put the scheduleCall value with the following: month/day/year hour:minute AM/PM
+  If you receive a date for a planned call, put the scheduleCall value with the following: month/day/year hour:minute AM/PM. ONLY PUT THIS VALUE AS TRUE WHEN THE PERSON AGREES TO A TIME TO CALL
   If you receive a phone number for a planned call, put the phone number in the phoneNumber field.
   If the person is available to text in that instant, put the scheduleCall value as "now"
   Example Response Template:
@@ -302,8 +302,9 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
     You are always available to call
   Respond in JSON format {message: String, planCall: Boolean, scheduleCall: String, shouldRespond: Boolean}
   If you don't think that you need to respond to an email, put the shouldRespond value as false (this could happen once you plan a call or after a farewell)
-  If you receive a date for a planned call, put the scheduleCall value with the following: month/day/year hour:minute AM/PM
-   If the person is available to text in that instant, put the scheduleCall value as "now"
+  If you receive a date for a planned call, put the scheduleCall value with the following: month/day/year hour:minute AM/PM. ONLY PUT THIS VALUE AS TRUE WHEN THE PERSON AGREES TO A TIME TO CALL
+  If you receive a phone number for a planned call, put the phone number in the phoneNumber field.
+  If the person is available to text in that instant, put the scheduleCall value as "now"
   Example Response Template:
 
   {
@@ -363,11 +364,11 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   // console.log(finalizedText.split("{")[1].split("}")[0])
   const processJson = JSON.parse("{"+ finalizedText.split("{")[1].split("}")[0] + "}")
   processJson.message = processJson.message + w
-  if ((planCall)) {
+  if ((processJson.planCall)) {
 
 
     processLeadConversion(messageId, iterableTranscript.unshift({
-      sender: replySender, message: result.response.text()
+      sender: sendEmail, message: result.response.text()
     }));
     // if (scheduleCall === "now") {
     //   callSomeone(processJson.phoneNumber, name, null, (isBuying ? "buy": "sell"), receiveEmail)
