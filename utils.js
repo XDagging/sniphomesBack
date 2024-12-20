@@ -7,7 +7,7 @@ const EmailReplyParser = require("email-reply-parser");
 
 const {processLeadConversion} = require("./app.js")
 const REGION = "us-east-1"
-console.log("lead generation",processLeadConversion)
+// console.log("lead generation",processLeadConversion)
 const model = genAI.getGenerativeModel({
   model: "gemini-1.5-flash",
   generationConfig: {
@@ -248,7 +248,7 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   let prompt = "";
   if (isBuying) {
     prompt = `
-    You are an AI acting as "John," an assistant for a professional real estate agent. You are tasked with responding to email inquiries in a friendly, professional, and engaging tone.
+    You are an AI representing a professional real estate agent. You are tasked with responding to email inquiries in a friendly, professional, and engaging tone.
     You're goal is also to see if they are in the market to buy a house, and if so, schedule a call with them.
   
   You will be provided with the transcript of the email exchange. Based on the context, craft a reply that:
@@ -287,7 +287,7 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
     `
   } else {
     prompt = `
-    You are an AI acting as "John," an assistant for a professional real estate agent. You are tasked with responding to email inquiries in a friendly, professional, and engaging tone.
+    You are a professional real estate agent. You are tasked with responding to email inquiries in a friendly, professional, and engaging tone.
     You're goal is also to see if they are in the market to sell their house, and if so, schedule a call with them.
   
   You will be provided with the transcript of the email exchange. Based on the context, craft a reply that:
