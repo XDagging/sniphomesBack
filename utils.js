@@ -4,9 +4,10 @@ const nodemailer = require("nodemailer")
 const {GoogleGenerativeAI} = require("@google/generative-ai");
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
 const EmailReplyParser = require("email-reply-parser");
-const {processLeadConversion} = require("./app")
-const REGION = "us-east-1"
 
+const {processLeadConversion} = require("./app.js")
+const REGION = "us-east-1"
+console.log("lead generation",processLeadConversion)
 const model = genAI.getGenerativeModel({
   model: "gemini-1.5-flash",
   generationConfig: {

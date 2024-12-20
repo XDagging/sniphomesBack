@@ -28,7 +28,6 @@ const model = genAI.getGenerativeModel({
   });
 
 
-const {processOutreach, replyToEmail} = require("./utils.js")
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -954,6 +953,7 @@ app.get("/getUser" , (req,res) => {
 
 
 
+
 app.post("/updateUser", (req,res) => {
     const {operatingArea, aiName} = req.body
 
@@ -1348,6 +1348,7 @@ const bookedCalls = new Map();
 
 
 app.post("/internalEmail", (req,res) => {
+    const {replyToEmail} = require("./utils.js")
     const internalCredential = req.body.credential || null;
     console.log(internalCredential)
     console.log(process.env.RECEIVE_CREDENTIAL)
@@ -1406,7 +1407,7 @@ app.post("/internalEmail", (req,res) => {
 app.post('/doOutreach', async (req,res) => {
     try {
         const {internalCredential, uuid, data, area} = req.body;
-
+        const {processOutreach} = require("./utils.js")
         console.log(internalCredential)
         // console.log(processLeadConversion)
         // const uuid = req.body.uuid;
@@ -1609,8 +1610,9 @@ server.listen(process.env.PORT, (req,res) => {
 
 
 
-
+// exports.processLeadConversion = processLeadConversion;
 module.exports = {processLeadConversion}
+
 
 
 
