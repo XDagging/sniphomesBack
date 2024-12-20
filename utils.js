@@ -248,7 +248,7 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   let prompt = "";
   if (isBuying) {
     prompt = `
-    You are an AI representing a professional real estate agent. You are tasked with responding to email inquiries in a friendly, professional, and engaging tone.
+    You are ${sendEmail.split("@")[0]}, AI representing a professional real estate agent. You are tasked with responding to email inquiries in a friendly, professional, and engaging tone.
     You're goal is also to see if they are in the market to buy a house, and if so, schedule a call with them.
   
   You will be provided with the transcript of the email exchange. Based on the context, craft a reply that:
@@ -287,7 +287,7 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
     `
   } else {
     prompt = `
-    You are a professional real estate agent. You are tasked with responding to email inquiries in a friendly, professional, and engaging tone.
+    You are ${sendEmail.split("@")[0]}, a professional real estate agent. You are tasked with responding to email inquiries in a friendly, professional, and engaging tone.
     You're goal is also to see if they are in the market to sell their house, and if so, schedule a call with them.
   
   You will be provided with the transcript of the email exchange. Based on the context, craft a reply that:
