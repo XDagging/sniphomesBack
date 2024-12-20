@@ -344,7 +344,7 @@ const ThreadSchema = new mongoose.Schema({
     }, 
     callFeature: {
         type: Boolean,
-        unique: true,
+        unique: false,
     },
     area: {
         type: String,
@@ -1433,13 +1433,15 @@ app.post('/doOutreach', async (req,res) => {
                     if (user) {
                         const senderEmail = user.aiSettings.name + "@sniphomes.com";
                         processOutreach(data, senderEmail, user.aiSettings.name).then((idList) => {
-                            console.log(idList)
+                            console.log("idList",idList)
                             idList.map((id,i) => {
+
+                                const messageId = id.substring(1, id.length-1)
                             const newThread = new Thread({
-                                messageId: id,
+                                messageId: messageId,
                                 sender: senderEmail,
                                 receiver: data[i].email,
-                                callFeature: user.aiSetting.callFeature,
+                                callFeature: user.aiSettings.callFeature,
                                 area: area,
 
                             })

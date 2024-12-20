@@ -45,14 +45,14 @@ async function deliverMail(to, from, message, subject, messageId) {
 }
 
 function processOutreach(data, senderEmail, senderName) {
-  return new Promise((resolve) => {
+  return new Promise(async(resolve) => {
 
     console.log(data)
     // Data Schema: [{name, email area, action, agentName}]
     // Action means buying or selling
-    let messageIdList = []
+    const messageIdList = []
 
-    data.forEach(async (piece,i) => {
+    const tasks = data.map(async (piece,i) => {
 
         if (piece.action.toLowerCase() === "buy") {
             
@@ -119,6 +119,8 @@ function processOutreach(data, senderEmail, senderName) {
 
 
     })
+
+    await Promise.all(tasks)
 
     resolve(messageIdList);
     
