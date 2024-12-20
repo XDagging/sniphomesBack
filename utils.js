@@ -368,10 +368,10 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   processJson.message = processJson.message + w
   if ((processJson.scheduleCall)) {
 
-
-    processLeadConversion(messageId, iterableTranscript.unshift({
+    iterableTranscript.unshift({
       sender: sendEmail, message: result.response.text()
-    }));
+    })
+    processLeadConversion(messageId, iterableTranscript);
     // if (scheduleCall === "now") {
     //   callSomeone(processJson.phoneNumber, name, null, (isBuying ? "buy": "sell"), receiveEmail)
     // } else {
