@@ -4,7 +4,7 @@ const nodemailer = require("nodemailer")
 const {GoogleGenerativeAI} = require("@google/generative-ai");
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
 const EmailReplyParser = require("email-reply-parser");
-const {callSomeone, bookedCalls, processLeadConversion} = require("./app")
+const {callSomeone, processLeadConversion} = require("./app")
 const REGION = "us-east-1"
 
 const model = genAI.getGenerativeModel({
@@ -366,7 +366,7 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   // console.log(finalizedText.split("{")[1].split("}")[0])
   const processJson = JSON.parse("{"+ finalizedText.split("{")[1].split("}")[0] + "}")
   processJson.message = processJson.message + w
-  if ((processJson.planCall)) {
+  if ((processJson.scheduleCall)) {
 
 
     processLeadConversion(messageId, iterableTranscript.unshift({
