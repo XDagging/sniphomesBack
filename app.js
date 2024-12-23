@@ -37,7 +37,7 @@ const client = require("twilio")(accountSid, authToken);
 
 var AWS = require("aws-sdk");
 const e = require('express');
-const { FeedbackInstance } = require('twilio/lib/rest/assistants/v1/assistant/feedback.js');
+// const { FeedbackInstance } = require('twilio/lib/rest/assistants/v1/assistant/feedback.js');
 // const { send } = require('process');
 
 
@@ -399,6 +399,9 @@ app.post("/webhook", async (req, res) => {
             const customer = await stripe.customers.retrieve(customerId);
             const priceId = session?.line_items?.data[0]?.price.id;
 
+            const paymentIntent = event.data.object;
+            console.log(customerId)
+            console.log(paymentIntent)
             if (customer.email) {
                 User.findOne({ emailHash: md5(customer["email"].toLowerCase()) }).then((user, err) => {
                     if (err) {
@@ -833,7 +836,7 @@ app.post("/register", (req,res) => {
 
 
 app.post("/login", (req,res) => {
-    const {email, password} = req.body
+    let {email, password} = req.body
 
     try {
         if (!email || !password) {
@@ -847,6 +850,10 @@ app.post("/login", (req,res) => {
         }))
         return
     }
+
+
+    email = email.toLowerCase();
+    
 
     User.findOne({emailHash: md5(email)}).then((user,err) => {
         if (err) {
@@ -1357,7 +1364,7 @@ app.post("/internalEmail", (req,res) => {
             
             const {message, sender, receiver, messageId, subject} = req.body;
     
-            if (message || sender || receiver || subject) {
+            if (message || sender || receiver || subject) { 
 
                 // replace RE with the actualy subject later but for now this is fine
 

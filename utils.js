@@ -245,6 +245,7 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   console.log(iterableTranscript)
 
   console.log("We think that this is a buying conversation",isBuying)
+  console.log("Latest message", iterableTranscript[0])
   let prompt = "";
   if (isBuying) {
     prompt = `
