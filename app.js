@@ -399,9 +399,8 @@ app.post("/webhook", async (req, res) => {
             const customer = await stripe.customers.retrieve(customerId);
             const priceId = session?.line_items?.data[0]?.price.id;
 
-            const paymentIntent = event.data.object;
             console.log(customerId)
-            console.log(paymentIntent)
+            console.log(session)
             if (customer.email) {
                 User.findOne({ emailHash: md5(customer["email"].toLowerCase()) }).then((user, err) => {
                     if (err) {
