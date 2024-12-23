@@ -391,6 +391,14 @@ app.post("/webhook", async (req, res) => {
 
     switch (eventType) {
         case 'checkout.session.completed': {
+
+            const products = {
+                1999: 2000,
+                3499: 6000,
+                9999: 18000,
+            }
+
+
             const session = await stripe.checkout.sessions.retrieve(
                 data.object.id,
                 { expand: ['line_items'] }
@@ -398,7 +406,7 @@ app.post("/webhook", async (req, res) => {
             const customerId = session?.customer;
             const customer = await stripe.customers.retrieve(customerId);
             const priceId = session?.line_items?.data[0]?.price.id;
-
+            const pricePaid = session?.amount_total
             console.log(customerId)
             console.log(session)
             if (customer.email) {
@@ -407,7 +415,7 @@ app.post("/webhook", async (req, res) => {
                         console.log(err);
                     } else {
                         if (user !== null) {
-                            User.findOneAndUpdate({ uuid: user.uuid }, { subscription: { active: true, renewalDate: Date.now() }, credits: 2000, customerId: customerId }).then(() => {
+                            User.findOneAndUpdate({ uuid: user.uuid }, { subscription: { active: true, renewalDate: Date.now() }, credits: products[pricePaid], customerId: customerId }).then(() => {
                                 console.log("We got paid!");
                                 return;
                             });
