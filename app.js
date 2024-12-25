@@ -1368,17 +1368,36 @@ app.post("/internalEmail", (req,res) => {
     console.log(process.env.RECEIVE_CREDENTIAL)
     if (internalCredential === process.env.RECEIVE_CREDENTIAL) {
         try {
+
+            Thread.findOne()
             
-            const {message, sender, receiver, messageId, subject} = req.body;
+            const {message, sender, receiver, messageId, subject, originalMessageId} = req.body;
     
-            if (message || sender || receiver || subject) { 
+            if (message || sender || receiver || subject || originalMessageId) { 
 
                 // replace RE with the actualy subject later but for now this is fine
 
-                replyToEmail(receiver, sender, message, subject, messageId);
+                Thread.findOne({messageId: originalMessageId}).then(async(val,err) => {
+                    if (err) {
+                        console.log(err);
+                        res.status(400).send(JSON.stringify(
+                            {
+                                code: "err",
+                                message: "invalid request"
+                            }
+                        ))
+                    } else {
+                        val.messageId = messageId;
+                        await val.save();
+                        replyToEmail(receiver, sender, message, subject, messageId);
 
 
 
+                    }
+                })
+
+
+                
 
                 
     
@@ -1447,7 +1466,7 @@ app.post('/doOutreach', async (req,res) => {
                 } else {
                     if (user) {
                         const senderEmail = user.aiSettings.name + "@sniphomes.com";
-                        processOutreach(data, senderEmail, user.aiSettings.name).then((idList) => {
+                        processOutreach(data, senderEmail, user.aiSettings.name, user.uuid).then((idList) => {
                             console.log("idList",idList)
                             idList.map((id,i) => {
 
@@ -1550,13 +1569,12 @@ function processLeadConversion(messageId, transcript) {
 
                     // If they have the demo feature enabled
 
-
+                    // Call feature will be added later
                     if (thread.callFeature) {
                         const newLead = new Lead({
                             uuid: "",
                             date: Date.now(),
-                            
-                            
+
                         })
 
 

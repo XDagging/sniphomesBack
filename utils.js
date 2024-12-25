@@ -36,7 +36,7 @@ async function deliverMail(to, from, message, subject, messageId) {
   const response = await transporter.sendMail({
     from: from, 
     to: to,
-    // replyTo: to,
+    replyTo: to,
     subject: subject,
     text: message,
     inReplyTo: messageId,
@@ -438,14 +438,14 @@ const x = 'get out of here buddy\n' +
 // replyToEmail("john@sniphomes.com", "xdagging@gmail.com", x, 'RE', "CAJHLaOm=fme2_eVZiV+B=1M6DC5U11sj6XcBkr0An4wdqq=6Sg@mail.gmail.com")
 
 
-// const testData = [{
-//   name: 'Sebastian',
-//   email: "xdagging@gmail.com",
-//   action: "sell",
-//   agentName: "Smith",
-//   area: "Orange County",
-//   emailSender: "john@sniphomes.com"
-// }]
+const testData = [{
+  name: 'Sebastian',
+  email: "xdagging@gmail.com",
+  action: "sell",
+  agentName: "Smith",
+  area: "Orange County",
+  emailSender: "john@sniphomes.com"
+}]
 // [{name, email area, action, agentName}]
 
 // processOutreach(testData,"john@sniphomes.com")
