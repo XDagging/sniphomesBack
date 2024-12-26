@@ -1357,6 +1357,65 @@ const bookedCalls = new Map();
 
 
 
+function processLeadConversion(messageId, transcript) {
+    if (messageId) {    
+
+        Thread.findOne({messageId: messageId}).then(async(thread, err) => {
+            if (err) {
+                console.log(err)
+                return err
+            } else {
+                if (thread) {
+
+                    // If they have the demo feature enabled
+
+                    // Call feature will be added later
+                    if (thread.callFeature) {
+                        const newLead = new Lead({
+                            uuid: "",
+                            date: Date.now(),
+
+                        })
+
+
+
+                    } else {
+                        // Send Email
+                        const leadDetails = await summarizeLeadDetails(transcript, thread.sender);
+
+                        const newLead = new Lead({
+                            uuid: thread.uuid,
+                            date: new Date.now(),
+                            area: thread.area,
+                            leadDetails: leadDetails,
+                            transcript: transcript,
+                        });
+
+                        newLead.save();
+
+                        return;
+                
+                    }
+                    
+                } else {
+                    console.log("Message Id is invalid");
+                    return;
+
+                }
+            }
+        })
+
+
+
+    } else {
+        console.log("Process Lead Conversion went wrong")
+        return
+    }
+
+
+
+}
+
 
 // Demo Testing:
 
@@ -1401,7 +1460,7 @@ app.post("/internalEmail", (req,res) => {
                         val.messageId = response.mail.messageId.substring(1,response.mail.messageId.length-1);
                         await val.save();
                         if (response.scheduleCall) {
-                            processOutreach(val.messageId, response.transcript);
+                            processLeadConversion(val.messageId, response.transcript);
                         }
 
 
@@ -1568,65 +1627,6 @@ async function summarizeLeadDetails(transcript, email) {
 
 
 
-
-function processLeadConversion(messageId, transcript) {
-    if (messageId) {    
-
-        Thread.findOne({messageId: messageId}).then(async(thread, err) => {
-            if (err) {
-                console.log(err)
-                return err
-            } else {
-                if (thread) {
-
-                    // If they have the demo feature enabled
-
-                    // Call feature will be added later
-                    if (thread.callFeature) {
-                        const newLead = new Lead({
-                            uuid: "",
-                            date: Date.now(),
-
-                        })
-
-
-
-                    } else {
-                        // Send Email
-                        const leadDetails = await summarizeLeadDetails(transcript, thread.sender);
-
-                        const newLead = new Lead({
-                            uuid: thread.uuid,
-                            date: new Date.now(),
-                            area: thread.area,
-                            leadDetails: leadDetails,
-                            transcript: transcript,
-                        });
-
-                        newLead.save();
-
-                        return;
-                
-                    }
-                    
-                } else {
-                    console.log("Message Id is invalid");
-                    return;
-
-                }
-            }
-        })
-
-
-
-    } else {
-        console.log("Process Lead Conversion went wrong")
-        return
-    }
-
-
-
-}
 
 
 
