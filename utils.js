@@ -36,7 +36,6 @@ async function deliverMail(to, from, message, subject, messageId) {
   const response = await transporter.sendMail({
     from: from, 
     to: to,
-    replyTo: to,
     subject: subject,
     text: message,
     inReplyTo: messageId,
@@ -392,8 +391,8 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   let replySender = sendEmail.split("@")[0] + "@" + sendEmail.split("@")[1]
   // const messageId = "CAJHLaOmpWXQ53EKA842yhtPQbgrDmdprays-Dnqj4AsdDgn6Aw@mail.gmail.com"
   console.log(replySender)
-  deliverMail(receiveEmail, replySender, processJson.message, subject, messageId)
-
+  const response = await deliverMail(receiveEmail, replySender, processJson.message, subject, messageId)
+  return response;
 
 
 
