@@ -1469,7 +1469,26 @@ app.post("/internalEmail", (req,res) => {
                         val.messageId = response.mail.messageId.substring(1,response.mail.messageId.length-1);
                         await val.save();
                         if (response.scheduleCall && response.phoneNumber) {
-                            processLeadConversion(val.messageId, response.transcript, response.phoneNumber);
+                            Lead.findOne({uuid: val.uuid}).then((lead,err) => {
+                                if (err) {
+                                    console.log(err)
+                                    
+                                } else {
+                                    if (lead) {
+                                        // This thread has already led to a lead
+                                        console.log("Already generated a lead from this thread");
+                                        res.status(400).send(JSON.stringify({
+                                            code: "err",
+                                            message: "invalid request"
+                                        }))
+                                    } else {
+                                        console.log("Converted to a lead.")
+                                        processLeadConversion(val.messageId, response.transcript, response.phoneNumber);
+                                    }
+                                }
+                            })
+
+                           
                         }
 
 
