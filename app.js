@@ -257,6 +257,10 @@ const LeadSchema = new mongoose.Schema({
     transcript: {
         type: Array,
         required: true
+    },
+    phoneNumber: {
+        type: String,
+        required: true,
     }
 
     
@@ -1357,7 +1361,7 @@ const bookedCalls = new Map();
 
 
 
-function processLeadConversion(messageId, transcript) {
+function processLeadConversion(messageId, transcript, phoneNumber) {
     if (messageId) {    
 
         Thread.findOne({messageId: messageId}).then(async(thread, err) => {
@@ -1385,10 +1389,11 @@ function processLeadConversion(messageId, transcript) {
 
                         const newLead = new Lead({
                             uuid: thread.uuid,
-                            date: new Date.now(),
+                            date: Date.now(),
                             area: thread.area,
                             leadDetails: leadDetails,
                             transcript: transcript,
+                            phoneNumber: phoneNumber,
                         });
 
                         newLead.save();
@@ -1459,8 +1464,8 @@ app.post("/internalEmail", (req,res) => {
 
                         val.messageId = response.mail.messageId.substring(1,response.mail.messageId.length-1);
                         await val.save();
-                        if (response.scheduleCall) {
-                            processLeadConversion(val.messageId, response.transcript);
+                        if (response.scheduleCall && response.phoneNumber) {
+                            processLeadConversion(val.messageId, response.transcript, response.phoneNumber);
                         }
 
 

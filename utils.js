@@ -392,7 +392,7 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   // const messageId = "CAJHLaOmpWXQ53EKA842yhtPQbgrDmdprays-Dnqj4AsdDgn6Aw@mail.gmail.com"
   console.log(replySender)
   const response = await deliverMail(receiveEmail, replySender, processJson.message, subject, messageId)
-  return {mail: response, scheduleCall: processJson.scheduleCall, transcript: iterableTranscript};
+  return {mail: response, scheduleCall: processJson.scheduleCall, transcript: iterableTranscript, phoneNumber: processJson.phoneNumber};
 
 
 
