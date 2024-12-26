@@ -1391,9 +1391,18 @@ app.post("/internalEmail", (req,res) => {
                         console.log("heres the new messageId", messageId)
                         
                         const response = await replyToEmail(receiver, sender, message, subject, messageId);
-                        console.log("response", response)
-                        val.messageId = response.messageId.substring(1,response.messageId.length-1);
+                        console.log("response", response.mail)
+
+                        
+
+
+
+
+                        val.messageId = response.mail.messageId.substring(1,response.mail.messageId.length-1);
                         await val.save();
+                        if (response.scheduleCall) {
+                            processOutreach(val.messageId, response.transcript);
+                        }
 
 
                     }

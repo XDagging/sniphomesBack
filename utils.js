@@ -367,32 +367,32 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   // console.log(finalizedText.split("{")[1].split("}")[0])
   const processJson = JSON.parse("{"+ finalizedText.split("{")[1].split("}")[0] + "}")
   processJson.message = processJson.message + w
-  if ((processJson.scheduleCall)) {
+  // if ((processJson.scheduleCall)) {
 
-    iterableTranscript.unshift({
-      sender: sendEmail, message: result.response.text()
-    })
-    processLeadConversion(messageId, iterableTranscript);
-    // if (scheduleCall === "now") {
-    //   callSomeone(processJson.phoneNumber, name, null, (isBuying ? "buy": "sell"), receiveEmail)
-    // } else {
-    //   const timeNow = Date.now();
-    //   const timeThen = new Date(scheduleCall).getTime();
-    //   const timeout = setTimeout(() => {
-    //     callSomeone(processJson.phoneNumber, name, null, (isBuying ? "buy": "sell"), receiveEmail)
+  //   iterableTranscript.unshift({
+  //     sender: sendEmail, message: result.response.text()
+  //   })
+  //   processLeadConversion(messageId, iterableTranscript);
+  //   // if (scheduleCall === "now") {
+  //   //   callSomeone(processJson.phoneNumber, name, null, (isBuying ? "buy": "sell"), receiveEmail)
+  //   // } else {
+  //   //   const timeNow = Date.now();
+  //   //   const timeThen = new Date(scheduleCall).getTime();
+  //   //   const timeout = setTimeout(() => {
+  //   //     callSomeone(processJson.phoneNumber, name, null, (isBuying ? "buy": "sell"), receiveEmail)
 
-    //   },timeNow-timeThen)
+  //   //   },timeNow-timeThen)
 
-    //   bookedCalls.set(receiveEmail, timeout);
-    // }
+  //   //   bookedCalls.set(receiveEmail, timeout);
+  //   // }
      
-  }
+  // }
 
   let replySender = sendEmail.split("@")[0] + "@" + sendEmail.split("@")[1]
   // const messageId = "CAJHLaOmpWXQ53EKA842yhtPQbgrDmdprays-Dnqj4AsdDgn6Aw@mail.gmail.com"
   console.log(replySender)
   const response = await deliverMail(receiveEmail, replySender, processJson.message, subject, messageId)
-  return response;
+  return {mail: response, scheduleCall: processJson.scheduleCall, transcript: iterableTranscript};
 
 
 
