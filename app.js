@@ -1369,7 +1369,7 @@ app.post("/internalEmail", (req,res) => {
     if (internalCredential === process.env.RECEIVE_CREDENTIAL) {
         try {
 
-            Thread.findOne()
+       
             
             const {message, sender, receiver, messageId, subject, originalMessageId} = req.body;
     
@@ -1387,6 +1387,8 @@ app.post("/internalEmail", (req,res) => {
                             }
                         ))
                     } else {
+                        console.log("heres the old thread,", val);
+                        console.log("heres the new messageId", messageId)
                         val.messageId = messageId;
                         await val.save();
                         replyToEmail(receiver, sender, message, subject, messageId);
