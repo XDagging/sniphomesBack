@@ -1392,7 +1392,7 @@ app.post("/internalEmail", (req,res) => {
                         
                         const response = await replyToEmail(receiver, sender, message, subject, messageId);
                         console.log("response", response)
-                        val.messageId = response.response;
+                        val.messageId = response.messageId.substring(1,response.messageId.length-1);
                         await val.save();
 
 
