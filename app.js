@@ -1374,10 +1374,10 @@ app.post("/internalEmail", (req,res) => {
             const {message, sender, receiver, messageId, subject, originalMessageId} = req.body;
     
             if (message || sender || receiver || subject || originalMessageId) { 
-
+                const queryOriginalId = originalMessageId.substring(1, originalMessageId.length-1)
                 // replace RE with the actualy subject later but for now this is fine
-
-                Thread.findOne({messageId: originalMessageId}).then(async(val,err) => {
+                console.log("heres the query messageId:", queryOriginalId)
+                Thread.findOne({messageId: queryOriginalId}).then(async(val,err) => {
                     if (err) {
                         console.log(err);
                         res.status(400).send(JSON.stringify(
