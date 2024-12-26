@@ -332,6 +332,10 @@ const UserSchema = new mongoose.Schema({
 })
 
 const ThreadSchema = new mongoose.Schema({
+    uuid: {
+        type: String,
+        unique: true,
+    },
     messageId: {
         type: String,
         unique: false,
@@ -1548,6 +1552,7 @@ app.post('/doOutreach', async (req,res) => {
 
                                 const messageId = id.substring(1, id.length-1)
                             const newThread = new Thread({
+                                uuid: uuid,
                                 messageId: messageId,
                                 sender: senderEmail,
                                 receiver: data[i].email,
