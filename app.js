@@ -1631,8 +1631,17 @@ async function summarizeLeadDetails(transcript, email) {
         
     }
 
-    const content = await model.generateContent("You will be provided an email transcript of a conversation. I want you to pinpoint a 3 sentence summary of the conversation (especially the conclusion of the conversation). These conversations are real estate cold emails so don't mention that as the person reading the summary will already have that context.")
-    return content;
+    const content = await model.generateContent(`
+        
+        You will be provided an email transcript of a conversation. 
+        I want you to pinpoint a 3 sentence summary of the conversation (especially the conclusion of the conversation). 
+        These conversations are real estate cold emails so don't mention that as the person reading the summary will already have that context.
+
+        Email Transcript: 
+        ${readableTranscript}
+        
+    `)
+    return content.response.text();
 }
 
 
