@@ -1390,7 +1390,7 @@ app.post("/internalEmail", (req,res) => {
                         console.log("heres the old thread,", val);
                         console.log("heres the new messageId", messageId)
                         
-                        const response = replyToEmail(receiver, sender, message, subject, messageId);
+                        const response = await replyToEmail(receiver, sender, message, subject, messageId);
                         console.log("response", response)
                         val.messageId = response.response;
                         await val.save();
