@@ -334,7 +334,7 @@ const UserSchema = new mongoose.Schema({
 const ThreadSchema = new mongoose.Schema({
     uuid: {
         type: String,
-        unique: true,
+        unique: false,
     },
     messageId: {
         type: String,
