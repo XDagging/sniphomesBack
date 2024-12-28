@@ -1520,9 +1520,9 @@ app.post("/internalEmail", (req,res) => {
 
 
                                                     if (user) {
-
+                                                        console.log()
                                                         let currentCase = "";
-                                                        if (val.target.toLowerCase() === "sell") {
+                                                        if (val.action.toLowerCase() === "sell") {
                                                             currentCase = "Selling"
                                                         } else {
                                                             currentCase = "Buying"
@@ -1648,7 +1648,9 @@ app.post('/doOutreach', async (req,res) => {
                 } else {
                     if (user) {
                         const senderEmail = user.aiSettings.name + "@sniphomes.com";
-                        processOutreach(data, senderEmail, user.aiSettings.name, user.uuid).then(async(idList) => {
+                        processOutreach(data, senderEmail, user.aiSettings.name, user.uuid).then(async(messageData) => {
+                            const idList = messageData.idList;
+                            const originalMessage = messageData.message
                             console.log("idList",idList)
                             idList.map((id,i) => {
 
@@ -1663,7 +1665,11 @@ app.post('/doOutreach', async (req,res) => {
                                     callFeature: user.aiSettings.callFeature,
                                     area: area,
                                     action: data[i].action,
-                                    transcript: [],
+                                    transcript: [{
+                                        date: Date.now(),
+                                        sender: senderEmail,
+                                        message: originalMessage,
+                                    }],
                                 })
 
                                 newThread.save()

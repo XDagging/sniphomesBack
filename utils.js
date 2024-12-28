@@ -52,6 +52,7 @@ function processOutreach(data, senderEmail, senderName) {
     // Data Schema: [{name, email area, action, agentName}]
     // Action means buying or selling
     const messageIdList = []
+    let finalMessage = ""
 
     const tasks = data.map(async (piece,i) => {
 
@@ -61,8 +62,9 @@ function processOutreach(data, senderEmail, senderName) {
             const bodyFooter = `\n\nLooking forward to your response,\n${senderName}\nReal Estate`;
             const bodySubject = `New home in ${piece.area}`;
 
+            finalMessage = bodyMessage + "\n\n" + bodyFooter
 
-            const response = await deliverMail(piece.email, senderEmail, bodyMessage + "\n\n" + bodyFooter, bodySubject)
+            const response = await deliverMail(piece.email, senderEmail, finalMessage, bodySubject)
           
             // const response = await transporter.sendMail({
             //   from: "john@sniphomes.com", 
@@ -106,8 +108,9 @@ function processOutreach(data, senderEmail, senderName) {
             const bodyFooter = `\n\nBest Regards,\n${senderName}\nReal Estate`;
             const bodySubject = `${piece.area} is booming`;
 
+            finalMessage = bodyMessage + "\n\n" + bodyFooter
 
-            const response = await deliverMail(piece.email, senderEmail, bodyMessage + "\n\n" + bodyFooter, bodySubject)
+            const response = await deliverMail(piece.email, senderEmail, finalMessage, bodySubject)
       
             console.log(response)
             messageIdList.push(response.messageId);
@@ -123,7 +126,7 @@ function processOutreach(data, senderEmail, senderName) {
 
     await Promise.all(tasks)
 
-    resolve(messageIdList);
+    resolve({idList: messageIdList, message: finalMessage});
     
   })
   
@@ -278,6 +281,7 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   If you receive a date for a planned call, put the scheduleCall value with the following: month/day/year hour:minute AM/PM. ONLY PUT THIS VALUE AS TRUE WHEN THE PERSON AGREES TO A TIME TO CALL
   If you receive a phone number for a planned call, put the phone number in the phoneNumber field.
   If the person is available to text in that instant, put the scheduleCall value as "now"
+  If the phone number field is empty and the person seems inclined to chat, ask for a number to set up a call.
   Example Response Template:
 
   {
@@ -319,6 +323,7 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   If you receive a date for a planned call, put the scheduleCall value with the following: month/day/year hour:minute AM/PM. ONLY PUT THIS VALUE AS TRUE WHEN THE PERSON AGREES TO A TIME TO CALL
   If you receive a phone number for a planned call, put the phone number in the phoneNumber field.
   If the person is available to text in that instant, put the scheduleCall value as "now"
+  If the phone number field is empty and the person seems inclined to chat, ask for a number to set up a call.
   Example Response Template:
 
   {
