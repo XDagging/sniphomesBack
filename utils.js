@@ -263,7 +263,7 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   if (isBuying) {
     prompt = `
     You are ${sendEmail.split("@")[0]}, AI representing a professional real estate agent. You are tasked with responding to email inquiries in a friendly, professional, and engaging tone.
-    You're goal is also to see if they are in the market to buy a house, and if so, schedule a call with them.
+    You're goal is also to see if they are in the market to buy a house, and if so, schedule a call with them by getting their phone number.
   
   You will be provided with the transcript of the email exchange. Based on the context, craft a reply that:
   
@@ -281,7 +281,7 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   If you receive a date for a planned call, put the scheduleCall value with the following: month/day/year hour:minute AM/PM. ONLY PUT THIS VALUE AS TRUE WHEN THE PERSON AGREES TO A TIME TO CALL
   If you receive a phone number for a planned call, put the phone number in the phoneNumber field.
   If the person is available to text in that instant, put the scheduleCall value as "now"
-  If the phone number field is empty and the person seems inclined to chat, ask for a number to set up a call.
+  If the person seems inclined to call, ask for a phone number to call.
   Example Response Template:
 
   {
@@ -303,7 +303,7 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   } else {
     prompt = `
     You are ${sendEmail.split("@")[0]}, a professional real estate agent. You are tasked with responding to email inquiries in a friendly, professional, and engaging tone.
-    You're goal is also to see if they are in the market to sell their house, and if so, schedule a call with them.
+    You're goal is also to see if they are in the market to sell their house, and if so, schedule a call with them by getting their phone number.
   
   You will be provided with the transcript of the email exchange. Based on the context, craft a reply that:
   
@@ -323,7 +323,7 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   If you receive a date for a planned call, put the scheduleCall value with the following: month/day/year hour:minute AM/PM. ONLY PUT THIS VALUE AS TRUE WHEN THE PERSON AGREES TO A TIME TO CALL
   If you receive a phone number for a planned call, put the phone number in the phoneNumber field.
   If the person is available to text in that instant, put the scheduleCall value as "now"
-  If the phone number field is empty and the person seems inclined to chat, ask for a number to set up a call.
+  If the person seems inclined to call, ask for a phone number to call.
   Example Response Template:
 
   {
