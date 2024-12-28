@@ -5,7 +5,8 @@ const {GoogleGenerativeAI} = require("@google/generative-ai");
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
 const EmailReplyParser = require("email-reply-parser");
 
-const {processLeadConversion} = require("./app.js")
+const {processLeadConversion} = require("./app.js");
+
 const REGION = "us-east-1"
 // console.log("lead generation",processLeadConversion)
 const model = genAI.getGenerativeModel({
@@ -141,31 +142,45 @@ function processEmailChain(transcript) {
         
     }
     parsedChain = parsedChain.split("\n\n")
-    console.log(parsedChain)
-    let fullTranscript = []
-    parsedChain.map((item, i) => {
-        if ((item.indexOf("@") > 0) && (item.indexOf("<") > 0) && (item.indexOf("wrote:") > 0)) {
+    let currentMessage = "";
+    for (let k=0; k<parsedChain.length; k++) {
+      if (k===0) {
+        currentMessage += parsedChain[k];
+      } else {
+        
+        if ((parsedChain[k].substring(0,2).toLowerCase() === "on") && (parsedChain[k][parsedChain[k].length-1] === ":")) {
+          currentMessage += parsedChain[k];
 
-
-              fullTranscript.push({sender: item.split("<")[1].split(" ")[0].trim(), message: item.split("wrote:\n")[1] || ""})
-            
-            
         } else {
-  
-    if (i === 0) {
-      fullTranscript.push({message: item, sender: null})
-    } else {
-    fullTranscript[fullTranscript.length-1].message += item.trim()
-    }
-            
+          break;
         }
+
+      }
+
+
+    }
+    // console.log(parsedChain)
+    // let fullTranscript = []
+    // parsedChain.map((item, i) => {
+    //     if ((item.indexOf("@") > 0) && (item.indexOf("<") > 0) && (item.indexOf("wrote:") > 0)) {
+              
+
+    //           fullTranscript.push({sender: item.split("<")[1].split(" ")[0].trim(), message: item.split("wrote:\n")[1] || ""})
+            
+            
+    //     } else {
+  
+    // if (i === 0) {
+    //   fullTranscript.push({message: item, sender: null})
+    // } else {
+    // fullTranscript[fullTranscript.length-1].message += item.trim()
+    // }
+            
+    //     }
   
         
-    })
-    return fullTranscript
-	
-
-    
+    // })
+    return currentMessage 
 }
 
 
@@ -202,7 +217,7 @@ On Mon, Dec 16, 2024 at 9:16 PM <john@sniphomes.com> wrote:
 
 
 
-async function replyToEmail(sendEmail, receiveEmail, transcript, subject,messageId) {
+async function replyToEmail(sendEmail, receiveEmail, transcript, subject,messageId, action) {
   // We are assuming that transcript if a list with an object with two keys in it
 
   // best regards = selling
@@ -213,8 +228,8 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   // sendEmail          
   const name = sendEmail.split("@")[0].toLowerCase().substring(0,1).toUpperCase() + sendEmail.split("@")[0].toLowerCase().substring(1)
   console.log(transcript);
-  let iterableTranscript = processEmailChain(transcript);
-
+  // let iterableTranscript = processEmailChain(transcript);
+  
   let readableTranscript = ""
   // email =  new EmailReplyParser().read(transcript);
   // readableTranscript = email.getVisibleText()
@@ -222,17 +237,13 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
 
 
   
-  let isBuying
+  const isBuying = (action.toLowerCase() === "buy")
 
-  iterableTranscript.map((item) => {
+  transcript.map((item) => {
     if ((item.sender === sendEmail) || (item.sender === null)) {
         
         readableTranscript += `You: ${item.message}`
-        if (item.message.toLowerCase().indexOf("best regards") > 0) {
-          isBuying = false;
-        } else {
-          isBuying = true;
-        }
+       
 
 
 
@@ -241,10 +252,10 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
     }
     readableTranscript += "\n\n"
   })
-  console.log(iterableTranscript)
+  console.log(transcript)
 
   console.log("We think that this is a buying conversation",isBuying)
-  console.log("Latest message", iterableTranscript[0])
+  console.log("Latest message", transcript[0])
   let prompt = "";
   if (isBuying) {
     prompt = `
@@ -274,11 +285,11 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
     planCall: false,
     scheduleCall: 12/18/2024 4:18 PM,
     shouldRespond: true,
-    phoneNumber: null;
+    phoneNumber: null,
   }
   
   
-  Here's the latest message: ${iterableTranscript[0]}
+  Here's the latest message: ${transcript[0]}
   
   Heres the transcript of the conversation so far (including the latest message): 
   
@@ -315,11 +326,12 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
     planCall: true,
     scheduleCall: 12/18/2024 4:18 PM,
     shouldRespond: true,
+    phoneNumber: null
   }
   
   
   
-  Here's the latest message: ${iterableTranscript[0]}
+  Here's the latest message: ${transcript[0]}
   
   Heres the transcript of the conversation so far (including the latest message): 
   
@@ -362,18 +374,19 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
 
   
 
-  const w =  "\n\n" + (isBuying ? "Best Regards," : "Looking forward to your response,") + "\n" + name + `\n\nOn ${finalizedDate} at ${new Date().toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })} ${receiveEmail.split("@")[0]} <${receiveEmail}> wrote:\n` + transcript 
+  // const w =  "\n\n" + (isBuying ? "Best Regards," : "Looking forward to your response,") + "\n" + name + `\n\nOn ${finalizedDate} at ${new Date().toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })} ${receiveEmail.split("@")[0]} <${receiveEmail}> wrote:\n` + transcript 
   // On Thu, Dec 12, 2024 at 7:27 PM XDagging <xdagging@gmail.com> wrote:
   // console.log(finalizedText.split("{")[1].split("}")[0])
   const processJson = JSON.parse("{"+ finalizedText.split("{")[1].split("}")[0] + "}")
-  processJson.message = processJson.message + w
+  // processJson.message = processJson.message + w
+    processJson.message = processJson.message
   // if ((processJson.scheduleCall)) {
 
   //   iterableTranscript.unshift({
   //     sender: sendEmail, message: result.response.text()
   //   })
   //   processLeadConversion(messageId, iterableTranscript);
-  //   // if (scheduleCall === "now") {
+    // if (scheduleCall === "now") {
   //   //   callSomeone(processJson.phoneNumber, name, null, (isBuying ? "buy": "sell"), receiveEmail)
   //   // } else {
   //   //   const timeNow = Date.now();
@@ -392,7 +405,13 @@ async function replyToEmail(sendEmail, receiveEmail, transcript, subject,message
   // const messageId = "CAJHLaOmpWXQ53EKA842yhtPQbgrDmdprays-Dnqj4AsdDgn6Aw@mail.gmail.com"
   console.log(replySender)
   const response = await deliverMail(receiveEmail, replySender, processJson.message, subject, messageId)
-  return {mail: response, scheduleCall: processJson.scheduleCall, transcript: iterableTranscript, phoneNumber: processJson.phoneNumber};
+
+  transcript.push({
+    date: Date.now(),
+    message: processJson.message,
+    sender: replySender
+  })
+  return {mail: response, scheduleCall: processJson.scheduleCall, transcript: transcript, phoneNumber: processJson.phoneNumber};
 
 
 
@@ -453,5 +472,5 @@ const testData = [{
 
 
 
-module.exports = {processOutreach, replyToEmail};
+module.exports = {processOutreach, replyToEmail, processEmailChain};
 

@@ -261,6 +261,10 @@ const LeadSchema = new mongoose.Schema({
     phoneNumber: {
         type: String,
         required: true,
+    },
+    action: {
+        type: String,
+        unique: false,
     }
 
     
@@ -355,6 +359,14 @@ const ThreadSchema = new mongoose.Schema({
     },
     area: {
         type: String,
+        unique: false,
+    },
+    action: {
+        type: String,
+        unique: false,
+    },
+    transcript: {
+        type: Array,
         unique: false,
     }
 })
@@ -1366,60 +1378,65 @@ const bookedCalls = new Map();
 
 
 function processLeadConversion(messageId, transcript, phoneNumber) {
-    if (messageId) {    
+    return new Promise(async(resolve) => {
+        if (messageId) {    
 
-        Thread.findOne({messageId: messageId}).then(async(thread, err) => {
-            if (err) {
-                console.log(err)
-                return err
-            } else {
-                if (thread) {
-
-                    // If they have the demo feature enabled
-
-                    // Call feature will be added later
-                    if (thread.callFeature) {
-                        const newLead = new Lead({
-                            uuid: "",
-                            date: Date.now(),
-
-                        })
-
-
-
-                    } else {
-                        // Send Email
-                        const leadDetails = await summarizeLeadDetails(transcript, thread.sender);
-
-                        const newLead = new Lead({
-                            uuid: thread.uuid,
-                            date: Date.now(),
-                            area: thread.area,
-                            leadDetails: leadDetails,
-                            transcript: transcript,
-                            phoneNumber: phoneNumber,
-                        });
-
-                        newLead.save();
-
-                        return;
-                
-                    }
-                    
+            Thread.findOne({messageId: messageId}).then(async(thread, err) => {
+                if (err) {
+                    console.log(err)
+                    resolve(err)
                 } else {
-                    console.log("Message Id is invalid");
-                    return;
-
+                    if (thread) {
+    
+                        // If they have the demo feature enabled
+    
+                        // Call feature will be added later
+                        if (thread.callFeature) {
+                            const newLead = new Lead({
+                                uuid: "",
+                                date: Date.now(),
+    
+                            })
+    
+    
+    
+                        } else {
+                            // Send Email
+                            const leadDetails = await summarizeLeadDetails(transcript, thread.sender);
+    
+                            const newLead = new Lead({
+                                uuid: thread.uuid,
+                                date: Date.now(),
+                                area: thread.area,
+                                leadDetails: leadDetails,
+                                transcript: transcript,
+                                phoneNumber: phoneNumber,
+                                action: thread.action,
+                            });
+    
+                            newLead.save();
+    
+                            resolve()
+                    
+                        }
+                        
+                    } else {
+                        console.log("Message Id is invalid");
+                        resolve
+    
+                    }
                 }
-            }
-        })
+            })
+    
+    
+    
+        } else {
+            console.log("Process Lead Conversion went wrong")
+            resolve()
+        }
 
-
-
-    } else {
-        console.log("Process Lead Conversion went wrong")
-        return
-    }
+    })
+    
 
 
 
@@ -1430,7 +1447,7 @@ function processLeadConversion(messageId, transcript, phoneNumber) {
 
 
 app.post("/internalEmail", (req,res) => {
-    const {replyToEmail} = require("./utils.js")
+    const {replyToEmail, processEmailChain} = require("./utils.js")
     const internalCredential = req.body.credential || null;
     console.log(internalCredential)
     console.log(process.env.RECEIVE_CREDENTIAL)
@@ -1455,17 +1472,25 @@ app.post("/internalEmail", (req,res) => {
                             }
                         ))
                     } else {
+
+                        const newMessage = processEmailChain(message);
+                        const fullTranscript = [...val.transcript, {
+                            date: Date.now(),
+                            sender: sender,
+                            message: newMessage,
+
+
+                        }]
+
                         console.log("heres the old thread,", val);
                         console.log("heres the new messageId", messageId)
                         
-                        const response = await replyToEmail(receiver, sender, message, subject, messageId);
+                        const response = await replyToEmail(receiver, sender, fullTranscript, subject, messageId, val.action);
                         console.log("response", response.mail)
 
                         
 
-
-
-
+                        val.transcript = response.transcript;
                         val.messageId = response.mail.messageId.substring(1,response.mail.messageId.length-1);
                         await val.save();
                         if (response.scheduleCall && response.phoneNumber) {
@@ -1483,7 +1508,65 @@ app.post("/internalEmail", (req,res) => {
                                         }))
                                     } else {
                                         console.log("Converted to a lead.")
-                                        processLeadConversion(val.messageId, response.transcript, response.phoneNumber);
+                                        processLeadConversion(val.messageId, response.transcript, response.phoneNumber).then(() => {
+                                            User.findOne({uuid: val.uuid}).then(async (user,err) => {
+                                                if (err) {
+                                                    console.log(err);
+                                                    res.status(400).send(JSON.stringify({
+                                                        code: "err",
+                                                        message: "invalid request"
+                                                    }))
+                                                } else {
+
+
+                                                    if (user) {
+
+                                                        let currentCase = "";
+                                                        if (val.target.toLowerCase() === "sell") {
+                                                            currentCase = "Selling"
+                                                        } else {
+                                                            currentCase = "Buying"
+                                                        }
+                                                        
+                                                        
+                                                        // add to the campaigns field in the User Schema and the dashboard stats.
+                                                        const previousCampaigns = user.campaigns
+                                                        for (let i=0; i<previousCampaigns.length; i++) {
+                                                            if ((previousCampaigns[i].target === currentCase) && (previousCampaigns[i].areaTarget.includes(val.area))) {
+                                                                previousCampaigns[i].leads.push({
+                                                                    date: Date.now(),
+                                                                    phoneNumber: lead.phoneNumber,
+                                                                    action: currentCase,
+                                                                    area: val.area,
+                                                                    transcript: lead.transcript,
+                                                                    summary: lead.leadDetails
+
+                                                                })
+                                                            }
+                                                        }
+
+                                                        const previousLeads = user.dashboardStats.leadsGenerated
+                                                        user.dashboardStats.leadsGenerated = previousLeads+1;
+                                                        user.campaigns = previousCampaigns;
+                                                        await user.save();
+                                                        res.status(200).send(JSON.stringify({
+                                                            code: "ok",
+                                                            message: "all went well"
+                                                        }))
+                                                       
+
+                                                    } else {
+                                                        res.status(403).send(JSON.stringify({
+                                                            code: "err",
+                                                            message: "user not found"
+                                                        }))
+                                                    }
+
+
+                                                }
+                                            })
+                                        })
+                                        
                                     }
                                 }
                             })
@@ -1565,24 +1648,32 @@ app.post('/doOutreach', async (req,res) => {
                 } else {
                     if (user) {
                         const senderEmail = user.aiSettings.name + "@sniphomes.com";
-                        processOutreach(data, senderEmail, user.aiSettings.name, user.uuid).then((idList) => {
+                        processOutreach(data, senderEmail, user.aiSettings.name, user.uuid).then(async(idList) => {
                             console.log("idList",idList)
                             idList.map((id,i) => {
 
+                                
+
                                 const messageId = id.substring(1, id.length-1)
-                            const newThread = new Thread({
-                                uuid: uuid,
-                                messageId: messageId,
-                                sender: senderEmail,
-                                receiver: data[i].email,
-                                callFeature: user.aiSettings.callFeature,
-                                area: area,
+                                const newThread = new Thread({
+                                    uuid: uuid,
+                                    messageId: messageId,
+                                    sender: senderEmail,
+                                    receiver: data[i].email,
+                                    callFeature: user.aiSettings.callFeature,
+                                    area: area,
+                                    action: data[i].action,
+                                    transcript: [],
+                                })
+
+                                newThread.save()
 
                             })
 
-                            newThread.save()
+                            const previousOutreach = user.textsSent;
 
-                            })
+                            user.textsSent = previousOutreach + idList.length;
+                            await user.save();
 
                             res.status(200).send(JSON.stringify({
                                 code: "ok",
