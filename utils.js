@@ -151,7 +151,7 @@ function processEmailChain(transcript) {
         currentMessage += parsedChain[k];
       } else {
         console.log("heres the substring lowercase that im testing on for", parsedChain[k].substring(0,2).toLowerCase());
-        if ((parsedChain[k].substring(0,2).toLowerCase() === "on") && (parsedChain[k][parsedChain[k].length-1] === ":")) {
+        if ((parsedChain[k].substring(0,2).toLowerCase() === "on") || (parsedChain[k][parsedChain[k].length-1] === ":")) {
           currentMessage += parsedChain[k];
 
         } else {

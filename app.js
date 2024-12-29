@@ -38,6 +38,7 @@ const client = require("twilio")(accountSid, authToken);
 var AWS = require("aws-sdk");
 const e = require('express');
 const JSONTransport = require('nodemailer/lib/json-transport/index.js');
+const { unsubscribe } = require('diagnostics_channel');
 // const { FeedbackInstance } = require('twilio/lib/rest/assistants/v1/assistant/feedback.js');
 // const { send } = require('process');
 
@@ -1803,16 +1804,20 @@ app.post('/doOutreach', async (req,res) => {
                                 newThread.save()
 
                             })
+                            const newTexts = user.dashboardStats.textsSent + idList.length;
+                            let previousStats = user.dashboardStats;
+                            previousStats.textsSent = newTexts;
 
-                            const previousOutreach = user.textsSent;
+                            console.log("new previous stats", previousStats)
+                            User.findOneAndUpdate({uuid: user.uuid}, {dashboardStats: previousStats}).then(() => {
+                                res.status(200).send(JSON.stringify({
+                                    code: "ok",
+                                    message: "success"
+                                }))
+                            })
+                            // await user.save();
 
-                            user.textsSent = previousOutreach + idList.length;
-                            await user.save();
-
-                            res.status(200).send(JSON.stringify({
-                                code: "ok",
-                                message: "success"
-                            }))
+                            
                         })
                         
 
