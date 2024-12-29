@@ -37,6 +37,7 @@ const client = require("twilio")(accountSid, authToken);
 
 var AWS = require("aws-sdk");
 const e = require('express');
+const JSONTransport = require('nodemailer/lib/json-transport/index.js');
 // const { FeedbackInstance } = require('twilio/lib/rest/assistants/v1/assistant/feedback.js');
 // const { send } = require('process');
 
@@ -264,6 +265,10 @@ const LeadSchema = new mongoose.Schema({
     },
     action: {
         type: String,
+        unique: false,
+    },
+    new: {
+        type: Boolean,
         unique: false,
     }
 
@@ -986,6 +991,127 @@ app.get("/getUser" , (req,res) => {
 })
 
 
+// bookmark
+app.get("/getLeads", (req,res) => {
+    authenticateUser(req).then((id) => {
+        if (id === "No user found") {
+            res.status(403).send(JSON.stringify({
+                code: "err",
+                message: "invalid request"
+            }))
+        } else {
+            Lead.find({uuid: id}).then((leads,err) => {
+                if (err) {
+                    console.log(err);
+                    res.status(400).send(JSON.stringify({
+                        code: "err",
+                        message: "invalid request"
+                    }))
+                } else {
+                    
+
+                    if (process.env.NODE_ENV === "DEV") {
+                        console.log('\x1b[31m%s\x1b[0m', 'IN DEVELOPMENT MODE: GETLEADS RETURNS THE DEFAULT TESTING VALUE'); 
+                        leads = [{uuid: id,
+                            date: 1735361710711,
+                            new: true,
+                            area: 'White County',
+                            leadDetails: 'Anthony expressed interest in selling his home.  A phone call was scheduled to discuss his needs and the current market conditions.  The conversation concluded with a plan to connect by phone at a mutually convenient time.\n',
+                            transcript: [
+                          {
+                            date: 1735361635415,
+                            sender: 'Trinity@sniphomes.com',
+                            message: 'Hey Anthony\n' +
+                              '\n' +
+                              "I'm Trinity, a local real estate agent in White County.\n" +
+                              '\n' +
+                              "I saw that you lived in White County and was wondering if selling your home is something you'd be open to, the market right now is huge.\n" +
+                              '\n' +
+                              "I'd be delighted to chat with you more about it.\n" +
+                              '\n' +
+                              '\n' +
+                              '\n' +
+                              'Best Regards,\n' +
+                              'Trinity\n' +
+                              'Real Estate'
+                          },
+                          {
+                            date: 1735361661890,
+                            sender: 'xdagging@gmail.com',
+                            message: 'Yes, I would be interested.On Fri, Dec 27, 2024 at 11:53 PM <Trinity@sniphomes.com wrote:'
+                          },
+                          {
+                            date: 1735361663420,
+                            message: 'Hi Anthony,\n' +
+                              '\n' +
+                              "Great to hear you're interested!  To best understand your needs and give you accurate information about selling your home in White County's current market, a quick call would be ideal.  What's your phone number, and what time works best for you to chat? I'm flexible and available most times. \n" +
+                              '\n' +
+                              'Looking forward to speaking with you!',
+                            sender: 'Trinity@sniphomes.com'
+                          },
+                          {
+                            date: 1735361708856,
+                            sender: 'xdagging@gmail.com',
+                            message: 'You can call anytime. my number is 301-272-7224On Fri, Dec 27, 2024 at 11:54 PM <Trinity@sniphomes.com wrote:'
+                          },
+                          {
+                            date: 1735361710081,
+                            message: 'Hi Anthony,\n' +
+                              '\n' +
+                              "Fantastic! I'll give you a call right now at 301-272-7224 to discuss your home sale.  Looking forward to it!",
+                            sender: 'Trinity@sniphomes.com'
+                          }
+                            ],
+                            phoneNumber: '301-272-7224',
+                            action: 'sell',
+                    }]
+                    }
+
+                    res.status(200).send(JSON.stringify({
+                        code: "ok",
+                        message: leads
+                    }))
+                }
+            })
+           
+
+        }
+    })
+})
+
+
+app.post("/updateLeadStatus", (req,res) => {
+    try {
+        const uuid = req.body.uuid
+        authenticateUser(req).then((id) => {
+            if (id === "No user found") {
+    
+                res.status(400).send(JSON.stringify({
+                    code: "err",
+                    message: "invalid request"
+                }))
+            } else {
+                Lead.findOneAndUpdate({uuid: uuid}, {new: false}).then(() => {
+                    res.status(200).send(JSON.stringify({
+                        code: "ok",
+                        message: "success"
+                    }))
+                })
+    
+            }
+        })
+
+
+
+    } catch(e) {
+        console.log(e)
+        res.status(400).send(JSON.stringify({
+            code: "err",
+            message: "invalid request"
+        }))
+    }
+   
+})
 
 
 app.post("/updateUser", (req,res) => {
@@ -1412,6 +1538,7 @@ function processLeadConversion(messageId, transcript, phoneNumber) {
                                 transcript: transcript,
                                 phoneNumber: phoneNumber,
                                 action: thread.action,
+                                new: true,
                             });
     
                             newLead.save();
@@ -1530,23 +1657,24 @@ app.post("/internalEmail", (req,res) => {
                                                         
                                                         
                                                         // add to the campaigns field in the User Schema and the dashboard stats.
-                                                        const previousCampaigns = user.campaigns
-                                                        for (let i=0; i<previousCampaigns.length; i++) {
-                                                            if ((previousCampaigns[i].target === currentCase) && (previousCampaigns[i].areaTarget.includes(val.area))) {
-                                                                previousCampaigns[i].leads.push({
-                                                                    date: Date.now(),
-                                                                    phoneNumber: lead.phoneNumber,
-                                                                    action: currentCase,
-                                                                    area: val.area,
-                                                                    transcript: lead.transcript,
-                                                                    summary: lead.leadDetails
+                                                        // const previousCampaigns = user.campaigns
+                                                        // for (let i=0; i<previousCampaigns.length; i++) {
+                                                        //     if ((previousCampaigns[i].target === currentCase) && (previousCampaigns[i].areaTarget.includes(val.area))) {
+                                                        //         previousCampaigns[i].leads.push({
+                                                        //             date: Date.now(),
+                                                        //             phoneNumber: lead.phoneNumber,
+                                                        //             action: currentCase,
+                                                        //             area: val.area,
+                                                        //             transcript: lead.transcript,
+                                                        //             summary: lead.leadDetails
 
-                                                                })
-                                                            }
-                                                        }
-
-                                                        const previousLeads = user.dashboardStats.leadsGenerated
-                                                        user.dashboardStats.leadsGenerated = previousLeads+1;
+                                                        //         })
+                                                        //     }
+                                                        // }
+                                                        const previousDashboard = user.dashboardStats;
+                                                        previousDashboard.leadsGenerated += 1;
+                                                       
+                                                        user.dashboardStats = previousDashboard
                                                         user.campaigns = previousCampaigns;
                                                         await user.save();
                                                         res.status(200).send(JSON.stringify({
