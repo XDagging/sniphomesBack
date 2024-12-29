@@ -1675,7 +1675,7 @@ app.post("/internalEmail", (req,res) => {
                                                         previousDashboard.leadsGenerated += 1;
                                                        
                                                         user.dashboardStats = previousDashboard
-                                                        user.campaigns = previousCampaigns;
+                                                    
                                                         await user.save();
                                                         res.status(200).send(JSON.stringify({
                                                             code: "ok",
