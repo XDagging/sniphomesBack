@@ -1552,9 +1552,10 @@ function processLeadConversion(messageId, transcript, phoneNumber) {
                                 } else {
                                     if (person) {
                                         const newDashboard = person.dashboardStats
-                                        newDashboard.leadsGenerated = newDashboard.leadsGenerated + 1;
+                                        const newNumber = newDashboard.leadsGenerated + 1;
+                                        newDashboard.leadsGenerated = newNumber;
                                         // person.dashboardStats = newDashboard;
-
+                                        console.log(newDashboard)
 
                                         User.findOneAndUpdate({uuid: person.uuid}, {dashboardStats: newDashboard}).then(() => {
                                             resolve()
