@@ -1551,12 +1551,16 @@ function processLeadConversion(messageId, transcript, phoneNumber) {
                                     resolve(err)
                                 } else {
                                     if (person) {
-
                                         const newDashboard = person.dashboardStats
                                         newDashboard.leadsGenerated = newDashboard.leadsGenerated + 1;
-                                        person.dashboardStats = newDashboard;
+                                        // person.dashboardStats = newDashboard;
 
-                                        await person.save();
+
+                                        User.findOneAndUpdate({uuid: person.uuid}, {dashboardStats: newDashboard}).then(() => {
+                                            resolve()
+                                        })
+                                        
+                                        // await person.save();
                                         
 
 
