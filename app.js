@@ -1542,9 +1542,33 @@ function processLeadConversion(messageId, transcript, phoneNumber) {
                                 new: true,
                             });
     
-                            newLead.save();
+                            await newLead.save();
     
-                            resolve()
+
+                            User.findOne({uuid: thread.uuid}).then(async(person,err) => {
+                                if (err) {
+                                    console.log(err)
+                                    resolve(err)
+                                } else {
+                                    if (person) {
+
+                                        const newDashboard = person.dashboardStats
+                                        newDashboard.leadsGenerated = newDashboard.leadsGenerated + 1;
+                                        person.dashboardStats = newDashboard;
+
+                                        await person.save();
+                                        
+
+
+
+                                        
+                                    } else {
+                                        console.log("Person doesn't exist")
+                                        resolve("Person doesn't exist")
+                                    }
+                                }
+                            })
+                            
                     
                         }
                         
