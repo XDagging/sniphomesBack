@@ -748,7 +748,7 @@ app.post("/register", (req,res) => {
     }
 
 
-    const compiledName = firstName + " " + lastName
+    const compiledName = firstName.toLowerCase() + " " + lastName.toLowerCase()
     email = email.toLowerCase();
 
 
@@ -992,8 +992,18 @@ app.get("/getUser" , (req,res) => {
 })
 
 
-// bookmark
-app.get("/getLeads", (req,res) => {
+app.get("/getLeads", async(req,res) => {
+
+    // if (process.env.NODE_ENV === "DEV") {
+    //     await new Promise((resolve) => {
+    //         setTimeout(() => {
+    //             console.log("just finished the resolve")
+    //             resolve();
+    //         },4000)
+    //     })
+        
+    // }
+
     authenticateUser(req).then((id) => {
         if (id === "No user found") {
             res.status(403).send(JSON.stringify({
@@ -1552,13 +1562,28 @@ function processLeadConversion(messageId, transcript, phoneNumber) {
                                 } else {
                                     if (person) {
                                         const newDashboard = person.dashboardStats
-                                        const newNumber = newDashboard.leadsGenerated + 1;
+                                        const newNumber = Number(newDashboard.leadsGenerated + 1);
                                         newDashboard.leadsGenerated = newNumber;
                                         // person.dashboardStats = newDashboard;
                                         console.log(newDashboard)
 
-                                        User.findOneAndUpdate({uuid: person.uuid}, {dashboardStats: newDashboard}).then(() => {
-                                            resolve()
+
+
+
+                                        User.findOneAndUpdate({uuid: person.uuid}, {dashboardStats: newDashboard}).then(async() => {
+                                            
+                                            // This code isn't tested yet
+                                            const body = `Hey, ${cmod.decrypt(person.name).split(" ")[0].substring(0,1).toUpperCase() + cmod.decrypt(person.name).split(" ")[0].substring(1).toLowerCase()},
+                                            
+                                            You are receiving this email because you just received a new interested lead.
+
+                                            Check your Sniphomes.com dashboard for more details. 
+
+                                            `
+                                           
+                                            
+                                            await sendMail(cmod.decrypt(person.email), "New Lead Generated", body)
+                                            resolve();
                                         })
                                         
                                         // await person.save();
@@ -1573,6 +1598,8 @@ function processLeadConversion(messageId, transcript, phoneNumber) {
                                     }
                                 }
                             })
+
+                            
                             
                     
                         }
