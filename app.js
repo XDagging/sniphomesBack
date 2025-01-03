@@ -16,6 +16,8 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const Call = require("./Call.js");
 const WebSocket = require("ws");
 
+const { CronJob } = require("cron")
+
 const {GoogleGenerativeAI} = require("@google/generative-ai");
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
 
@@ -503,6 +505,73 @@ const generateCode = (length) => {
     
 }
 
+function reportError(err) {
+    sendMail(process.env.ADMINEMAIL,"Error Occured","An error occured. Here's the error message\n\n" + err)
+}
+
+
+
+
+
+const job = new CronJob(
+    '0 0 0 * * *',
+    () => {
+        User.find().then((users,err) => {
+            if (err) {
+                console.log(err)
+                reportError(err)
+            } else {
+                if (users) {
+                    
+                    users.map((user,i) => {
+
+                        const currentCampaigns = user.campaigns;
+                        const monthMiliseconds = 2628000000;
+             
+                        currentCampaigns.map((campaign,i) => {
+                            if (campaign.date > campaign.date + monthMiliseconds) {
+                                campaign.active = false;
+
+                                
+
+                            }
+                        })
+
+                    
+                        User.findOneAndUpdate({uuid: user.uuid}, {campaigns: currentCampaigns}).then((_,err) => {
+                            if (err) {
+                                console.log(err)
+                            } else {
+                                console.log("wsg")
+                            }
+                        })
+
+
+                    })
+                    
+                    
+
+
+                    
+
+
+
+                }
+
+
+            }
+        })
+
+
+
+    }, 
+    null,
+    true, 
+    
+) 
+
+
+
 
 
 app.post("/sendVerify", (req,res) => {
@@ -969,10 +1038,11 @@ app.get("/getUser" , (req,res) => {
                             state: cmod.decrypt(user.state),
                             operatingArea: user.operatingArea,
                             credits: user.credits,
-                            campaigns: user.campaigns,
+                            campaigns: user.campaigns.filter((campaign) => campaign.active),
                             dashboardStats: user.dashboardStats,
                             aiSettings: user.aiSettings,
                             subscription: user.subscription,
+                            // Check if the campaigns code actually works
                         }
                     }))
                 }
@@ -1249,8 +1319,13 @@ app.post("/startCampaign", (req,res) => {
                                 aiThreshold: aiThreshold,
                                 address: address,
                                 leads: [],
-                                areaTarget: user.operatingArea
+                                areaTarget: user.operatingArea,
+                                date: Date.now(),
+                                active: true,
+
                             }
+
+                            // Campaigns expire 30 days after
 
                             User.findOneAndUpdate({uuid: user.uuid}, {campaigns: [...user.campaigns, newCampaign], credits: user.credits - credits}).then(() => {
                                 

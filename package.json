@@ -13,6 +13,7 @@
     "@google/generative-ai": "^0.21.0",
     "aws-sdk": "^2.1692.0",
     "bcrypt": "^5.1.1",
+    "cron": "^3.3.2",
     "cryptr": "^6.3.0",
     "dotenv": "^16.4.5",
     "email-reply-parser": "^1.8.2",
@@ -25,5 +26,5 @@
     "uuid": "^10.0.0",
     "ws": "^8.18.0"
   },
-  "type":"commonjs"
+  "type": "commonjs"
 }
