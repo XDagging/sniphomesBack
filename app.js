@@ -247,6 +247,10 @@ const LeadSchema = new mongoose.Schema({
         required: true,
         index: true
     },
+    threadId: {
+        type: String,
+        unique: true,
+    },
     date: {
         type: Number,
         required: true,
@@ -353,6 +357,10 @@ const ThreadSchema = new mongoose.Schema({
         type: String,
         unique: false,
 
+    },
+    threadId: {
+        type: String,
+        unique: true,
     },
     sender: {
         type: String,
@@ -1617,8 +1625,9 @@ function processLeadConversion(messageId, transcript, phoneNumber) {
                         } else {
                             // Send Email
                             const leadDetails = await summarizeLeadDetails(transcript, thread.sender);
-    
+                            // bookmark
                             const newLead = new Lead({
+                                threadId: thread.threadId,
                                 uuid: thread.uuid,
                                 date: Date.now(),
                                 area: thread.area,
@@ -1755,7 +1764,7 @@ app.post("/internalEmail", (req,res) => {
                         val.messageId = response.mail.messageId.substring(1,response.mail.messageId.length-1);
                         await val.save();
                         if (response.scheduleCall && response.phoneNumber.length>0) {
-                            Lead.findOne({uuid: val.uuid}).then((lead,err) => {
+                            Lead.findOne({threadId: val.threadId}).then((lead,err) => {
                                 if (err) {
                                     console.log(err)
                                     
@@ -1922,6 +1931,7 @@ app.post('/doOutreach', async (req,res) => {
 
                                 const messageId = id.substring(1, id.length-1)
                                 const newThread = new Thread({
+                                    threadId: uuidv4(),
                                     uuid: uuid,
                                     messageId: messageId,
                                     sender: senderEmail,
