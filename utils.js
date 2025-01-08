@@ -60,6 +60,48 @@ async function deliverMail(to, from, message, subject, messageId, html) {
 }
 
 
+async function outreachEmail(piece, senderName, senderEmail,encrypter,messageIdList) {
+  const subjectList = ["Here's what I'll do", "Hoping to help", "I have to ask", "One more thing", `Real Estate Inquiry, ${piece.area}`]
+    
+  if (piece.action.toLowerCase() === "buy") {
+
+    
+    
+    const bodyMessage = `<p>Hey ${piece.name},<br /><br />I'm ${senderName}, a local real estate agent in ${piece.area}.<br /><br />There's an affordable house nearby that's recently been put on sale in ${piece.area} that might peak your interest.<br /><br />I'd love to talk more if you're interested.</p>`
+    const bodyFooter = `<p>Looking forward to your response,<br />${senderName}<br />Real Estate<br /><a href=${process.env.NODE_ENV.toLowerCase() === "dev" ? "https://localhost/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) : "https://api.sniphomes.com/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) }>Click if you want to stop receiving emails from me</a><p>`;
+    const bodySubject = subjectList[Math.floor(Math.random()*(subjectList.length))];
+
+    finalMessage = bodyMessage + "<br /><br />" + bodyFooter
+
+    const response = await deliverMail(piece.email, senderEmail, finalMessage, bodySubject, null, true)
+  
+    console.log(response.messageId);
+
+    messageIdList.push(response.messageId);
+
+    
+
+} else if (piece.action.toLowerCase() === "sell") {
+    const bodyMessage = `<p>Hey ${piece.name},<br /><br />I'm ${senderName}, a local real estate agent in ${piece.area}.<br /><br />I saw that you lived in ${piece.area} and was wondering if selling your home is something you'd be open to, the market right now is huge.<br /><br />I'd be delighted to chat with you more about it.</p>`
+    const bodyFooter = `<p>Best Regards,<br />${senderName}<br />Real Estate</p><br /><a href=${process.env.NODE_ENV.toLowerCase() === "dev" ? "https://localhost/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email))  : "https://api.sniphomes.com/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) }>Click if you want to stop receiving emails from me</a>`;
+
+    // Finish adding p tags and making emails send an html tag instead of text
+    const bodySubject = subjectList[Math.floor(Math.random()*(subjectList.length))];
+
+    finalMessage = bodyMessage + "<br /><br />" + bodyFooter
+
+    const response = await deliverMail(piece.email, senderEmail, finalMessage, bodySubject, null, true)
+
+    console.log(response)
+    messageIdList.push(response.messageId);
+} else {
+  console.log("Incomplete data:",i)
+}
+}
+
+
+
+
 
 function processOutreach(data, senderEmail, x) {
   return new Promise(async(resolve) => {
@@ -100,73 +142,7 @@ function processOutreach(data, senderEmail, x) {
             if (!doNotContact) {
 
 
-              const subjectList = ["Here's what I'll do", "Hoping to help", "I have to ask", "One more thing", `Real Estate Inquiry, ${piece.area}`]
-    
-              if (piece.action.toLowerCase() === "buy") {
-    
-                
-                
-                const bodyMessage = `<p>Hey ${piece.name}<br /><br />I'm ${senderName}, a local real estate agent in ${piece.area}.<br /><br />There's an affordable house nearby that's recently been put on sale in ${piece.area} that might peak your interest.<br /><br />I'd love to talk more if you're interested.</p>`
-                const bodyFooter = `<p><br /><br />Looking forward to your response,<br />${senderName}<br />Real Estate<br /><a href=${process.env.NODE_ENV.toLowerCase() === "dev" ? "https://localhost/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) : "https://api.sniphomes.com/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) }>Click if you want to stop receiving emails from me</a><p>`;
-                const bodySubject = subjectList[Math.floor(Math.random()*(subjectList.length))];
-    
-                finalMessage = bodyMessage + "<br /><br />" + bodyFooter
-    
-                const response = await deliverMail(piece.email, senderEmail, finalMessage, bodySubject, null, true)
-              
-                // const response = await transporter.sendMail({
-                //   from: "john@sniphomes.com", 
-                //   to: piece.email,
-                //   subject: bodySubject,
-                //   text: bodyMessage + "\n\n" + bodyFooter,
-                //   // attachments: []
-                // })
-                console.log(response.messageId);
-    
-                messageIdList.push(response.messageId);
-                // return response.messageId;
-    
-                // const params = {
-                //     Destination: {
-                //       ToAddresses: [piece.email]
-                //     },
-                //     Message: {
-                //       Body: {
-                //         Text: { Data: bodyMessage + bodyFooter}
-                //       },
-                //       Subject: { Data: bodySubject }
-                //     },
-                //     Source: 'inquires@sniphomes.com'
-                //   };
-    
-    
-    
-                // ses.sendEmail(params, function(err, data) {
-                //     if (err) {
-                //         console.log(err, err.stack);
-                //     } else {
-                //         console.log(data);
-                //     }     	 
-                // });
-    
-                
-    
-            } else if (piece.action.toLowerCase() === "sell") {
-                const bodyMessage = `<p>Hey ${piece.name}<br /><br />I'm ${senderName}, a local real estate agent in ${piece.area}.<br /><br />I saw that you lived in ${piece.area} and was wondering if selling your home is something you'd be open to, the market right now is huge.<br /><br />I'd be delighted to chat with you more about it.</p>`
-                const bodyFooter = `<p><br /><br />Best Regards,<br />${senderName}<br />Real Estate</p><br /><a href=${process.env.NODE_ENV.toLowerCase() === "dev" ? "https://localhost/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email))  : "https://api.sniphomes.com/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) }>Click if you want to stop receiving emails from me</a>`;
-    
-                // Finish adding p tags and making emails send an html tag instead of text
-                const bodySubject = subjectList[Math.floor(Math.random()*(subjectList.length))];
-    
-                finalMessage = bodyMessage + "<br /><br />" + bodyFooter
-    
-                const response = await deliverMail(piece.email, senderEmail, finalMessage, bodySubject, null, true)
-          
-                console.log(response)
-                messageIdList.push(response.messageId);
-            } else {
-              console.log("Incomplete data:",i)
-            }
+              await outreachEmail(piece, senderName,senderEmail, encrypter,messageIdList)
     
             } else {
               copyOfData.push(i)
@@ -176,73 +152,7 @@ function processOutreach(data, senderEmail, x) {
 
           
           }).catch(async(e) => {
-              const subjectList = ["Here's what I'll do", "Hoping to help", "I have to ask", "One more thing", `Real Estate Inquiry, ${piece.area}`]
-              
-              if (piece.action.toLowerCase() === "buy") {
-    
-                
-                
-                const bodyMessage = `<p>Hey ${piece.name},<br /><br />I'm ${senderName}, a local real estate agent in ${piece.area}.<br /><br />There's an affordable house nearby that's recently been put on sale in ${piece.area} that might peak your interest.<br /><br />I'd love to talk more if you're interested.</p>`
-                const bodyFooter = `<p>Looking forward to your response,<br />${senderName}<br />Real Estate<br /><a href=${process.env.NODE_ENV.toLowerCase() === "dev" ? "https://localhost/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) : "https://api.sniphomes.com/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) }>Click if you want to stop receiving emails from me</a><p>`;
-                const bodySubject = subjectList[Math.floor(Math.random()*(subjectList.length))];
-                console.log("This action got triggered for buy")
-                finalMessage = "<html>"+bodyMessage + "<br /><br />" + bodyFooter + "<html/>"
-    
-                const response = await deliverMail(piece.email, senderEmail, finalMessage, bodySubject, null, true)
-              
-                // const response = await transporter.sendMail({
-                //   from: "john@sniphomes.com", 
-                //   to: piece.email,
-                //   subject: bodySubject,
-                //   text: bodyMessage + "\n\n" + bodyFooter,
-                //   // attachments: []
-                // })
-                console.log(response.messageId);
-    
-                messageIdList.push(response.messageId);
-                // return response.messageId;
-    
-                // const params = {
-                //     Destination: {
-                //       ToAddresses: [piece.email]
-                //     },
-                //     Message: {
-                //       Body: {
-                //         Text: { Data: bodyMessage + bodyFooter}
-                //       },
-                //       Subject: { Data: bodySubject }
-                //     },
-                //     Source: 'inquires@sniphomes.com'
-                //   };
-    
-    
-    
-                // ses.sendEmail(params, function(err, data) {
-                //     if (err) {
-                //         console.log(err, err.stack);
-                //     } else {
-                //         console.log(data);
-                //     }     	 
-                // });
-    
-                
-    
-            } else if (piece.action.toLowerCase() === "sell") {
-                const bodyMessage = `<p>Hey ${piece.name},<br /><br />I'm ${senderName}, a local real estate agent in ${piece.area}.<br /><br />I saw that you lived in ${piece.area} and was wondering if selling your home is something you'd be open to, the market right now is huge.<br /><br />I'd be delighted to chat with you more about it.</p>`
-                const bodyFooter = `<p>Best Regards,<br />${senderName}<br />Real Estate</p><br /><a href=${process.env.NODE_ENV.toLowerCase() === "dev" ? "https://localhost/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email))  : "https://api.sniphomes.com/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) }>Click if you want to stop receiving emails from me</a>`;
-    
-                // Finish adding p tags and making emails send an html tag instead of text
-                const bodySubject = subjectList[Math.floor(Math.random()*(subjectList.length))];
-    
-                finalMessage = bodyMessage + "<br /><br />" + bodyFooter
-    
-                const response = await deliverMail(piece.email, senderEmail, finalMessage, bodySubject, null, true)
-          
-                console.log(response)
-                messageIdList.push(response.messageId);
-            } else {
-              console.log("Incomplete data:",i)
-            }
+              await outreachEmail(piece, senderName,senderEmail,encrypter,messageIdList)
     
             } 
           )
