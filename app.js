@@ -1652,9 +1652,9 @@ function processLeadConversion(messageId, transcript, phoneNumber) {
                                             // This code isn't tested yet
                                             const body = `Hey, ${cmod.decrypt(person.name).split(" ")[0].substring(0,1).toUpperCase() + cmod.decrypt(person.name).split(" ")[0].substring(1).toLowerCase()},
                                             
-                                            You are receiving this email because you just received a new interested lead.
+You are receiving this email because you just received a new interested lead.
 
-                                            Check your Sniphomes.com dashboard for more details. 
+Check your Sniphomes.com dashboard for more details. 
 
                                             `
                                            
@@ -1754,7 +1754,7 @@ app.post("/internalEmail", (req,res) => {
                         val.transcript = response.transcript;
                         val.messageId = response.mail.messageId.substring(1,response.mail.messageId.length-1);
                         await val.save();
-                        if (response.scheduleCall && response.phoneNumber) {
+                        if (response.scheduleCall && response.phoneNumber.length>0) {
                             Lead.findOne({uuid: val.uuid}).then((lead,err) => {
                                 if (err) {
                                     console.log(err)
