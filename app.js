@@ -41,6 +41,7 @@ var AWS = require("aws-sdk");
 const e = require('express');
 const JSONTransport = require('nodemailer/lib/json-transport/index.js');
 const { unsubscribe } = require('diagnostics_channel');
+const { ExternalCampaignListInstance } = require('twilio/lib/rest/messaging/v1/externalCampaign.js');
 // const { FeedbackInstance } = require('twilio/lib/rest/assistants/v1/assistant/feedback.js');
 // const { send } = require('process');
 
@@ -506,6 +507,7 @@ const generateCode = (length) => {
 }
 
 function reportError(err) {
+    console.log(err)
     sendMail(process.env.ADMINEMAIL,"Error Occured","An error occured. Here's the error message\n\n" + err)
 }
 
@@ -1911,7 +1913,9 @@ app.post('/doOutreach', async (req,res) => {
                         processOutreach(data, senderEmail, user.aiSettings.name, user.uuid).then(async(messageData) => {
                             const idList = messageData.idList;
                             const originalMessage = messageData.message
+                            const newData = messageData.newData
                             console.log("idList",idList)
+                            console.log(newData)
                             idList.map((id,i) => {
 
                                 
@@ -1921,10 +1925,10 @@ app.post('/doOutreach', async (req,res) => {
                                     uuid: uuid,
                                     messageId: messageId,
                                     sender: senderEmail,
-                                    receiver: data[i].email,
+                                    receiver: newData[i].email,
                                     callFeature: user.aiSettings.callFeature,
                                     area: area,
-                                    action: data[i].action,
+                                    action: newData[i].action,
                                     transcript: [{
                                         date: Date.now(),
                                         sender: senderEmail,
@@ -1998,6 +2002,48 @@ app.post('/doOutreach', async (req,res) => {
 })
 
 
+
+app.get("/addBlocklist/:id", (req,res) => {
+    const decoder = new Cryptr(process.env.EMAIL_KEY_CRYPTR, { encoding: 'base64', pbkdf2Iterations: 10000, saltLength: 10 });
+    
+
+    const id = decodeURIComponent(req.params.id);
+
+    try {
+        const email = decoder.decrypt(id);
+        
+        if ((email.indexOf("@") > -1)) {
+            unsubscribeEmail(email).then((response) => {
+                if (response.toLowerCase() === "success") {
+                    res.status(200).send(JSON.stringify({
+                        code: "ok",
+                        message: "success"
+                    }))
+                } else {
+                    res.status(400).send(JSON.stringify({
+                        code: "err",
+                        message: "invalid request"
+                    }))
+                }
+            })
+        } else {
+            res.status(200).send(JSON.stringify({
+                code: "ok",
+                message: "success"
+            }))
+        }
+        
+    } catch(e) {
+        reportError(e)
+        res.status(500).send(JSON.stringify({
+            code: "err",
+            message: "invalid request"
+        }))
+    }
+    
+})
+
+
 async function summarizeLeadDetails(transcript, email) {
 
     let readableTranscript = "";
@@ -2045,6 +2091,64 @@ app.get("/", (req,res) => {
 server.listen(process.env.PORT, (req,res) => {
     console.log("Listening on port ", process.env.PORT);
 })
+
+// 27 text files with the letter corresponding to the title like a.txt; the file only contains the emails that start with that letter
+function unsubscribeEmail(email) {
+    return new Promise((resolve) => {
+
+        const fileName = email.substring(0,1).toLowerCase() + ".txt"
+
+
+        fs.readFile(fileName, 'utf8', (err,content) => {
+    
+            if (err) {
+                // console.log(err);
+    
+                
+                if (email.substring(0,1).toLowerCase() !== email.substring(0,1).toUpperCase()) {
+                    // means that it is a letter
+    
+                    fs.writeFile(fileName, email.toLowerCase(), (err) => {
+                        if (err) {
+                            reportError(err)
+                            console.log(err);
+                        }
+                        resolve("success")
+                    })
+    
+    
+    
+                } else {
+                    resolve("invalid")
+                    console.log('email provided is invalid')
+    
+                }
+    
+    
+            } else {
+                fs.appendFile(fileName, `,${email.toLowerCase()}`, (err) => {
+                    if (err) {
+                        console.log(err)
+                        reportError(err)
+                        console.log(err)
+                    }
+                    resolve("success")
+                    
+                })
+                
+            }
+            
+        })
+
+    })
+    
+   
+
+}
+
+
+// 
+
 
 
 
