@@ -140,7 +140,7 @@ function processOutreach(data, senderEmail, x,area) {
             console.log("just tested the doNot contact")
             console.log(doNotContact)
             if (!doNotContact) {
-
+              // piece, senderName, senderEmail,encrypter,messageIdList, area
 
               await outreachEmail(piece, senderName,senderEmail, encrypter,messageIdList, area)
     
@@ -152,7 +152,7 @@ function processOutreach(data, senderEmail, x,area) {
 
           
           }).catch(async(e) => {
-              await outreachEmail(piece, senderName,senderEmail,encrypter,messageIdList)
+              await outreachEmail(piece, senderName,senderEmail,encrypter,messageIdList, area)
     
             } 
           )
