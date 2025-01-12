@@ -89,7 +89,7 @@ async function outreachEmail(piece, senderName, senderEmail,encrypter,messageIdL
     const bodySubject = subjectList[Math.floor(Math.random()*(subjectList.length))];
 
     finalMessage = bodyMessage + "<br /><br />" + bodyFooter
-
+  console.log(piece.email)
     const response = await deliverMail(piece.email, senderEmail, finalMessage, bodySubject, null, true)
 
     console.log(response)
