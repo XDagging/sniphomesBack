@@ -507,7 +507,7 @@ const generateCode = (length) => {
     let code = ""
 
     for (let i=0; i<length; i++) {
-        code += Math.floor(Math.random() * (numbers.length-1))
+        code += Math.floor(Math.random() * (numbers.length))
     }
 
     return code
@@ -832,7 +832,7 @@ app.post("/register", (req,res) => {
 
 
 
-    User.findOne({email: md5(email)}).then((user,err) => {
+    User.findOne({emailHash: md5(email)}).then((user,err) => {
         if (err) {
             console.log(err)
             res.status(500).send(JSON.stringify({
@@ -1173,7 +1173,7 @@ app.get("/getLeads", async(req,res) => {
 
 app.post("/updateLeadStatus", (req,res) => {
     try {
-        const uuid = req.body.uuid
+        const threadId = req.body.threadId
         authenticateUser(req).then((id) => {
             if (id === "No user found") {
     
@@ -1182,7 +1182,7 @@ app.post("/updateLeadStatus", (req,res) => {
                     message: "invalid request"
                 }))
             } else {
-                Lead.findOneAndUpdate({uuid: uuid}, {new: false}).then(() => {
+                Lead.findOneAndUpdate({threadId: threadId}, {new: false}).then(() => {
                     res.status(200).send(JSON.stringify({
                         code: "ok",
                         message: "success"
@@ -1315,6 +1315,13 @@ app.post("/startCampaign", (req,res) => {
                     }))
                 } else {
                     if (user !== null) {
+                        if (user.operatingArea.length === 0) {
+                            res.status(403).send(JSON.stringify({
+                                code: "err",
+                                message: "add operating area"
+                            }))
+                            return
+                        }
                         
 
                         if (user.credits < credits) {
@@ -1339,7 +1346,7 @@ app.post("/startCampaign", (req,res) => {
 
                             User.findOneAndUpdate({uuid: user.uuid}, {campaigns: [...user.campaigns, newCampaign], credits: user.credits - credits}).then(() => {
                                 
-                                const body = `Hello Sebastian.\n\nNew Campaign has started so start collecting data.\n\nCampaign Details:\n\nTarget: ${target}\nCredits: ${credits}\nAiThreshold: ${aiThreshold}\nAddress: ${address}`
+                                const body = `Hello Sebastian.\n\nNew Campaign has started so start collecting data.\n\nCampaign Details:\n\nTarget: ${target}\nCredits: ${credits}\nAiThreshold: ${aiThreshold}\nAddress: ${address}\n\nUuid: ${user.uuid}`
 
 
 
@@ -1919,7 +1926,7 @@ app.post('/doOutreach', async (req,res) => {
                 } else {
                     if (user) {
                         const senderEmail = user.aiSettings.name + "@sniphomes.com";
-                        processOutreach(data, senderEmail, user.aiSettings.name, user.uuid).then(async(messageData) => {
+                        processOutreach(data, senderEmail, user.aiSettings.name, user.uuid, area).then(async(messageData) => {
                             const idList = messageData.idList;
                             const originalMessage = messageData.message
                             const newData = messageData.newData

@@ -60,14 +60,14 @@ async function deliverMail(to, from, message, subject, messageId, html) {
 }
 
 
-async function outreachEmail(piece, senderName, senderEmail,encrypter,messageIdList) {
-  const subjectList = ["Here's what I'll do", "Hoping to help", "I have to ask", "One more thing", `Real Estate Inquiry, ${piece.area}`]
+async function outreachEmail(piece, senderName, senderEmail,encrypter,messageIdList, area) {
+  const subjectList = ["Here's what I'll do", "Hoping to help", "I have to ask", "One more thing", `Real Estate Inquiry, ${area}`]
     
   if (piece.action.toLowerCase() === "buy") {
 
     
     
-    const bodyMessage = `<p>Hey ${piece.name},<br /><br />I'm ${senderName}, a local real estate agent in ${piece.area}.<br /><br />There's an affordable house nearby that's recently been put on sale in ${piece.area} that might peak your interest.<br /><br />I'd love to talk more if you're interested.</p>`
+    const bodyMessage = `<p>Hey ${piece.name},<br /><br />I'm ${senderName}, a local real estate agent in ${area}.<br /><br />There's an affordable house nearby that's recently been put on sale in ${area} that might peak your interest.<br /><br />I'd love to talk more if you're interested.</p>`
     const bodyFooter = `<p>Looking forward to your response,<br />${senderName}<br />Real Estate<br /><a href=${process.env.NODE_ENV.toLowerCase() === "dev" ? "https://localhost/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) : "https://api.sniphomes.com/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) }>Click if you want to stop receiving emails from me</a><p>`;
     const bodySubject = subjectList[Math.floor(Math.random()*(subjectList.length))];
 
@@ -82,7 +82,7 @@ async function outreachEmail(piece, senderName, senderEmail,encrypter,messageIdL
     
 
 } else if (piece.action.toLowerCase() === "sell") {
-    const bodyMessage = `<p>Hey ${piece.name},<br /><br />I'm ${senderName}, a local real estate agent in ${piece.area}.<br /><br />I saw that you lived in ${piece.area} and was wondering if selling your home is something you'd be open to, the market right now is huge.<br /><br />I'd be delighted to chat with you more about it.</p>`
+    const bodyMessage = `<p>Hey ${piece.name},<br /><br />I'm ${senderName}, a local real estate agent in ${area}.<br /><br />I saw that you lived in ${area} and was wondering if selling your home is something you'd be open to, the market right now is huge.<br /><br />I'd be delighted to chat with you more about it.</p>`
     const bodyFooter = `<p>Best Regards,<br />${senderName}<br />Real Estate</p><br /><a href=${process.env.NODE_ENV.toLowerCase() === "dev" ? "https://localhost/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email))  : "https://api.sniphomes.com/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) }>Click if you want to stop receiving emails from me</a>`;
 
     // Finish adding p tags and making emails send an html tag instead of text
@@ -103,7 +103,7 @@ async function outreachEmail(piece, senderName, senderEmail,encrypter,messageIdL
 
 
 
-function processOutreach(data, senderEmail, x) {
+function processOutreach(data, senderEmail, x,area) {
   return new Promise(async(resolve) => {
     let copyOfData = []
     const encrypter = new Cryptr(process.env.EMAIL_KEY_CRYPTR, { encoding: 'base64', pbkdf2Iterations: 10000, saltLength: 10 });
@@ -142,7 +142,7 @@ function processOutreach(data, senderEmail, x) {
             if (!doNotContact) {
 
 
-              await outreachEmail(piece, senderName,senderEmail, encrypter,messageIdList)
+              await outreachEmail(piece, senderName,senderEmail, encrypter,messageIdList, area)
     
             } else {
               copyOfData.push(i)
