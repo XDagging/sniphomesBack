@@ -1926,7 +1926,7 @@ app.post('/doOutreach', async (req,res) => {
                 } else {
                     if (user) {
                         const senderEmail = user.aiSettings.name + "@sniphomes.com";
-                        processOutreach(data, senderEmail, user.aiSettings.name, user.uuid, area).then(async(messageData) => {
+                        processOutreach(data, senderEmail, user.aiSettings.name, area).then(async(messageData) => {
                             const idList = messageData.idList;
                             const originalMessage = messageData.message
                             const newData = messageData.newData
