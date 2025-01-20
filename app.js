@@ -1932,7 +1932,7 @@ app.post('/doOutreach', async (req,res) => {
                             const originalMessage = messageData.message
                             const newData = messageData.newData
                             console.log("idList",idList)
-                            console.log(newData)
+                            console.log("original",originalMessage.replace(/(<([^>]+)>)/ig, '').replace("/"))
                             idList.map((id,i) => {
 
                                 
@@ -1950,7 +1950,7 @@ app.post('/doOutreach', async (req,res) => {
                                     transcript: [{
                                         date: Date.now(),
                                         sender: senderEmail,
-                                        message: originalMessage,
+                                        message: originalMessage.replace(/(<([^>]+)>)/ig, '').replace("/"),
                                     }],
                                 })
 

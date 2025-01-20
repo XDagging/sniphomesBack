@@ -236,7 +236,7 @@ function processOutreach(data, senderEmail, x,area, message) {
       }
     }
 
-
+    console.log("final message here:", finalMessage)
     resolve({idList: messageIdList, message: finalMessage, newData: newData});
     
   })
