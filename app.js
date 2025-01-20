@@ -1771,7 +1771,7 @@ app.post("/internalEmail", (req,res) => {
                         val.transcript = response.transcript;
                         val.messageId = response.mail.messageId.substring(1,response.mail.messageId.length-1);
                         await val.save();
-                        if (response.scheduleCall && response.phoneNumber && response.phoneNumber.length()>0) {
+                        if (response.scheduleCall && response.phoneNumber && response.phoneNumber.length>0) {
                             Lead.findOne({threadId: val.threadId}).then((lead,err) => {
                                 if (err) {
                                     console.log(err)
