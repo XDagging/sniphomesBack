@@ -59,41 +59,97 @@ async function deliverMail(to, from, message, subject, messageId, html) {
  
 }
 
+async function craftDraft(message,piece,senderName) {
+  let iterableMessage = message.split("\n").join("<br/>");
+  // console.log(message.split("\n"))
+  let safety = 0;
 
-async function outreachEmail(piece, senderName, senderEmail,encrypter,messageIdList, area) {
+  // iterableMessage.split("\n").join("</br>");
+  const variableRegex = /\$\{(.*?)\}/g;
+  return iterableMessage.replace(variableRegex, (match, variableName) => {
+    safety++;
+    if (safety > 1000) {
+      console.error("Safety limit reached to prevent infinite loop.");
+      return match; // Return the original match if safety is breached
+    }
+
+    // Convert the variable name to lowercase for case-insensitive matching
+    variableName = variableName.toLowerCase();
+
+    if (variableName === "ainame") {
+      return senderName; // Replace with the AI name
+    } else if (variableName === "name") {
+      // Capitalize the lead's name
+      const leadName =
+        piece.name.charAt(0).toUpperCase() + piece.name.slice(1).toLowerCase();
+      return leadName;
+    }
+
+    // If variable is not recognized, return the original placeholder
+    return match;
+  });
+  // return iterableMessage
+}
+
+  
+
+
+async function outreachEmail(piece, senderName, senderEmail,encrypter,messageIdList, area, message) {
   const subjectList = ["Here's what I'll do", "Hoping to help", "I have to ask", "One more thing", `Real Estate Inquiry, ${area}`]
     
   if (piece.action.toLowerCase() === "buy") {
 
-    
+    let finalMessage = ""
     
     const bodyMessage = `<p>Hey ${piece.name},<br /><br />I'm ${senderName}, a local real estate agent in ${area}.<br /><br />There's an affordable house nearby that's recently been put on sale in ${area} that might peak your interest.<br /><br />I'd love to talk more if you're interested.</p>`
     const bodyFooter = `<p>Looking forward to your response,<br />${senderName}<br />Real Estate<br /><a href=${process.env.NODE_ENV.toLowerCase() === "dev" ? "https://localhost/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) : "https://api.sniphomes.com/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) }>Click if you want to stop receiving emails from me</a><p>`;
     const bodySubject = subjectList[Math.floor(Math.random()*(subjectList.length))];
 
-    finalMessage = bodyMessage + "<br /><br />" + bodyFooter
 
+    if (message) {
+      finalMessage = `<p>${await craftDraft(message,piece, senderName)}</p>` + `<a href=${process.env.NODE_ENV.toLowerCase() === "dev" ? "https://localhost/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) : "https://api.sniphomes.com/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) }>Click if you want to stop receiving emails from me</a><p>`
+      
+      
+
+
+    } else {
+      finalMessage = bodyMessage + "<br /><br />" + bodyFooter;
+    }
+    
     const response = await deliverMail(piece.email, senderEmail, finalMessage, bodySubject, null, true)
   
     console.log(response.messageId);
 
     messageIdList.push(response.messageId);
 
+    return finalMessage
+
     
 
 } else if (piece.action.toLowerCase() === "sell") {
+    let finalMessage = "";
     const bodyMessage = `<p>Hey ${piece.name},<br /><br />I'm ${senderName}, a local real estate agent in ${area}.<br /><br />I saw that you lived in ${area} and was wondering if selling your home is something you'd be open to, the market right now is huge.<br /><br />I'd be delighted to chat with you more about it.</p>`
     const bodyFooter = `<p>Best Regards,<br />${senderName}<br />Real Estate</p><br /><a href=${process.env.NODE_ENV.toLowerCase() === "dev" ? "https://localhost/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email))  : "https://api.sniphomes.com/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) }>Click if you want to stop receiving emails from me</a>`;
 
     // Finish adding p tags and making emails send an html tag instead of text
     const bodySubject = subjectList[Math.floor(Math.random()*(subjectList.length))];
 
-    finalMessage = bodyMessage + "<br /><br />" + bodyFooter
-  console.log(piece.email)
+   
+
+    if (message) {
+      finalMessage = `<p>${await craftDraft(message,piece, senderName)}</p>` + `<a href=${process.env.NODE_ENV.toLowerCase() === "dev" ? "https://localhost/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) : "https://api.sniphomes.com/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) }>Click if you want to stop receiving emails from me</a><p>`
+      console.log(finalMessage)
+     
+    } else {
+      finalMessage = bodyMessage + "<br /><br />" + bodyFooter;
+    }
+    console.log(piece.email)
+    console.log("about to send data")
     const response = await deliverMail(piece.email, senderEmail, finalMessage, bodySubject, null, true)
 
     console.log(response)
     messageIdList.push(response.messageId);
+    return finalMessage
 } else {
   console.log("Incomplete data:",i)
 }
@@ -103,7 +159,7 @@ async function outreachEmail(piece, senderName, senderEmail,encrypter,messageIdL
 
 
 
-function processOutreach(data, senderEmail, x,area) {
+function processOutreach(data, senderEmail, x,area, message) {
   return new Promise(async(resolve) => {
     let copyOfData = []
     const encrypter = new Cryptr(process.env.EMAIL_KEY_CRYPTR, { encoding: 'base64', pbkdf2Iterations: 10000, saltLength: 10 });
@@ -142,8 +198,8 @@ function processOutreach(data, senderEmail, x,area) {
             if (!doNotContact) {
               // piece, senderName, senderEmail,encrypter,messageIdList, area
 
-              await outreachEmail(piece, senderName,senderEmail, encrypter,messageIdList, area)
-    
+              finalMessage = await outreachEmail(piece, senderName,senderEmail, encrypter,messageIdList, area,message)
+              
             } else {
               copyOfData.push(i)
             }
@@ -152,7 +208,7 @@ function processOutreach(data, senderEmail, x,area) {
 
           
           }).catch(async(e) => {
-              await outreachEmail(piece, senderName,senderEmail,encrypter,messageIdList, area)
+              finalMessage = await outreachEmail(piece, senderName,senderEmail,encrypter,messageIdList, area,message)
     
             } 
           )

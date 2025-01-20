@@ -1287,7 +1287,8 @@ app.post("/startCampaign", (req,res) => {
     const {target, credits, aiThreshold, address} = req.body;
 
 
-    if (((target === "homebuyers") || (target === "homesellers")) && ((aiThreshold > 0) || (aiThreshold < 101)) && (credits > 100)) {
+    if (((target === "homebuyers") || (target === "homesellers")) && ((aiThreshold > 0) || (aiThreshold < 101)) && (credits < 100)) {
+        console.log("This occured",credits)
         res.status(400).send(JSON.stringify({
             code: "err",
             message: "invalid request"
@@ -1899,7 +1900,7 @@ app.post("/internalEmail", (req,res) => {
 
 app.post('/doOutreach', async (req,res) => {
     try {
-        const {internalCredential, uuid, data, area} = req.body;
+        const {internalCredential, uuid, data, area, message} = req.body;
         const {processOutreach} = require("./utils.js")
         console.log(internalCredential)
         // console.log(processLeadConversion)
@@ -1926,7 +1927,7 @@ app.post('/doOutreach', async (req,res) => {
                 } else {
                     if (user) {
                         const senderEmail = user.aiSettings.name + "@sniphomes.com";
-                        processOutreach(data, senderEmail, user.aiSettings.name, area).then(async(messageData) => {
+                        processOutreach(data, senderEmail, user.aiSettings.name, area,message).then(async(messageData) => {
                             const idList = messageData.idList;
                             const originalMessage = messageData.message
                             const newData = messageData.newData
