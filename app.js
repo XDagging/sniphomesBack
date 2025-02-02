@@ -703,7 +703,6 @@ function callSomeone(phoneNumber, agentName, agentArea, agentAction, uuid) {
 
 
 const wss = new WebSocket.Server({ server: server });
-
 // Data needs to become a map with key value pairs of arrays.
 
 // 9BWtsMINqrJLrRacOk9x Southern have a great day
@@ -1284,7 +1283,7 @@ app.post("/updateUser", (req,res) => {
 
 
 app.post("/startCampaign", (req,res) => {
-    const {target, credits, aiThreshold, address} = req.body;
+    const {target, credits, aiThreshold, address, message} = req.body;
 
 
     if (((target === "homebuyers") || (target === "homesellers")) && ((aiThreshold > 0) || (aiThreshold < 101)) && (credits < 100)) {
@@ -1346,8 +1345,8 @@ app.post("/startCampaign", (req,res) => {
                             // Campaigns expire 30 days after
 
                             User.findOneAndUpdate({uuid: user.uuid}, {campaigns: [...user.campaigns, newCampaign], credits: user.credits - credits}).then(() => {
-                                
-                                const body = `Hello Sebastian.\n\nNew Campaign has started so start collecting data.\n\nCampaign Details:\n\nTarget: ${target}\nCredits: ${credits}\nAiThreshold: ${aiThreshold}\nAddress: ${address}\n\nUuid: ${user.uuid}`
+                                console.log(message.email)
+                                const body = `Hello Sebastian.\n\nNew Campaign has started so start collecting data.\n\nCampaign Details:\n\nTarget: ${target}\nCredits: ${credits}\nAiThreshold: ${aiThreshold}\nAddress: ${address}\n\nUuid: ${user.uuid}\n\nMessage: ${message.email.email!=null? message.email.email : "Default"}\n\nSubject: ${message.email.subject!=null?message.email.subject : "Default"}`
 
 
 
@@ -1926,7 +1925,13 @@ app.post('/doOutreach', async (req,res) => {
                     }))
                 } else {
                     if (user) {
+                        
                         const senderEmail = user.aiSettings.name + "@sniphomes.com";
+
+
+                        if ((message.email.length>0) && (message.subject.length>0)) {
+                            // Add the feature so people can customize the subjectline too
+                        }
                         processOutreach(data, senderEmail, user.aiSettings.name, area,message).then(async(messageData) => {
                             const idList = messageData.idList;
                             const originalMessage = messageData.message
