@@ -2,26 +2,30 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url>
     <loc>https://sniphomes.com/</loc>
-    <lastmod>2024-10-08</lastmod>
+    <lastmod>2025-02-02</lastmod>
   </url>
   <url>
     <loc>https://sniphomes.com/signup</loc>
-    <lastmod>2024-10-08</lastmod>
+    <lastmod>2025-02-02</lastmod>
   </url>
   <url>
     <loc>https://sniphomes.com/login</loc>
-    <lastmod>2024-10-08</lastmod>
+    <lastmod>2025-02-02</lastmod>
   </url>
   <url>
     <loc>https://sniphomes.com/main</loc>
-    <lastmod>2024-10-08</lastmod>
+    <lastmod>2025-02-02</lastmod>
   </url>
   <url>
     <loc>https://sniphomes.com/privacy</loc>
-    <lastmod>2024-10-08</lastmod>
+    <lastmod>2025-02-02</lastmod>
   </url>
   <url>
     <loc>https://sniphomes.com/terms</loc>
-    <lastmod>2024-10-08</lastmod>
+    <lastmod>2025-02-02</lastmod>
+  </url>
+  <url>
+    <loc>https://sniphomes.com/compliance</loc>
+    <lastmod>2025-02-02</lastmod>
   </url>
 </urlset>
