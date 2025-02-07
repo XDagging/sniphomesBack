@@ -1899,7 +1899,7 @@ app.post("/internalEmail", (req,res) => {
 
 app.post('/doOutreach', async (req,res) => {
     try {
-        const {internalCredential, uuid, data, area, message} = req.body;
+        const {internalCredential, uuid, data, area, message, subject} = req.body;
         const {processOutreach} = require("./utils.js")
         console.log(internalCredential)
         // console.log(processLeadConversion)
@@ -1929,10 +1929,10 @@ app.post('/doOutreach', async (req,res) => {
                         const senderEmail = user.aiSettings.name + "@sniphomes.com";
 
 
-                        if ((message.email.length>0) && (message.subject.length>0)) {
-                            // Add the feature so people can customize the subjectline too
-                        }
-                        processOutreach(data, senderEmail, user.aiSettings.name, area,message).then(async(messageData) => {
+                        // if ((message.email.length>0) && (message.subject.length>0)) {
+                        //     // Add the feature so people can customize the subjectline too
+                        // }
+                        processOutreach(data, senderEmail, user.aiSettings.name, area,message, subject).then(async(messageData) => {
                             const idList = messageData.idList;
                             const originalMessage = messageData.message
                             const newData = messageData.newData

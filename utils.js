@@ -94,7 +94,7 @@ async function craftDraft(message,piece,senderName) {
   
 
 
-async function outreachEmail(piece, senderName, senderEmail,encrypter,messageIdList, area, message) {
+async function outreachEmail(piece, senderName, senderEmail,encrypter,messageIdList, area, message, subject) {
   const subjectList = ["Here's what I'll do", "Hoping to help", "I have to ask", "One more thing", `Real Estate Inquiry, ${area}`]
     
   if (piece.action.toLowerCase() === "buy") {
@@ -103,7 +103,7 @@ async function outreachEmail(piece, senderName, senderEmail,encrypter,messageIdL
     
     const bodyMessage = `<p>Hey ${piece.name},<br /><br />I'm ${senderName}, a local real estate agent in ${area}.<br /><br />There's an affordable house nearby that's recently been put on sale in ${area} that might peak your interest.<br /><br />I'd love to talk more if you're interested.</p>`
     const bodyFooter = `<p>Looking forward to your response,<br />${senderName}<br />Real Estate<br /><a href=${process.env.NODE_ENV.toLowerCase() === "dev" ? "https://localhost/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) : "https://api.sniphomes.com/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) }>Click if you want to stop receiving emails from me</a><p>`;
-    const bodySubject = subjectList[Math.floor(Math.random()*(subjectList.length))];
+    const bodySubject = subject ? subject : subjectList[Math.floor(Math.random()*(subjectList.length))];
 
 
     if (message) {
@@ -132,7 +132,7 @@ async function outreachEmail(piece, senderName, senderEmail,encrypter,messageIdL
     const bodyFooter = `<p>Best Regards,<br />${senderName}<br />Real Estate</p><br /><a href=${process.env.NODE_ENV.toLowerCase() === "dev" ? "https://localhost/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email))  : "https://api.sniphomes.com/addBlocklist/" + encodeURIComponent(encrypter.encrypt(piece.email)) }>Click if you want to stop receiving emails from me</a>`;
 
     // Finish adding p tags and making emails send an html tag instead of text
-    const bodySubject = subjectList[Math.floor(Math.random()*(subjectList.length))];
+    const bodySubject = subject ? subject : subjectList[Math.floor(Math.random()*(subjectList.length))];
 
    
 
@@ -159,7 +159,7 @@ async function outreachEmail(piece, senderName, senderEmail,encrypter,messageIdL
 
 
 
-function processOutreach(data, senderEmail, x,area, message) {
+function processOutreach(data, senderEmail, x,area, message, subject) {
   return new Promise(async(resolve) => {
     let copyOfData = []
     const encrypter = new Cryptr(process.env.EMAIL_KEY_CRYPTR, { encoding: 'base64', pbkdf2Iterations: 10000, saltLength: 10 });
@@ -198,7 +198,7 @@ function processOutreach(data, senderEmail, x,area, message) {
             if (!doNotContact) {
               // piece, senderName, senderEmail,encrypter,messageIdList, area
 
-              finalMessage = await outreachEmail(piece, senderName,senderEmail, encrypter,messageIdList, area,message)
+              finalMessage = await outreachEmail(piece, senderName,senderEmail, encrypter,messageIdList, area,message, subject)
               
             } else {
               copyOfData.push(i)
@@ -208,7 +208,7 @@ function processOutreach(data, senderEmail, x,area, message) {
 
           
           }).catch(async(e) => {
-              finalMessage = await outreachEmail(piece, senderName,senderEmail,encrypter,messageIdList, area,message)
+              finalMessage = await outreachEmail(piece, senderName,senderEmail,encrypter,messageIdList, area,message, subject)
     
             } 
           )
