@@ -200,7 +200,7 @@ function processOutreach(data, senderEmail, x,area, message, subject) {
             console.log(doNotContact)
             if (!doNotContact) {
               // piece, senderName, senderEmail,encrypter,messageIdList, area
-              await new Promise(() => setTimeout(() => {}, 1000))
+              await new Promise(r => setTimeout(r, 1000))
               finalMessage = await outreachEmail(piece, senderName,senderEmail, encrypter,messageIdList, area,message, subject)
               
             } else {
@@ -211,7 +211,7 @@ function processOutreach(data, senderEmail, x,area, message, subject) {
 
           
           }).catch(async(e) => {
-              await new Promise(() => setTimeout(() => {}, 1000))
+              await new Promise(r => setTimeout(r, 1000))
               finalMessage = await outreachEmail(piece, senderName,senderEmail,encrypter,messageIdList, area,message, subject)
     
             } 
