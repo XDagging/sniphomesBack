@@ -36,6 +36,7 @@ const transporter = nodemailer.createTransport({
 
 async function deliverMail(to, from, message, subject, messageId, html) {
   if (html) {
+    console.log("html was called")
     const response = await transporter.sendMail({
       from: from, 
       to: to,
@@ -44,6 +45,7 @@ async function deliverMail(to, from, message, subject, messageId, html) {
       // inReplyTo: messageId,
       // attachments: []
     })
+    console.log(response)
     return response
   } else {
     const response = await transporter.sendMail({
@@ -115,7 +117,7 @@ async function outreachEmail(piece, senderName, senderEmail,encrypter,messageIdL
     } else {
       finalMessage = bodyMessage + "<br /><br />" + bodyFooter;
     }
-    
+  
     const response = await deliverMail(piece.email, senderEmail, finalMessage, bodySubject, null, true)
   
     console.log(response.messageId);
@@ -145,6 +147,7 @@ async function outreachEmail(piece, senderName, senderEmail,encrypter,messageIdL
     }
     console.log(piece.email)
     console.log("about to send data")
+    
     const response = await deliverMail(piece.email, senderEmail, finalMessage, bodySubject, null, true)
 
     console.log(response)
@@ -197,7 +200,7 @@ function processOutreach(data, senderEmail, x,area, message, subject) {
             console.log(doNotContact)
             if (!doNotContact) {
               // piece, senderName, senderEmail,encrypter,messageIdList, area
-
+              await new Promise(() => setTimeout(() => {}, 1000))
               finalMessage = await outreachEmail(piece, senderName,senderEmail, encrypter,messageIdList, area,message, subject)
               
             } else {
@@ -208,6 +211,7 @@ function processOutreach(data, senderEmail, x,area, message, subject) {
 
           
           }).catch(async(e) => {
+              await new Promise(() => setTimeout(() => {}, 1000))
               finalMessage = await outreachEmail(piece, senderName,senderEmail,encrypter,messageIdList, area,message, subject)
     
             } 
