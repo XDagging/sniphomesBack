@@ -354,10 +354,10 @@ class Call {
 
 
             // --- Turn is over ---
-            if (fedToTwilio.hangUp) {
-                console.log(`[${this.callSid}] Gemini initiated hangup.`);
-                this.hangup();
-            } else {
+            // if (fedToTwilio.hangUp) {
+            //     console.log(`[${this.callSid}] Gemini initiated hangup.`);
+            //     this.hangup();
+            // } else {
                 // The AI is done talking.
                 // Clear the Twilio media queue just in case
                 setTimeout(() => {
@@ -366,9 +366,15 @@ class Call {
                     this.sendClear(); 
                     // Start listening for the user's *next* turn.
                     this.aiTalking = false;
-                    this.startGoogleSpeechStream();
+
+                    if (fedToTwilio.hangup) {
+                        this.hangup();
+                    } else {
+                        this.startGoogleSpeechStream();
+                    }
+                    
                 }, durationInMs + 300); // 1-second grace period for audio playback
-            }
+            
         } catch (e) {
             console.error(`[${this.callSid}] Error in processResponse:`, e);
             this.aiTalking = false;
