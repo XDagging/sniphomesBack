@@ -367,7 +367,8 @@ class Call {
                     // Start listening for the user's *next* turn.
                     this.aiTalking = false;
 
-                    if (fedToTwilio.hangup) {
+                    if (fedToTwilio.hangUp) {
+                        console.log("")
                         this.hangup();
                     } else {
                         this.startGoogleSpeechStream();
