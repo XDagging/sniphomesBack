@@ -294,6 +294,11 @@ class Call {
             this.startGoogleSpeechStream();
         }
     }
+    
+    calculatePlayback(audioDataLength, sample) {
+        const duration = audioDataLength / (sample * 1);
+        this.aiDuration += duration;
+    }
 
     async processResponse(geminiResponse) {
         try {
@@ -330,7 +335,11 @@ class Call {
             const audioStream = await this.generateAudio(fedToTwilio.response);
             console.log(`[${this.callSid}] Streaming TTS to Twilio.`);
             
+            let audioLength = Buffer.from(audioStream).length;
+            const duration = this.calculatePlayback(audioLength, 8000);
+
             for await (const audioChunk of audioStream) {
+                console.log("we just sent an audio chunk")
                 this.sendAudioChunk(audioChunk);
             }
             console.log(`[${this.callSid}] TTS streaming finished.`);
@@ -350,7 +359,7 @@ class Call {
                     // Start listening for the user's *next* turn.
                     this.aiTalking = false;
                     this.startGoogleSpeechStream();
-                }, 1000); // 1-second grace period for audio playback
+                }, duration + 300); // 1-second grace period for audio playback
             }
         } catch (e) {
             console.error(`[${this.callSid}] Error in processResponse:`, e);
