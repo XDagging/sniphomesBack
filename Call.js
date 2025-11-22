@@ -362,7 +362,7 @@ class Call {
                 setTimeout(() => {
                     console.log(`[${this.callSid}] Audio grace period over. Clearing queue and listening.`);
                     // Clear the Twilio media queue
-                    this.sendClear(); 
+                    // this.sendClear(); 
                     // Start listening for the user's *next* turn.
                     this.aiTalking = false;
                     this.startGoogleSpeechStream();
