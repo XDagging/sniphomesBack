@@ -126,11 +126,11 @@ class Call {
         `;
     }
 
-    async setWebsocket(ws) {
+    async setWebsocket(ws, streamSid) {
         this.ws = ws;
         // Once this has ran once, the start will never be run again;
         if (!this.noStart) {
-            this.streamSid = msg.streamSid;
+            this.streamSid = streamSid;
 
             console.log(`[${this.callSid}] Twilio stream started (${this.streamSid}).`);
             // --- Optimization 3: Start Persistent STT Stream ---

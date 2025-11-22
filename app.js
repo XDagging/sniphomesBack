@@ -761,7 +761,7 @@ wss.on("connection", function (ws) {
                     // The setWebsocket method in OptimizedCall.js will now
                     // add its OWN .on("message") listener to handle all media events.
                     console.log("we gave the websocket");
-                    callInstance.setWebsocket(ws);
+                    callInstance.setWebsocket(ws, streamId);
                     
                     // We MUST remove this temporary listener now,
                     // otherwise it will conflict with the listener inside the Call class.
