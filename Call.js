@@ -343,10 +343,14 @@ class Call {
             } else {
                 // The AI is done talking.
                 // Clear the Twilio media queue just in case
-                this.sendClear(); 
-                // Start listening for the user's *next* turn.
-                this.aiTalking = false;
-                this.startGoogleSpeechStream();
+                setTimeout(() => {
+                    console.log(`[${this.callSid}] Audio grace period over. Clearing queue and listening.`);
+                    // Clear the Twilio media queue
+                    this.sendClear(); 
+                    // Start listening for the user's *next* turn.
+                    this.aiTalking = false;
+                    this.startGoogleSpeechStream();
+                }, 1000); // 1-second grace period for audio playback
             }
         } catch (e) {
             console.error(`[${this.callSid}] Error in processResponse:`, e);
@@ -362,7 +366,7 @@ class Call {
                     event: "media",
                     streamSid: this.streamSid,
                     media: {
-                        payload: Buffer.from(chunk).toString("base64"),
+                        payload: chunk.toString("base64"),
                     },
                 })
             );
