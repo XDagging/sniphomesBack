@@ -1616,7 +1616,7 @@ app.post("/requestDemo", (req,res) => {
                 }))
             } else {
             
-                if (user === null || (user.email.toLowerCase() === cmod.decrypt(user.email))) {
+                if (user === null || (email.toLowerCase() === cmod.decrypt(user.email).toLowerCase())) {
 
                     if (user.email.toLowerCase() !== cmod.decrypt(user.email)) {
                         const newDemo = new Demo({
