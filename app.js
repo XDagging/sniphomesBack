@@ -74,12 +74,14 @@ app.use(session({
         httpOnly: true , // This is because i want to track if the cookie changes so i can change accordingly.
         sameSite: "none",
         secure: true, // Set the Secure attribute
+        domain: process.env.NODE_ENV === "DEV" ? undefined : ".clashofquestions.com",
     },
     resave: false,
     saveUninitialized: true,
     store: new MemoryStore({
         checkPeriod: 86400000 // prune expired entries every 24h
     }), 
+    proxy: true,
 }));
 
 
