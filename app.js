@@ -38,10 +38,6 @@ const authToken = process.env.TWILIO_AUTH_TOKEN;
 const client = require("twilio")(accountSid, authToken);
 
 
-<<<<<<< HEAD
-=======
-
->>>>>>> b8f37e9ea0af92a66862887223b267830fb2c7ab
 var AWS = require("aws-sdk");
 const e = require('express');
 const JSONTransport = require('nodemailer/lib/json-transport/index.js');
