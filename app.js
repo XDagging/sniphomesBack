@@ -9,9 +9,11 @@ const mongoose = require("mongoose")
 const { v4: uuidv4 } = require('uuid');
 const Cryptr = require('cryptr');
 const session = require("express-session");
+
 const MemoryStore = require('memorystore')(session)
 const fs = require("fs")
 const https = require("https")
+const http = require("http");
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const Call = require("./Call.js");
 const WebSocket = require("ws");
@@ -20,6 +22,7 @@ const WebSocket = require("ws");
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const client = require("twilio")(accountSid, authToken);
+
 
 var AWS = require("aws-sdk");
 // const { send } = require('process');
@@ -59,6 +62,8 @@ app.use(session({
         checkPeriod: 86400000 // prune expired entries every 24h
     }), 
 }));
+
+
 
 
 function authenticateUser(req) {
@@ -128,7 +133,15 @@ const options = {
     cert: fs.readFileSync('/etc/letsencrypt/live/api.sniphomes.com/fullchain.pem'),
 }
 
-const server = https.createServer(options, app);
+let server;
+
+if (process.env.NODE_ENV === "DEV") {
+    server = https.createServer(options, app);
+} else {
+    server = http.createServer(app);
+}
+
+
 // const server = http.createServer(options, app);
 
 

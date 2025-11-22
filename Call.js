@@ -121,7 +121,7 @@ class Call {
     }
 
     async hangup() {
-
+        
         if (this.uuid === "demo") {
             client.calls(this.callSid).update({ status: "completed" });
             return
@@ -690,5 +690,7 @@ class Call {
         });
     }
 }
+
+
 
 module.exports = Call;
