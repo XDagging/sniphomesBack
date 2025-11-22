@@ -1,7 +1,7 @@
 require("dotenv").config();
 const speech = require("@google-cloud/speech");
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
-const fetch = require('node-fetch'); // Make sure you have node-fetch installed: npm install node-fetch
+// const fetch = require('node-fetch'); // Make sure you have node-fetch installed: npm install node-fetch
 const { Readable } = require("stream");
 
 // --- Gemini Setup ---
