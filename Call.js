@@ -338,11 +338,12 @@ class Call {
             console.log(`[${this.callSid}] Streaming TTS to Twilio.`);
             
             let totalAudioLength = 0;
-        
+            
 
             for await (const audioChunk of audioStream) {
                 // console.log("we just sent an audio chunk")
-                this.sendAudioChunk(audioChunk);
+                const buffer = Buffer.from(audioChunk).toString("base64");
+                this.sendAudioChunk(buffer);
                 totalAudioLength += audioChunk.length
                 
             }
@@ -362,7 +363,7 @@ class Call {
                 setTimeout(() => {
                     console.log(`[${this.callSid}] Audio grace period over. Clearing queue and listening.`);
                     // Clear the Twilio media queue
-                    // this.sendClear(); 
+                    this.sendClear(); 
                     // Start listening for the user's *next* turn.
                     this.aiTalking = false;
                     this.startGoogleSpeechStream();
@@ -382,7 +383,7 @@ class Call {
                     event: "media",
                     streamSid: this.streamSid,
                     media: {
-                        payload: chunk.toString("base64"),
+                        payload: chunk
                     },
                 })
             );
