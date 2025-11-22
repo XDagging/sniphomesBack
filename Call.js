@@ -145,7 +145,7 @@ class Call {
 
 
         this.ws.on("message", (message) => {
-            console.log("we got a message inside the websocket")
+            // console.log("we got a message inside the websocket")
             const msg = JSON.parse(message);
             switch (msg.event) {
                 case "connected":
@@ -154,7 +154,7 @@ class Call {
                 case "media":
                     // This is the raw audio data
                     // We write it to Google STT *if* the AI isn't talking.
-                    console.log("we got media here");
+                    // console.log("we got media here");
                     if (this.googleSpeechStream && !this.aiTalking) {
                         this.googleSpeechStream.write(msg.media.payload);
                         
@@ -260,7 +260,8 @@ class Call {
         try {
             // --- Optimization 4: LLM Streaming ---
             // We ask Gemini for a *stream* of text, not a single response.
-            const stream = await this.chat.sendMessageStream(transcript);
+            const result = await this.chat.sendMessageStream(transcript);
+            const stream = result.stream;
 
             let sentenceBuffer = "";
             let jsonBuffer = "";
