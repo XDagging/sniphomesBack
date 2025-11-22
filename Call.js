@@ -1,696 +1,481 @@
 require("dotenv").config();
 const speech = require("@google-cloud/speech");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
+const fetch = require('node-fetch'); // Make sure you have node-fetch installed: npm install node-fetch
+const { Readable } = require("stream");
+
+// --- Gemini Setup ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
+const safetySettings = [
+    { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+    { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+    { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+    { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+];
 
-
-
-
-const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
-    generationConfig: {
-        temperature: 0.2,
-        // 0.2
-    },
-});
-
-
-
+// --- Twilio Setup ---
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const client = require("twilio")(accountSid, authToken);
 
 class Call {
     constructor(callSid, phoneNumber, agentAction, agentLocation, agentName, uuid) {
-        this.uuid = uuid
-
+        this.uuid = uuid;
         this.callSid = callSid;
-        this.transcript = [];
-        this.lastWords = "";
-        this.data = [];
-        this.rating = 0;
-        this.markMessage = "";
         this.phoneNumber = phoneNumber;
-        this.streamSid = "";
-        this.aiTalking = false;
-        this.ws = null;
-        this.agentName = agentName;
         this.agentAction = agentAction;
         this.agentLocation = agentLocation;
-        this.convoSummary = "";
-        this.isLead = false;
+        this.agentName = agentName;
+        
+        this.streamSid = "";
+        this.ws = null;
+        this.googleSpeechClient = new speech.SpeechClient();
+        this.googleSpeechStream = null;
+
+        this.transcript = [];
         this.messageNumber = 0;
+        
+        this.aiTalking = false;
+        this.userSpeaking = false;
+        this.speechTimeout = null;
+
         this.aiDuration = 0;
-        this.interval;
-        this.resetAudio;
-        setTimeout(() => {
-            this.hangup();
-        }, 180 * 1000); // 3 minutes
-    }
 
-    stopProcessing() {
-        clearInterval(this.interval);
-        this.interval = "";
-    }
-
-    async detectSilence(windowSize = 5000, energyThreshold = 0.17) {
-        // payload make it a string of all the data.
-        console.log(
-            "length of data going into detectSilence",
-            this.data.length,
-        );
-        let allData = [];
-        this.data.map((load) => {
-            allData.push(Buffer.from(load.payload, "base64"));
+        // --- Optimization 1: Use Gemini Chat History ---
+        // We create the model and chat session ONCE, with the system prompt.
+        // This avoids sending the massive prompt and full history every single turn.
+        this.model = genAI.getGenerativeModel({
+            model: "gemini-2.5-flash",
+            generationConfig: {
+                temperature: 0.2,
+                // --- Optimization 2: Use JSON Mode ---
+                // This guarantees valid JSON output, so we can remove all the
+                // brittle string splitting and parsing logic in processResponse.
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: "OBJECT",
+                    properties: {
+                        response: { type: "STRING" },
+                        rating: { type: "NUMBER" },
+                        hangUp: { type: "BOOLEAN" },
+                    },
+                    required: ["response", "rating", "hangUp"],
+                },
+            },
+            safetySettings,
         });
 
-        allData = Buffer.concat(allData);
-
-        const pcmData = await this.convertToPcm(allData);
-
-        const energies = [];
-
-        for (let i = 0; i < pcmData.length; i += windowSize) {
-            const window = pcmData.slice(
-                i,
-                Math.min(i + windowSize, pcmData.length),
-            );
-            const energy =
-                window.reduce((sum, val) => sum + val, 0) / window.length;
-            energies.push(energy);
-        }
-
-        const isSilent = energies.map((energy) => energy > energyThreshold);
-
-        console.log("Heres the thing tho...", energies);
-        console.log("heres the silent array", isSilent);
-
-        return isSilent;
-    }
-
-    calculatePlayback(audioDataLength, sample) {
-        const duration = audioDataLength / (sample * 1);
-        this.aiDuration += duration;
-    }
-
-
-    async removeMessages() {
-        sendAudio(
-            JSON.stringify({ 
-                "event": "clear",
-                "streamSid": this.streamSid,
-            })
-        )
-        
-    }
-
-    async convertToPcm(mulawData) {
-        const mu = 255;
-        const pcmData = new Float32Array(mulawData.length);
-
-        for (let i = 0; i < mulawData.length; i++) {
-            const y = mulawData[i];
-            const x =
-                Math.sign(y - 128) *
-                (1 / mu) *
-                ((1 + mu) ** (Math.abs(y - 128) / 128) - 1);
-            pcmData[i] = x;
-        }
-
-        return pcmData;
-    }
-
-    async hangup() {
-        
-        if (this.uuid === "demo") {
-            client.calls(this.callSid).update({ status: "completed" });
-            return
-        } else {
-
-            if (this.rating > 75) {
-                this.isLead = true;
-    
-                
-    
-                client.calls(this.callSid).update({ status: "completed" });
-                let readableTranscript = "";
-                this.transcript.map((message) => {
-                    readableTranscript +=
-                        message.sender + ": " + message.message + "\n\n";
-                });
-                const prompt = `I'm providing a transcript of a conversation between a real estate agent and a client.
-                
-                Give a 150 character summary of the key points in the conversation that would be useful to a real estate agent.
-                
-                Here is the transcript: ${readableTranscript}
-                
-                `
-    
-                const result = await model.generateContent(prompt);
-                const aiSummary = result.response.text();
-                
-                this.convoSummary = aiSummary;
-                console.log("AI summary", aiSummary);
-    
-                const response = {
-                    uuid: this.uuid,
-                    phoneNumber: this.phoneNumber,
-                    agentAction: this.agentAction,
-                    location: this.agentLocation,
-                    message: this.convoSummary
+        const systemPrompt = this.buildSystemPrompt(agentName, agentLocation, agentAction);
+        this.chat = this.model.startChat({
+            history: [
+                { role: "user", parts: [{ text: systemPrompt }] },
+                { 
+                    role: "model", 
+                    parts: [{ 
+                        text: JSON.stringify({
+                            response: `Hello, I am ${this.agentName}, a real estate agent. I was wondering if you were interested in ${this.agentAction}ing a house?`,
+                            rating: 5, // Initial rating
+                            hangUp: false
+                        })
+                    }]
                 }
-            } else {
-                client.calls(this.callSid).update({ status: "completed" });
-            }
+            ],
+        });
 
-
-
-
-
-
-
-        }
-
-        
-        
-
-
-
-
-
-
-
+        console.log(`[${this.callSid}] New call initialized.`);
+        this.hangupTimer = setTimeout(() => this.hangup(), 180 * 1000); // 3-minute max call
     }
 
-    async addData(sequenceNumber, payload) {
-        const dataAdded = {
-            sequenceNumber: sequenceNumber,
-            payload: payload,
-        };
-
+    buildSystemPrompt(personName, personOperating, personLook) {
+        const personNumber = "3011233212"; // This should probably be an arg
+        const formattedNumber = "three, zero, one, one, two, three, three, two, one, two";
         
+        const buyBool = "Ask the person what budget their budget is and how many people they plan to move in with. Redirect them to the manager if they give one, but push for both answers. DO NOT ASK ANY OTHER QUESTIONS.";
+        const sellBool = `Tell the person about ${personOperating} area and ask them if they are homeowners. If so, ask them for the following info: would they be willing to sell their house, and if so, for how much? How many people do you live with currently (if they ask why we are asking, it is to grasp how large the home)? If they answer at least 1 of those questions, redirect to mananger. DO NOT ASK ANY OTHER QUESTIONS.`;
+        const promptBool = personLook.toLowerCase() === "sell" ? sellBool : buyBool;
 
+        // This prompt is sent only ONCE.
+        return `
+            You are a real estate agent named Marta. Your task is to engage naturally, asking relevant questions and responding appropriately based on what the person says. Your goal is to see if they are in the market for buying a house by engaging in a conversation. If the person isn't in the market for ${personLook}ing a house, ask them that they could contact you anytime. Be a little bit flirty with the person. 
 
-        this.data.push(dataAdded);
+            If the caller talks about voicemail or the call seems to hang, hangup the call and leave the message: Hi. I'm ${personName} and I called your number because I'm a local real estate agent in ${personOperating} wondering with if you are interested in ${personLook}ing a house in the area. If you are, please return a call to ${formattedNumber}. Thanks for your time!
+
+            Ensure that each response is contextually appropriate and advances the conversation toward assessing the person's interest. Always keep the conversation concise and avoid repeating yourself unnecessarily. Try to keep your responses short, but be friendly.
+
+            If the person seems interested in ${personLook} a house, tell them the following:
+            "Let me forward you to my manager ${personName}. He'll call you using the following number, ${formattedNumber}. Have a great day!" and then make the hangup boolean value true 
+
+            Heres the manager's personal contact information:
+            Phone Number: ${personNumber}
+            Name: ${personName}
+
+            If they ask for any other mean of communication tell them the following: "Sorry, he only operates via phone number."
+            Remember, the real estate agent operates in ${personOperating} meaning that if they ask anything any details about the home, tell them that its located in ${personOperating}
+
+            Add pauses when deemed appropiate. To add a pause, use insert the following syntax: <break time='0.5s' /> with the time= being the amount of time that you want it to pause for. For example, <break time="0.5s" /> will pause for 0.5 second. This should be in the response: field
+
+            ${promptBool}
+
+            Output your response in the specified JSON format.
+            1. "response": The next statement or question you will say.
+            2. "rating": A number from 1 to 100 indicating the likelihood that this person is a good lead.
+            3. "hangUp": A boolean value indicating whether you should hangup.
+
+            The conversation history will be provided. Start with your first greeting.
+        `;
     }
 
     async setWebsocket(ws) {
         this.ws = ws;
-    }
-
-    async resetData() {
-        this.data = [];
-    }
-
-    async startInterval() {
-        this.interval = setInterval(async () => {
-            if (this.data.length > 0) {
-
-                if (!this.aiTalking) {
-                    const speechClient = new speech.SpeechClient();
-                    const request = {
-                        config: {
-                            encoding: "MULAW",
-                            sampleRateHertz: 8000,
-                            languageCode: "en-US",
-                        },
-                        single_utterance: true,
-                    };
-                    const recognizeStream = speechClient
-                        .streamingRecognize(request)
-                        .on("error", console.error)
-                        .on("data", (data) => {
-                            const result = data.results[0];
-                            console.log(data.results);
-
-                            if (result.alternatives[0]) {
-                                this.lastWords =
-                                    result.alternatives[0].transcript;
-                                console.log(
-                                    `Transcription: ${result.alternatives[0].transcript}`,
-                                );
-                            }
-                        });
-                    const bufferStream = new require("stream").Readable();
-                    this.data.map((piece) => {
-                        bufferStream.push(Buffer.from(piece.payload, "base64"));
-                    });
-
-                    bufferStream.push(null);
-                    bufferStream.pipe(recognizeStream);
-
-                    let silenceArray = await this.detectSilence();
-                    // console.log(silenceArray)
-                    console.log("is the ai currently talking", this.aiTalking);
-                    let silenceStreak = 0;
-
-                    for (let i = 0; i < silenceArray.length; i++) {
-                        let value = silenceArray[i];
-                        if (value === false) {
-                            silenceStreak = 0;
-                        } else {
-                            silenceStreak += 1;
+        this.ws.on("message", (message) => {
+            const msg = JSON.parse(message);
+            switch (msg.event) {
+                case "connected":
+                    console.log(`[${this.callSid}] Twilio stream connected.`);
+                    break;
+                case "start":
+                    this.streamSid = msg.streamSid;
+                    console.log(`[${this.callSid}] Twilio stream started (${this.streamSid}).`);
+                    // --- Optimization 3: Start Persistent STT Stream ---
+                    // We start the STT stream and it stays open, listening.
+                    this.startGoogleSpeechStream();
+                    // Start the conversation
+                    this.startConversation();
+                    break;
+                case "media":
+                    // This is the raw audio data
+                    // We write it to Google STT *if* the AI isn't talking.
+                    if (this.googleSpeechStream && !this.aiTalking) {
+                        this.googleSpeechStream.write(msg.media.payload);
+                        
+                        // --- Simple VAD (Voice Activity Detection) ---
+                        // We reset a timer every time we get new audio.
+                        // If the timer fires, it means the user stopped talking.
+                        this.userSpeaking = true;
+                        if (this.speechTimeout) {
+                            clearTimeout(this.speechTimeout);
                         }
-                        console.log(silenceArray);
-                        // used to be a 7 lets see how it be going
-                        if (silenceStreak >= 2) {
-                            // console.log("silence detected")
-                            if (this.aiTalking === false) {
-                                silenceStreak = 0;
-                                console.log(silenceArray);
-                                console.log("called for some texting");
-
-                                if (
-                                    this.lastWords !== "" ||
-                                    this.transcript.length === 0
-                                ) {
-                                    this.transcript.push({
-                                        sender: "Person on the phone",
-                                        message: this.lastWords,
-                                        order: this.messageNumber,
-                                    });
-
-                                    this.messageNumber++;
-                                    this.lastWords = "";
-                                    this.processInterval();
-
-                                    break;
-                                } else {
-                                    console.log("nothing was said?");
-                                }
-                            } else {
-                                console.log("silence but ai is talking rn");
+                        this.speechTimeout = setTimeout(() => {
+                            if (this.userSpeaking) {
+                                console.log(`[${this.callSid}] Silence detected, ending user turn.`);
+                                this.userSpeaking = false;
+                                this.stopGoogleSpeechStream(); // Stop listening
+                                // The 'isFinal' result from STT will trigger the LLM
                             }
-                        } else {
-                            console.log("we are silent rn");
-                        }
+                        }, 1200); // 1.2 seconds of silence
                     }
-                    
-
-                }
-                // else {
-                //     let words = "";
-                //     const speechClient = new speech.SpeechClient();
-                //     const request = {
-                //         config: {
-                //             encoding: "MULAW",
-                //             sampleRateHertz: 8000,
-                //             languageCode: "en-US",
-                //         },
-                //         single_utterance: true,
-                //     };
-                //     const recStream = speechClient
-                //         .streamingRecognize(request)
-                //         .on("error", console.error)
-                //         .on("data", (data) => {
-                //             const result = data.results[0];
-                //             console.log(data.results);
-
-                //             if (result.alternatives[0]) {
-                //                 words =
-                //                     result.alternatives[0].transcript;
-                //                 console.log(
-                //                     `Transcription: ${result.alternatives[0].transcript}`,
-                //                 );
-                //             }
-                //         });
-                //     const streamBuffer = new require("stream").Readable();
-                //     console.log(this.data.length)
-                //     this.data.map((piece) => {
-                //         streamBuffer.push(Buffer.from(piece.payload, "base64"));
-                //     });
-
-                //     streamBuffer.push(null);
-                //     streamBuffer.pipe(recStream);
-
-
-
-                //     if (words.split(" ").length > 2) {
-                //         // bookmark
-                //         this.transcript.splice(length-1, 1)
-                        
-
-                //         let silenceArray = await this.detectSilence();
-                //         console.log(silenceArray)
-                //         console.log("is the ai currently talking", this.aiTalking);
-                //         let silenceStreak = 0;
-
-                //         for (let i = 0; i < silenceArray.length; i++) {
-                //             let value = silenceArray[i];
-                //             if (value === false) {
-                //                 silenceStreak = 0;
-                //             } else {
-                //                 silenceStreak += 1;
-                //             }
-                //             console.log(silenceArray);
-                //             // used to be a 7 lets see how it be going
-                //             if (silenceStreak >= 2) {
-                //                 // console.log("silence detected")
-                    
-                //                     silenceStreak = 0;
-                //                     console.log(silenceArray);
-                //                     console.log("called for some texting");
-
-                                    
-                //                         let prevWords = this.transcript[this.transcript.length-1].message + " " +words
-
-
-                //                         this.transcript[this.transcript.length-1].message = prevWords
-
-                //                         this.lastWords = "";
-                //                         this.removeMessages()
-                //                         clearTimeout(this.resetAudio)
-                //                         this.resetAudio();
-                //                         this.processInterval();
-                                        
-
-                //                         break;
-                                    
-                //                 } else {
-                //                     console.log("silence but ai is talking rn");
-                //                 }
-                //             }
-                //         }
-                        
-                        
-                        
-
-                        
-                        
-
-                        
-                    
-                    
-                // }
-                    
-
-            } else {
-                console.log("No data to process");
+                    break;
+                case "stop":
+                    console.log(`[${this.callSid}] Twilio stream stopped.`);
+                    this.hangup();
+                    break;
             }
-        }, 500);
-    }
-
-    async processInterval() {
-        // console.log("talking to the ai now");
-        if (this.data.length === 0) {
-            console.log("No data to process");
-            return;
-        }
-
-        this.aiTalking = true;
-
-        // let convertedData = "";
-
-        this.resetData(); // Clear data after processing
-        try {
-            let readableTranscript = "";
-            this.transcript.map((message) => {
-                readableTranscript +=
-                    message.sender + ": " + message.message + "\n\n";
-            });
-            // console.log(readableTranscript);
-            // console.log(
-            //     "heres the transcription that was sent as param: " +
-            //         transcription,
-            // );
-
-            if (this.transcript.length !== 0) {
-                const personName = this.agentName;
-
-                const personNumber = "3011233212";
-                let formattedNumber = "";
-
-                for (let i = 0; i < personNumber.length; i++) {
-                    if (personNumber[i] === "0") {
-                        formattedNumber += "zero,";
-                    } else if (personNumber[i] === "1") {
-                        formattedNumber += "one,";
-                    } else if (personNumber[i] === "2") {
-                        formattedNumber += "two,";
-                    } else if (personNumber[i] === "3") {
-                        formattedNumber += "three,";
-                    } else if (personNumber[i] === "4") {
-                        formattedNumber += "four,";
-                    } else if (personNumber[i] === "5") {
-                        formattedNumber += "five,";
-                    } else if (personNumber[i] === "6") {
-                        formattedNumber += "six,";
-                    } else if (personNumber[i] === "7") {
-                        formattedNumber += "seven,";
-                    } else if (personNumber[i] === "8") {
-                        formattedNumber += "eight,";
-                    } else if (personNumber[i] === "9") {
-                        formattedNumber += "nine,";
-                    }
-                }
-
-                const personLook = this.agentAction;
-                const personOperating = this.agentLocation;
-                let promptBool = "";
-
-                const buyBool =
-                    "Ask the person what budget their budget is and how many people they plan to move in with. Redirect them to the manager if they give one, but push for both answers. if .DO NOT ASK ANY OTHER QUESTIONS.";
-                const sellBool = `Tell the person about ${personOperating} area and ask them if they are homeowners. If so, ask them for the following info: would they be willing to sell their house, and if so, for how much? How many people do you live with currently (if they ask why we are asking, it is to grasp how large the home)? If they answer at least 1 of those questions, redirect to mananger. DO NOT ASK ANY OTHER QUESTIONS.`;
-
-                if (personLook.toLowerCase() === "sell") {
-                    promptBool = sellBool;
-                } else {
-                    promptBool = buyBool;
-                }
-
-                const prompt = `
-                        You are a real estate agent named Marta. Your task is to engage naturally, asking relevant questions and responding appropriately based on what the person says. Your goal is to see if they are in the market for buying a house by engaging in a conversation. If the person isn't in the market for ${personLook}ing a house, ask them that they could contact you anytime. Be a little bit flirty with the person. 
-
-                        If the caller talks about voicemail or the call seems to hang, hangup the call and leave the message: Hi. I'm ${personName} and I called your number because I'm a local real estate agent in ${personOperating} wondering with if you are interested in ${personLook}ing a house in the area. If you are, please return a call to ${formattedNumber}. Thanks for your time!
-
-
-                        Ensure that each response is contextually appropriate and advances the conversation toward assessing the person's interest. Always keep the conversation concise and avoid repeating yourself unnecessarily. Try to keep your responses short, but be friendly.If the person seems interested in ${personLook} a house, tell them the following:
-
-
-                        "Let me forward you to my manager ${personName}. He'll call you using the following number, ${formattedNumber}. Have a great day!" and then make the hangup boolean value true 
-
-                        Heres the manager's personal contact information:
-                        Phone Number: ${personNumber}
-                        Name: ${personName}
-
-
-
-                        If they ask for any other mean of communication tell them the following: "Sorry, he only operates via phone number."
-                        Remember, the real estate agent operates in ${personOperating} meaning that if they ask anything any details about the home, tell them that its located in ${personOperating}
-
-                        Add pauses when deemed appropiate. To add a pause, use insert the following syntax:  <break time='0.5s' /> with the time= being the amount of time that you want it to pause for. For example, <break time="0.5s" /> will pause for 0.5 second. This should be in the response: field
-
-                        ${promptBool}
-
-
-
-
-
-
-
-
-
-
-                        Output your response in JSON format with two fields:
-
-                        1. "response": The next statement or question you will say based on the conversation so far.
-                        2. "rating": A number from 1 to 100 indicating the likelihood that this person is a good lead, where 1 means not interested and 10 means highly interested.
-                        3. "hangUp": A boolean value indicating whether you should hangup from the call. Only make this value true after saying goodbye or the person is being rude. If you deem the person is being inappropriate, set this value to true. 
-
-                        If a transcript is provided, continue the conversation from where it left off, responding naturally to the last message. If no transcript is provided, start by introducing yourself with the following: 'Hello, I am Daniel, a real estate agent. I was wondering if you were interested in ${personLook}ing a house.'
-
-                        Example response:
-                        \`\`\`json
-                        {
-                          "response": "I'm doing well, thank you. What can I assist you with today?",
-                          "rating": 4,
-                          "hangUp": false
-                        }
-                        \`\`\`
-
-                        Here’s the transcript of the conversation so far:
-                        \`\`\`
-                        ${readableTranscript}
-                        \`\`\`
-                        `;
-
-                console.log("AI IS BEING CALLED HELP!");
-                const result = await model.generateContent(prompt);
-                const geminiResponse = result.response.text();
-                console.log("Already generated Audio");
-                this.processResponse(geminiResponse);
-            } else {
-                console.log(
-                    "Empty response from transcript so we are going to wait.\nResetting data value",
-                );
-                this.aiTalking = false;
-                this.resetData();
-            }
-        } catch (error) {
-            console.error("Error converting file:", error);
-        }
-    }
-
-    async sendAudio(payload) {
-        this.ws.send(payload);
-    }
-
-    async updateConversation(response) {
-        return new Promise(async (resolve) => {
-            this.aiTalking = true;
-            await this.generateAudio(response).then(async (res) => {
-                const processStream = async () => {
-                    const reader = res.getReader();
-
-                    try {
-                        // aiTalking = true;
-                        while (true) {
-                            const { done, value } = await reader.read();
-                            if (done) {
-                                break;
-                            }
-
-                            let audioLength = Buffer.from(value).length;
-                            this.calculatePlayback(audioLength, 8000);
-
-                            const buffer =
-                                Buffer.from(value).toString("base64");
-
-                            new Promise((resolve) => {
-                                this.aiTalking = true;
-                                console.log(
-                                    "we r sending audio rn!",
-                                    this.streamSid,
-                                );
-
-                                this.sendAudio(
-                                    JSON.stringify({
-                                        event: "media",
-                                        streamSid: this.streamSid,
-                                        media: {
-                                            payload: buffer,
-                                        },
-                                        
-                                    }),
-                                );
-                                resolve;
-                            });
-                        }
-                    } finally {
-                        reader.releaseLock();
-                    }
-                };
-
-                await processStream();
-                this.messageNumber++;
-                resolve(response);
-            });
         });
     }
 
-    async processResponse(response) {
-        try {
-            let checkedResponse = response.replace(/\n/g, "");
-            checkedResponse = response.replace(/(\w+):/g, '"$1":');
-            let fedToTwilio = JSON.parse(checkedResponse);
+    startGoogleSpeechStream() {
+        if (this.googleSpeechStream) {
+            this.googleSpeechStream.destroy();
+            this.googleSpeechStream = null;
+        }
 
-            if (fedToTwilio.response.trim() === "") {
-                return;
-            } else {
-                await this.updateConversation(fedToTwilio).then((res) => {
-                    this.aiDuration = Math.ceil(this.aiDuration);
-                    // console.log("you need to wait this long now", aiDuration);
-                    clearTimeout(this.resetAudio);
-                    this.resetAudio = setTimeout(() => {
-                        this.aiDuration = 0;
-                        // console.log("AI TALKING IS FALSE");
-                        this.aiTalking = false;
-                        if (fedToTwilio.hangUp) {
-                            hangup();
-                            return;
-                        }
-                    }, this.aiDuration * 1000);
-                    this.rating = res.rating;
-                    this.transcript.push({
-                        sender: "You",
-                        message: res.response,
-                        order: this.messageNumber,
-                    });
-                });
-            }
-        } catch (e) {
-            console.log(e);
-            console.log(response);
-            let cleanedResponse =
-                "{" + response.split("{")[1].split("}")[0].trim() + "}";
-            cleanedResponse = cleanedResponse.replace(/\n/g, "");
-            cleanedResponse = cleanedResponse.replace(/(\w+):/g, '"$1":');
-            cleanedResponse = JSON.parse(cleanedResponse);
+        console.log(`[${this.callSid}] Starting new Google STT stream.`);
+        this.googleSpeechStream = this.googleSpeechClient
+            .streamingRecognize({
+                config: {
+                    encoding: "MULAW",
+                    sampleRateHertz: 8000,
+                    languageCode: "en-US",
+                    interimResults: false, // We only care about final results
+                },
+            })
+            .on("error", (error) => {
+                console.error(`[${this.callSid}] STT Error:`, error);
+            })
+            .on("data", (data) => {
+                const result = data.results[0];
+                if (result && result.alternatives[0] && result.isFinal) {
+                    const transcript = result.alternatives[0].transcript.trim();
+                    console.log(`[${this.callSid}] STT Final: "${transcript}"`);
+                    
+                    if (this.speechTimeout) {
+                        clearTimeout(this.speechTimeout);
+                        this.speechTimeout = null;
+                    }
+                    this.userSpeaking = false;
+                    
+                    // --- This is the trigger ---
+                    // We got a final transcript, now process it with the LLM.
+                    this.processLLM(transcript);
+                }
+            });
+    }
 
-            if (cleanedResponse.response.trim() === "") {
-                return;
-            } else {
-                await this.updateConversation(cleanedResponse).then((res) => {
-                    this.aiDuration = Math.ceil(this.aiDuration);
-                    // console.log("you need to wait this long now", aiDuration);
-                    clearTimeout(this.resetAudio);
-                    this.resetAudio = setTimeout(() => {
-                        this.aiDuration = 0;
-                        // console.log("AI TALKING IS FALSE");
-
-                        this.aiTalking = false;
-                        if (cleanedResponse.hangUp) {
-                            this.hangup();
-                            return;
-                        }
-                    }, this.aiDuration * 1000);
-                    this.rating = res.rating;
-
-                    this.transcript.push({
-                        sender: "You",
-                        message: res.response,
-                        order: this.messageNumber,
-                    });
-                });
-            }
+    stopGoogleSpeechStream() {
+        if (this.googleSpeechStream) {
+            console.log(`[${this.callSid}] Stopping Google STT stream.`);
+            this.googleSpeechStream.end();
         }
     }
 
-    async generateAudio(response) {
-        return new Promise(async (resolve) => {
-            const url =
-                "https://api.elevenlabs.io/v1/text-to-speech/03vEurziQfq3V8WZhQvn?optimize_streaming_latency=4&output_format=ulaw_8000";
-            let textNeeded = response.response;
-            console.log("heres the audio that is being generated", textNeeded);
-            const body = {
+    async startConversation() {
+        // This function sends the *initial* greeting from the chat history
+        const initialHistory = await this.chat.getHistory();
+        const initialResponse = initialHistory[1].parts[0].text;
+        
+        // The initial response is already in our JSON format
+        // We use processResponse, which is built for this.
+        this.processResponse(initialResponse);
+    }
+
+    async processLLM(transcript) {
+        if (!transcript) {
+            console.log(`[${this.callSid}] Empty transcript, restarting STT.`);
+            this.aiTalking = false; // Allow user to speak again
+            this.startGoogleSpeechStream(); // Start listening again
+            return;
+        }
+
+        this.aiTalking = true; // AI is now "thinking" and will talk
+        this.stopGoogleSpeechStream(); // Stop listening while we process and talk
+
+        this.transcript.push({
+            sender: "Person on the phone",
+            message: transcript,
+            order: this.messageNumber++,
+        });
+        
+        console.log(`[${this.callSid}] Sending to Gemini: "${transcript}"`);
+
+        try {
+            // --- Optimization 4: LLM Streaming ---
+            // We ask Gemini for a *stream* of text, not a single response.
+            const stream = await this.chat.sendMessageStream(transcript);
+
+            let sentenceBuffer = "";
+            let jsonBuffer = "";
+            let inJsonBlock = false;
+            
+            for await (const chunk of stream) {
+                const chunkText = chunk.text();
+                
+                // --- Handle JSON streaming ---
+                // The JSON response itself might be streamed.
+                if (!inJsonBlock && chunkText.includes('{')) {
+                    inJsonBlock = true;
+                }
+                if (inJsonBlock) {
+                    jsonBuffer += chunkText;
+                    if (chunkText.includes('}')) {
+                        inJsonBlock = false;
+                        // We have the full JSON, process it.
+                        // We only expect ONE JSON object per turn.
+                        console.log(`[${this.callSid}] Gemini Raw JSON: ${jsonBuffer}`);
+                        this.processResponse(jsonBuffer); 
+                        jsonBuffer = ""; // Reset for next turn
+                    }
+                }
+            }
+        } catch (error) {
+            console.error(`[${this.callSid}] Error streaming from Gemini:`, error);
+            // In case of error, just go back to listening
+            this.aiTalking = false;
+            this.startGoogleSpeechStream();
+        }
+    }
+
+    async processResponse(geminiResponse) {
+        try {
+            let fedToTwilio;
+            try {
+                // Remove markdown backticks if present
+                const cleanJson = geminiResponse.replace(/```json/g, "").replace(/```/g, "").trim();
+                fedToTwilio = JSON.parse(cleanJson);
+            } catch (e) {
+                console.error(`[${this.callSid}] Failed to parse Gemini JSON:`, e);
+                console.error(`[${this.callSid}] Raw response: ${geminiResponse}`);
+                // Simple retry/recovery: just listen again
+                this.aiTalking = false;
+                this.startGoogleSpeechStream();
+                return;
+            }
+
+            if (!fedToTwilio.response || fedToTwilio.response.trim() === "") {
+                console.log(`[${this.callSid}] Gemini gave empty response, listening again.`);
+                this.aiTalking = false;
+                this.startGoogleSpeechStream();
+                return;
+            }
+
+            // We have a valid response to say.
+            this.transcript.push({
+                sender: "You",
+                message: fedToTwilio.response,
+                order: this.messageNumber++,
+            });
+            this.rating = fedToTwilio.rating; // Assuming this.rating exists
+
+            // Generate audio and stream it to Twilio
+            const audioStream = await this.generateAudio(fedToTwilio.response);
+            console.log(`[${this.callSid}] Streaming TTS to Twilio.`);
+            
+            for await (const audioChunk of audioStream) {
+                this.sendAudioChunk(audioChunk);
+            }
+            console.log(`[${this.callSid}] TTS streaming finished.`);
+
+
+            // --- Turn is over ---
+            if (fedToTwilio.hangUp) {
+                console.log(`[${this.callSid}] Gemini initiated hangup.`);
+                this.hangup();
+            } else {
+                // The AI is done talking.
+                // Clear the Twilio media queue just in case
+                this.sendClear(); 
+                // Start listening for the user's *next* turn.
+                this.aiTalking = false;
+                this.startGoogleSpeechStream();
+            }
+        } catch (e) {
+            console.error(`[${this.callSid}] Error in processResponse:`, e);
+            this.aiTalking = false;
+            this.startGoogleSpeechStream();
+        }
+    }
+
+    sendAudioChunk(chunk) {
+        if (this.ws) {
+            this.ws.send(
+                JSON.stringify({
+                    event: "media",
+                    streamSid: this.streamSid,
+                    media: {
+                        payload: Buffer.from(chunk).toString("base64"),
+                    },
+                })
+            );
+        }
+    }
+
+    sendClear() {
+        if (this.ws) {
+            this.ws.send(
+                JSON.stringify({
+                    event: "clear",
+                    streamSid: this.streamSid,
+                })
+            );
+        }
+    }
+
+    async generateAudio(text) {
+        // Your ElevenLabs function is already streaming-ready, which is perfect.
+        // Just make sure you are using an async generator or returning the stream.
+        const url = `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}?optimize_streaming_latency=4&output_format=ulaw_8000`;
+        
+        console.log(`[${this.callSid}] Generating audio for: "${text}"`);
+        const body = {
+            model_id: "eleven_turbo_v2",
+            text: text,
+            voice_settings: {
+                stability: 0.5,
+                similarity_boost: 0.75,
+                style: 0,
+                use_speaker_boost: false,
+            },
+        };
+
+        try {
+            const response = await fetch(url, {
                 method: "POST",
-                // url: "https://api.elevenlabs.io/v1/text-to-speech/IKne3meq5aSn9XLyUdCD",
                 headers: {
                     "xi-api-key": process.env.ELEVENLABS_KEY,
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({
-                    model_id: "eleven_turbo_v2",
-                    text: textNeeded,
-                    voice_settings: {
-                        stability: 0.5,
-                        similarity_boost: 0.75,
-                        style: 0,
-                        use_speaker_boost: false,
-                    },
-                }),
+                body: JSON.stringify(body),
+            });
+
+            if (!response.ok) {
+                throw new Error(`ElevenLabs API error: ${response.statusText}`);
+            }
+
+            // Return the body stream directly
+            return response.body; 
+        } catch (error) {
+            console.error(`[${this.callSid}] ElevenLabs error:`, error);
+            return Readable.from([]); // Return an empty stream on error
+        }
+    }
+
+    async hangup() {
+        console.log(`[${this.callSid}] Hanging up call.`);
+        if (this.hangupTimer) {
+            clearTimeout(this.hangupTimer);
+            this.hangupTimer = null;
+        }
+        
+        this.stopGoogleSpeechStream();
+
+        if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+        }
+        
+        try {
+            const call = await client.calls(this.callSid).fetch();
+            if (call.status !== 'completed') {
+                await client.calls(this.callSid).update({ status: "completed" });
+            }
+        } catch (error) {
+            console.error(`[${this.callSid}] Error updating call status:`, error);
+        }
+
+        // --- Post-call summary logic ---
+        if (this.uuid !== "demo" && this.rating > 75) {
+            this.isLead = true;
+            this.generateCallSummary();
+        } else {
+            console.log(`[${this.callSid}] Call ended. Not a lead (Rating: ${this.rating}).`);
+        }
+    }
+
+    async generateCallSummary() {
+        console.log(`[${this.callSid}] Generating call summary...`);
+        let readableTranscript = this.transcript
+            .map(msg => `${msg.sender}: ${msg.message}`)
+            .join("\n\n");
+
+        const prompt = `I'm providing a transcript of a conversation between a real estate agent and a client.
+        
+        Give a 150 character summary of the key points in the conversation that would be useful to a real estate agent.
+        
+        Here is the transcript: ${readableTranscript}
+        `;
+
+        try {
+            // Use a *different* model for summarization, as the chat model's history is specific
+            const summaryModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            const result = await summaryModel.generateContent(prompt);
+            const aiSummary = result.response.text();
+            
+            this.convoSummary = aiSummary;
+            console.log(`[${this.callSid}] AI summary: ${aiSummary}`);
+
+            const response = {
+                uuid: this.uuid,
+                phoneNumber: this.phoneNumber,
+                agentAction: this.agentAction,
+                location: this.agentLocation,
+                message: this.convoSummary,
             };
+            // TODO: Send this response somewhere (e.g., your database or API)
+            console.log(`[${this.callSid}] Lead details:`, response);
 
-            console.log("Generated audio");
-            const request = await fetch(url, body);
-
-            const audio = await request.body;
-
-            resolve(audio);
-        });
+        } catch (error) {
+            console.error(`[${this.callSid}] Error generating summary:`, error);
+        }
     }
 }
-
-
 
 module.exports = Call;

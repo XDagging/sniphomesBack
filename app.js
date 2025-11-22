@@ -731,59 +731,121 @@ var twilioWs = "";
 
 // 2000 is the prev number
 
+
 wss.on("connection", function (ws) {
-    // technically anyone could just connect and then we r fucked so we need to figure out a better way to do this in the future. For testing is fine though.
-    twilioWs = ws;
+    console.log("WebSocket client connected.");
 
-    console.log("Just connected");
-
-    ws.on("close", () => {
-        console.log("The connection was closed and interval was cleared");
-        
-    });
-
-    ws.on("message", (message) => {
+    // We can't associate the call yet. We need to wait for the "start" message
+    // to get the callSid and streamSid.
+    const startListener = (message) => {
         try {
-            let parsedMsg = JSON.parse(message.toString());
-            streamId = parsedMsg.streamSid;
+            const parsedMsg = JSON.parse(message.toString());
 
-            if (parsedMsg.event === "start") {
-                const callSid = parsedMsg["start"]["callSid"];
-                // Ensure the callSid exists in dynamicCalls
+            // We only care about the "start" message to associate the WebSocket
+            if (parsedMsg.event === "start" && parsedMsg.start && parsedMsg.start.callSid) {
+                const callSid = parsedMsg.start.callSid;
+                const streamId = parsedMsg.streamSid;
+                
+                console.log(`[${callSid}] WebSocket received start event. Stream SID: ${streamId}`);
 
-                // dynamicCalls[callSid].setWebsocket(ws);
+                // Find the existing Call object created by your /voice webhook
+                const callInstance = dynamicCalls[callSid]; 
+                
+                if (callInstance) {
+                    // If you want to track calls by streamId, you can re-key it here.
+                    dynamicCalls[streamId] = callInstance;
+                    delete dynamicCalls[callSid];
 
-                // Renaming the class instance key from callSid to streamId
-                dynamicCalls[streamId] = dynamicCalls[callSid];
-                dynamicCalls[streamId].streamSid = streamId;
-                delete dynamicCalls[callSid];
+                    // --- THIS IS THE CRITICAL CHANGE ---
+                    // Pass the websocket *directly* to the class instance.
+                    // The setWebsocket method in OptimizedCall.js will now
+                    // add its OWN .on("message") listener to handle all media events.
+                    callInstance.setWebsocket(ws);
+                    
+                    // We MUST remove this temporary listener now,
+                    // otherwise it will conflict with the listener inside the Call class.
+                    ws.removeListener("message", startListener);
 
-                dynamicCalls[streamId].startInterval();
-                dynamicCalls[streamId].setWebsocket(ws);
-            } else if (parsedMsg.event === "stop") {
-                console.log("The call has ended");
-                dynamicCalls[streamId].stopProcessing();
-            } else if (
-                parsedMsg.event === "media" &&
-                parsedMsg.media &&
-                parsedMsg.media.track === "inbound"
-            ) {
-                if (parsedMsg.media.payload !== undefined) {
-                    if (!dynamicCalls[streamId].aiTalking) {
-                        dynamicCalls[streamId].addData(
-                            parsedMsg.sequenceNumber,
-                            parsedMsg.media.payload,
-                        );
-                    } else {
-                        dynamicCalls[streamId].resetData();
-                    }
+                } else {
+                    console.error(`[${callSid}] No call instance found. Hanging up WebSocket.`);
+                    ws.close();
                 }
+            } else {
+                // This could be a "connected" message, which we can ignore
+                console.log("WebSocket message received (pre-start):", parsedMsg.event);
             }
         } catch (e) {
-            console.log("Error parsing message:", e);
+            console.error("Error parsing start message:", e);
+            ws.close();
         }
+    };
+    
+    // Add the temporary listener to catch the "start" message
+    ws.on("message", startListener);
+
+    ws.on("close", () => {
+        console.log("WebSocket client disconnected.");
+        // The Call class's internal .on("message") handler will
+        // detect the "stop" event and trigger the hangup() logic.
+    });
+
+    ws.on("error", (err) => {
+        console.error("WebSocket error:", err);
     });
 });
+// wss.on("connection", function (ws) {
+//     // technically anyone could just connect and then we r fucked so we need to figure out a better way to do this in the future. For testing is fine though.
+//     twilioWs = ws;
+
+//     console.log("Just connected");
+
+//     ws.on("close", () => {
+//         console.log("The connection was closed and interval was cleared");
+        
+//     });
+
+//     ws.on("message", (message) => {
+//         try {
+//             let parsedMsg = JSON.parse(message.toString());
+//             streamId = parsedMsg.streamSid;
+
+//             if (parsedMsg.event === "start") {
+//                 const callSid = parsedMsg["start"]["callSid"];
+//                 // Ensure the callSid exists in dynamicCalls
+
+//                 // dynamicCalls[callSid].setWebsocket(ws);
+
+//                 // Renaming the class instance key from callSid to streamId
+//                 dynamicCalls[streamId] = dynamicCalls[callSid];
+//                 dynamicCalls[streamId].streamSid = streamId;
+//                 delete dynamicCalls[callSid];
+
+//                 dynamicCalls[streamId].startInterval();
+//                 dynamicCalls[streamId].setWebsocket(ws);
+//             } else if (parsedMsg.event === "stop") {
+//                 console.log("The call has ended");
+//                 dynamicCalls[streamId].stopProcessing();
+//             } else if (
+//                 parsedMsg.event === "media" &&
+//                 parsedMsg.media &&
+//                 parsedMsg.media.track === "inbound"
+//             ) {
+//                 if (parsedMsg.media.payload !== undefined) {
+//                     if (!dynamicCalls[streamId].aiTalking) {
+//                         dynamicCalls[streamId].addData(
+//                             parsedMsg.sequenceNumber,
+//                             parsedMsg.media.payload,
+//                         );
+//                     } else {
+//                         dynamicCalls[streamId].resetData();
+//                     }
+//                 }
+//             }
+//         } catch (e) {
+//             console.log("Error parsing message:", e);
+//         }
+//     });
+// });
 
 
 
