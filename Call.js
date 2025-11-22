@@ -230,6 +230,7 @@ class Call {
 
     async startConversation() {
         // This function sends the *initial* greeting from the chat history
+        this.aiTalking = true;
         const initialHistory = await this.chat.getHistory();
         const initialResponse = initialHistory[1].parts[0].text;
         
@@ -340,7 +341,7 @@ class Call {
         
 
             for await (const audioChunk of audioStream) {
-                console.log("we just sent an audio chunk")
+                // console.log("we just sent an audio chunk")
                 this.sendAudioChunk(audioChunk);
                 totalAudioLength += audioChunk.length
                 
