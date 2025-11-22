@@ -74,7 +74,7 @@ app.use(session({
         httpOnly: true , // This is because i want to track if the cookie changes so i can change accordingly.
         sameSite: "none",
         secure: true, // Set the Secure attribute
-        domain: process.env.NODE_ENV === "DEV" ? undefined : ".clashofquestions.com",
+        domain: process.env.NODE_ENV === "DEV" ? undefined : ".sniphomes.com",
     },
     resave: false,
     saveUninitialized: true,
