@@ -414,7 +414,7 @@ class Call {
 
         // black woman 03vEurziQfq3V8WZhQvn
 
-        const id = "9J9U31uq3cxDBY6pBtNx"
+        const id = "7EzWGsX10sAS4c9m9cPf"
 
 
         const url = `https://api.elevenlabs.io/v1/text-to-speech/${id}?optimize_streaming_latency=4&output_format=ulaw_8000`;
