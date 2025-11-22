@@ -760,6 +760,7 @@ wss.on("connection", function (ws) {
                     // Pass the websocket *directly* to the class instance.
                     // The setWebsocket method in OptimizedCall.js will now
                     // add its OWN .on("message") listener to handle all media events.
+                    console.log("we gave the websocket");
                     callInstance.setWebsocket(ws);
                     
                     // We MUST remove this temporary listener now,

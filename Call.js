@@ -27,6 +27,7 @@ class Call {
         this.agentLocation = agentLocation;
         this.agentName = agentName;
         
+        this.noStart = false;
         this.streamSid = "";
         this.ws = null;
         this.googleSpeechClient = new speech.SpeechClient();
@@ -127,24 +128,33 @@ class Call {
 
     async setWebsocket(ws) {
         this.ws = ws;
+        // Once this has ran once, the start will never be run again;
+        if (!this.noStart) {
+            this.streamSid = msg.streamSid;
+
+            console.log(`[${this.callSid}] Twilio stream started (${this.streamSid}).`);
+            // --- Optimization 3: Start Persistent STT Stream ---
+            // We start the STT stream and it stays open, listening.
+            this.startGoogleSpeechStream();
+            // Start the conversation
+            this.startConversation();
+            this.noStart = true;
+
+
+        }
+
+
         this.ws.on("message", (message) => {
+            console.log("we got a message inside the websocket")
             const msg = JSON.parse(message);
             switch (msg.event) {
                 case "connected":
                     console.log(`[${this.callSid}] Twilio stream connected.`);
                     break;
-                case "start":
-                    this.streamSid = msg.streamSid;
-                    console.log(`[${this.callSid}] Twilio stream started (${this.streamSid}).`);
-                    // --- Optimization 3: Start Persistent STT Stream ---
-                    // We start the STT stream and it stays open, listening.
-                    this.startGoogleSpeechStream();
-                    // Start the conversation
-                    this.startConversation();
-                    break;
                 case "media":
                     // This is the raw audio data
                     // We write it to Google STT *if* the AI isn't talking.
+                    console.log("we got media here");
                     if (this.googleSpeechStream && !this.aiTalking) {
                         this.googleSpeechStream.write(msg.media.payload);
                         
