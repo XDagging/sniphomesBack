@@ -383,9 +383,9 @@ class Call {
     async generateAudio(text) {
         // Your ElevenLabs function is already streaming-ready, which is perfect.
         // Just make sure you are using an async generator or returning the stream.
-        const url = `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}?optimize_streaming_latency=4&output_format=ulaw_8000`;
-        
+        const url = "https://api.elevenlabs.io/v1/text-to-speech/03vEurziQfq3V8WZhQvn?optimize_streaming_latency=4&output_format=ulaw_8000";
         console.log(`[${this.callSid}] Generating audio for: "${text}"`);
+        console.log(`[${this.callSid}] THIS IS THE URL: "${text}"`);
         const body = {
             model_id: "eleven_turbo_v2",
             text: text,
