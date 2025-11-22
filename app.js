@@ -1619,7 +1619,7 @@ app.post("/requestDemo", (req,res) => {
             
                 if (user === null || (email.toLowerCase() === cmod.decrypt(user.email).toLowerCase())) {
 
-                    if (user.email.toLowerCase() !== cmod.decrypt(user.email)) {
+                    if (user && (user.email.toLowerCase() !== cmod.decrypt(user.email))) {
                         const newDemo = new Demo({
                         email: cmod.encrypt(email),
                         emailHash: md5(email),
