@@ -16,13 +16,7 @@
     "cors": "^2.8.5",
     "cron": "^3.3.2",
     "cryptr": "^6.3.0",
-<<<<<<< HEAD
     "dotenv": "^16.4.7",
-=======
-    "dotenv": "^16.4.5",
-    "email-reply-parser": "^1.8.2",
-    "express": "^4.21.2",
->>>>>>> b8f37e9ea0af92a66862887223b267830fb2c7ab
     "express-session": "^1.18.0",
     "md5": "^2.3.0",
     "memorystore": "^1.6.7",
