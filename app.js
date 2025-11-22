@@ -740,7 +740,7 @@ wss.on("connection", function (ws) {
     const startListener = (message) => {
         try {
             const parsedMsg = JSON.parse(message.toString());
-
+            console.log("we got to here")
             // We only care about the "start" message to associate the WebSocket
             if (parsedMsg.event === "start" && parsedMsg.start && parsedMsg.start.callSid) {
                 const callSid = parsedMsg.start.callSid;
@@ -1616,16 +1616,20 @@ app.post("/requestDemo", (req,res) => {
                 }))
             } else {
             
-                if (user === null) {
-                    const newDemo = new Demo({
+                if (user === null || (user.email.toLowerCase() === cmod.decrypt(user.email))) {
+
+                    if (user.email.toLowerCase() !== cmod.decrypt(user.email)) {
+                        const newDemo = new Demo({
                         email: cmod.encrypt(email),
                         emailHash: md5(email),
                         phoneNumber: cmod.encrypt(phoneNumber.toString()),
                         phoneNumberHash: md5(phoneNumber.toString()),
                         name: cmod.encrypt(name)
-                    })
+                        })
 
-                    newDemo.save()
+                        newDemo.save()
+                    }
+               
 
 
                     callSomeone(phoneNumber, "Marta", "Prince County", "sell", "demo")
