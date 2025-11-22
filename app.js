@@ -136,10 +136,10 @@ if (process.env.NODE_ENV === "DEV") {
         credentials: true
     }))
 } else {
-    options = {
-            key: fs.readFileSync('/etc/letsencrypt/live/api.sniphomes.com/privkey.pem'),
-            cert: fs.readFileSync('/etc/letsencrypt/live/api.sniphomes.com/fullchain.pem'),
-    }
+    // options = {
+    //         key: fs.readFileSync('/etc/letsencrypt/live/api.sniphomes.com/privkey.pem'),
+    //         cert: fs.readFileSync('/etc/letsencrypt/live/api.sniphomes.com/fullchain.pem'),
+    // }
 
     app.use(cors({
         origin: "https://sniphomes.com",
