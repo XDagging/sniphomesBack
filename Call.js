@@ -26,7 +26,7 @@ class Call {
         this.agentAction = agentAction;
         this.agentLocation = agentLocation;
         this.agentName = agentName;
-        
+
         this.noStart = false;
         this.streamSid = "";
         this.ws = null;
@@ -35,10 +35,12 @@ class Call {
 
         this.transcript = [];
         this.messageNumber = 0;
-        
+
         this.aiTalking = false;
         this.userSpeaking = false;
         this.speechTimeout = null;
+        this.sendingAudio = false; // Track if we're actively sending audio to Twilio
+        this.interrupted = false; // Track if user interrupted the AI
 
         this.aiDuration = 0;
 
@@ -70,9 +72,9 @@ class Call {
         this.chat = this.model.startChat({
             history: [
                 { role: "user", parts: [{ text: systemPrompt }] },
-                { 
-                    role: "model", 
-                    parts: [{ 
+                {
+                    role: "model",
+                    parts: [{
                         text: JSON.stringify({
                             response: `Hello, I am ${this.agentName}, a real estate agent. I was wondering if you were interested in ${this.agentAction}ing a house?`,
                             rating: 5, // Initial rating
@@ -90,7 +92,7 @@ class Call {
     buildSystemPrompt(personName, personOperating, personLook) {
         const personNumber = "3011233212"; // This should probably be an arg
         const formattedNumber = "three, zero, one, one, two, three, three, two, one, two";
-        
+
         const buyBool = "Ask the person what budget their budget is and how many people they plan to move in with. Redirect them to the manager if they give one, but push for both answers. DO NOT ASK ANY OTHER QUESTIONS.";
         const sellBool = `Tell the person about ${personOperating} area and ask them if they are homeowners. If so, ask them for the following info: would they be willing to sell their house, and if so, for how much? How many people do you live with currently (if they ask why we are asking, it is to grasp how large the home)? If they answer at least 1 of those questions, redirect to mananger. DO NOT ASK ANY OTHER QUESTIONS.`;
         const promptBool = personLook.toLowerCase() === "sell" ? sellBool : buyBool;
@@ -153,11 +155,19 @@ class Call {
                     break;
                 case "media":
                     // This is the raw audio data
-                    // We write it to Google STT *if* the AI isn't talking.
-                    // console.log("we got media here");
-                    if (this.googleSpeechStream && !this.aiTalking) {
+                    // We write it to Google STT stream
+                    if (this.googleSpeechStream) {
                         this.googleSpeechStream.write(msg.media.payload);
-                        
+
+                        // --- Interruption Detection ---
+                        // If AI is sending audio and user starts speaking, interrupt!
+                        if (this.sendingAudio && !this.userSpeaking) {
+                            console.log(`[${this.callSid}] User interrupting AI!`);
+                            this.interrupted = true;
+                            this.sendingAudio = false;
+                            this.sendClear(); // Clear Twilio's audio queue immediately
+                        }
+
                         // --- Simple VAD (Voice Activity Detection) ---
                         // We reset a timer every time we get new audio.
                         // If the timer fires, it means the user stopped talking.
@@ -169,10 +179,12 @@ class Call {
                             if (this.userSpeaking) {
                                 console.log(`[${this.callSid}] Silence detected, ending user turn.`);
                                 this.userSpeaking = false;
-                                this.stopGoogleSpeechStream(); // Stop listening
-                                // The 'isFinal' result from STT will trigger the LLM
+                                if (!this.sendingAudio) {
+                                    this.stopGoogleSpeechStream(); // Stop listening
+                                    // The 'isFinal' result from STT will trigger the LLM
+                                }
                             }
-                        }, 1200); // 1.2 seconds of silence
+                        }, 600); // 1.2 seconds of silence
                     }
                     break;
                 case "stop":
@@ -207,13 +219,13 @@ class Call {
                 if (result && result.alternatives[0] && result.isFinal) {
                     const transcript = result.alternatives[0].transcript.trim();
                     console.log(`[${this.callSid}] STT Final: "${transcript}"`);
-                    
+
                     if (this.speechTimeout) {
                         clearTimeout(this.speechTimeout);
                         this.speechTimeout = null;
                     }
                     this.userSpeaking = false;
-                    
+
                     // --- This is the trigger ---
                     // We got a final transcript, now process it with the LLM.
                     this.processLLM(transcript);
@@ -233,7 +245,7 @@ class Call {
         this.aiTalking = true;
         const initialHistory = await this.chat.getHistory();
         const initialResponse = initialHistory[1].parts[0].text;
-        
+
         // The initial response is already in our JSON format
         // We use processResponse, which is built for this.
         this.processResponse(initialResponse);
@@ -255,7 +267,7 @@ class Call {
             message: transcript,
             order: this.messageNumber++,
         });
-        
+
         console.log(`[${this.callSid}] Sending to Gemini: "${transcript}"`);
 
         try {
@@ -267,10 +279,10 @@ class Call {
             let sentenceBuffer = "";
             let jsonBuffer = "";
             let inJsonBlock = false;
-            
+
             for await (const chunk of stream) {
                 const chunkText = chunk.text();
-                
+
                 // --- Handle JSON streaming ---
                 // The JSON response itself might be streamed.
                 if (!inJsonBlock && chunkText.includes('{')) {
@@ -283,7 +295,7 @@ class Call {
                         // We have the full JSON, process it.
                         // We only expect ONE JSON object per turn.
                         console.log(`[${this.callSid}] Gemini Raw JSON: ${jsonBuffer}`);
-                        this.processResponse(jsonBuffer); 
+                        this.processResponse(jsonBuffer);
                         jsonBuffer = ""; // Reset for next turn
                     }
                 }
@@ -295,7 +307,7 @@ class Call {
             this.startGoogleSpeechStream();
         }
     }
-    
+
     calculatePlayback(audioDataLength, sampleRate) {
         // ulaw is 8 bits (1 byte) per sample.
         // So byte length / sample rate = duration in seconds
@@ -336,46 +348,49 @@ class Call {
             // Generate audio and stream it to Twilio
             const audioStream = await this.generateAudio(fedToTwilio.response);
             console.log(`[${this.callSid}] Streaming TTS to Twilio.`);
-            
+
+            // --- LATENCY OPTIMIZATION ---
+            // Start listening IMMEDIATELY, don't wait for audio to finish playing
+            this.aiTalking = false;
+            this.interrupted = false;
+            this.sendingAudio = true;
+            this.startGoogleSpeechStream();
+
             let totalAudioLength = 0;
-            
 
             for await (const audioChunk of audioStream) {
-                // console.log("we just sent an audio chunk")
+                // --- INTERRUPTION HANDLING ---
+                // Stop sending audio if user interrupted
+                if (this.interrupted) {
+                    console.log(`[${this.callSid}] Stopping audio send due to interruption.`);
+                    break;
+                }
+
                 const buffer = Buffer.from(audioChunk).toString("base64");
                 this.sendAudioChunk(buffer);
-                totalAudioLength += audioChunk.length
-                
+                totalAudioLength += audioChunk.length;
             }
 
+            this.sendingAudio = false;
+
             const durationInSec = this.calculatePlayback(totalAudioLength, 8000);
-            const durationInMs = durationInSec*1000;
-            console.log(`[${this.callSid}] TTS streaming finished.`);
+            const durationInMs = durationInSec * 1000;
 
+            if (this.interrupted) {
+                console.log(`[${this.callSid}] Audio interrupted by user. Already listening.`);
+            } else {
+                console.log(`[${this.callSid}] TTS streaming finished.`);
 
-            // --- Turn is over ---
-            // if (fedToTwilio.hangUp) {
-            //     console.log(`[${this.callSid}] Gemini initiated hangup.`);
-            //     this.hangup();
-            // } else {
-                // The AI is done talking.
-                // Clear the Twilio media queue just in case
-                setTimeout(() => {
-                    console.log(`[${this.callSid}] Audio grace period over. Clearing queue and listening.`);
-                    // Clear the Twilio media queue
-                    this.sendClear(); 
-                    // Start listening for the user's *next* turn.
-                    this.aiTalking = false;
-
-                    if (fedToTwilio.hangUp) {
-                        console.log("")
+                // Check if we should hang up after audio finishes
+                if (fedToTwilio.hangUp) {
+                    // Wait for audio to finish playing before hanging up
+                    setTimeout(() => {
+                        console.log(`[${this.callSid}] Hanging up after audio playback.`);
                         this.hangup();
-                    } else {
-                        this.startGoogleSpeechStream();
-                    }
-                    
-                }, durationInMs + 300); // 1-second grace period for audio playback
-            
+                    }, durationInMs + 300);
+                }
+            }
+
         } catch (e) {
             console.error(`[${this.callSid}] Error in processResponse:`, e);
             this.aiTalking = false;
@@ -446,7 +461,7 @@ class Call {
             }
 
             // Return the body stream directly
-            return response.body; 
+            return response.body;
         } catch (error) {
             console.error(`[${this.callSid}] ElevenLabs error:`, error);
             return Readable.from([]); // Return an empty stream on error
@@ -459,14 +474,14 @@ class Call {
             clearTimeout(this.hangupTimer);
             this.hangupTimer = null;
         }
-        
+
         this.stopGoogleSpeechStream();
 
         if (this.ws) {
             this.ws.close();
             this.ws = null;
         }
-        
+
         try {
             const call = await client.calls(this.callSid).fetch();
             if (call.status !== 'completed') {
@@ -503,7 +518,7 @@ class Call {
             const summaryModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
             const result = await summaryModel.generateContent(prompt);
             const aiSummary = result.response.text();
-            
+
             this.convoSummary = aiSummary;
             console.log(`[${this.callSid}] AI summary: ${aiSummary}`);
 
