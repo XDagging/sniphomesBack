@@ -156,7 +156,7 @@ class Call {
                 case "media":
                     // This is the raw audio data
                     // We write it to Google STT stream
-                    if (this.googleSpeechStream) {
+                    if (this.googleSpeechStream && this.googleSpeechStream.writable) {
                         this.googleSpeechStream.write(msg.media.payload);
 
                         // --- Interruption Detection ---
