@@ -1,8 +1,8 @@
 require("dotenv").config();
 const speech = require("@google-cloud/speech");
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
-// const fetch = require('node-fetch'); // Make sure you have node-fetch installed: npm install node-fetch
 const { Readable } = require("stream");
+const WebSocket = require("ws");
 
 // --- Gemini Setup ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
@@ -40,23 +40,17 @@ class Call {
         this.userSpeaking = false;
         this.speechTimeout = null;
 
-        this.sendingAudio = false; // Track if we're actively sending audio to Twilio
-        this.twilioPlaying = false; // Track if Twilio is likely playing audio
+        this.sendingAudio = false;
+        this.twilioPlaying = false;
         this.playbackTimeout = null;
-        this.interrupted = false; // Track if user interrupted the AI
+        this.interrupted = false;
 
         this.aiDuration = 0;
 
-        // --- Optimization 1: Use Gemini Chat History ---
-        // We create the model and chat session ONCE, with the system prompt.
-        // This avoids sending the massive prompt and full history every single turn.
         this.model = genAI.getGenerativeModel({
             model: "gemini-2.5-flash",
             generationConfig: {
                 temperature: 0.2,
-                // --- Optimization 2: Use JSON Mode ---
-                // This guarantees valid JSON output, so we can remove all the
-                // brittle string splitting and parsing logic in processResponse.
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: "OBJECT",
@@ -80,7 +74,7 @@ class Call {
                     parts: [{
                         text: JSON.stringify({
                             response: `Hello, I am ${this.agentName}, a real estate agent. I was wondering if you were interested in ${this.agentAction}ing a house?`,
-                            rating: 5, // Initial rating
+                            rating: 5,
                             hangUp: false
                         })
                     }]
@@ -89,18 +83,17 @@ class Call {
         });
 
         console.log(`[${this.callSid}] New call initialized.`);
-        this.hangupTimer = setTimeout(() => this.hangup(), 180 * 1000); // 3-minute max call
+        this.hangupTimer = setTimeout(() => this.hangup(), 180 * 1000);
     }
 
     buildSystemPrompt(personName, personOperating, personLook) {
-        const personNumber = "3011233212"; // This should probably be an arg
+        const personNumber = "3011233212";
         const formattedNumber = "three, zero, one, one, two, three, three, two, one, two";
 
         const buyBool = "Ask the person what budget their budget is and how many people they plan to move in with. Redirect them to the manager if they give one, but push for both answers. DO NOT ASK ANY OTHER QUESTIONS.";
         const sellBool = `Tell the person about ${personOperating} area and ask them if they are homeowners. If so, ask them for the following info: would they be willing to sell their house, and if so, for how much? How many people do you live with currently (if they ask why we are asking, it is to grasp how large the home)? If they answer at least 1 of those questions, redirect to mananger. DO NOT ASK ANY OTHER QUESTIONS.`;
         const promptBool = personLook.toLowerCase() === "sell" ? sellBool : buyBool;
 
-        // This prompt is sent only ONCE.
         return `
             You are a real estate agent named Marta. Your task is to engage naturally, asking relevant questions and responding appropriately based on what the person says. Your goal is to see if they are in the market for buying a house by engaging in a conversation. If the person isn't in the market for ${personLook}ing a house, ask them that they could contact you anytime. Be a little bit flirty with the person. 
 
@@ -124,7 +117,9 @@ class Call {
 
             Output your response in the specified JSON format.
             1. "response": The next statement or question you will say.
-            2. "rating": A number from 1 to 100 indicating the likelihood that this person is a good lead.
+            2. "rating": A
+
+ number from 1 to 100 indicating the likelihood that this person is a good lead.
             3. "hangUp": A boolean value indicating whether you should hangup.
 
             The conversation history will be provided. Start with your first greeting.
@@ -133,35 +128,25 @@ class Call {
 
     async setWebsocket(ws, streamSid) {
         this.ws = ws;
-        // Once this has ran once, the start will never be run again;
         if (!this.noStart) {
             this.streamSid = streamSid;
 
             console.log(`[${this.callSid}] Twilio stream started (${this.streamSid}).`);
-            // --- Optimization 3: Start Persistent STT Stream ---
-            // We start the STT stream and it stays open, listening.
             this.startGoogleSpeechStream();
-            // Start the conversation
             this.startConversation();
             this.noStart = true;
         }
 
         this.ws.on("message", (message) => {
-            // console.log("we got a message inside the websocket")
             const msg = JSON.parse(message);
             switch (msg.event) {
                 case "connected":
                     console.log(`[${this.callSid}] Twilio stream connected.`);
                     break;
                 case "media":
-                    // This is the raw audio data
-                    // We write it to Google STT stream
                     if (this.googleSpeechStream && this.googleSpeechStream.writable) {
                         this.googleSpeechStream.write(msg.media.payload);
 
-                        // --- Simple VAD (Voice Activity Detection) ---
-                        // We reset a timer every time we get new audio.
-                        // If the timer fires, it means the user stopped talking.
                         this.userSpeaking = true;
                         if (this.speechTimeout) {
                             clearTimeout(this.speechTimeout);
@@ -171,11 +156,10 @@ class Call {
                                 console.log(`[${this.callSid}] Silence detected, ending user turn.`);
                                 this.userSpeaking = false;
                                 if (!this.sendingAudio) {
-                                    this.stopGoogleSpeechStream(); // Stop listening
-                                    // The 'isFinal' result from STT will trigger the LLM
+                                    this.stopGoogleSpeechStream();
                                 }
                             }
-                        }, 600); // 0.6 seconds of silence
+                        }, 600);
                     }
                     break;
                 case "stop":
@@ -199,7 +183,7 @@ class Call {
                     encoding: "MULAW",
                     sampleRateHertz: 8000,
                     languageCode: "en-US",
-                    interimResults: true, // We need interim results for faster interruption
+                    interimResults: true,
                 },
             })
             .on("error", (error) => {
@@ -210,13 +194,11 @@ class Call {
                 if (result && result.alternatives[0]) {
                     const transcript = result.alternatives[0].transcript.trim();
 
-                    // --- Interruption Detection ---
-                    // Check if we are sending audio OR if Twilio is still playing it
                     if ((this.sendingAudio || this.twilioPlaying) && transcript.length > 0) {
                         console.log(`[${this.callSid}] User interrupting AI (STT): "${transcript}"`);
                         this.interrupted = true;
                         this.sendingAudio = false;
-                        this.twilioPlaying = false; // Stop tracking playback
+                        this.twilioPlaying = false;
 
                         if (this.playbackTimeout) {
                             clearTimeout(this.playbackTimeout);
@@ -228,7 +210,6 @@ class Call {
 
                     if (result.isFinal) {
                         const transcript = result.alternatives[0].transcript.trim();
-                        // --- LOGGING: STT Final ---
                         console.log(`[${this.callSid}] [${Date.now()}] STT Final: "${transcript}"`);
 
                         if (this.speechTimeout) {
@@ -237,8 +218,6 @@ class Call {
                         }
                         this.userSpeaking = false;
 
-                        // --- This is the trigger ---
-                        // We got a final transcript, now process it with the LLM.
                         this.processLLM(transcript);
                     }
                 }
@@ -253,26 +232,40 @@ class Call {
     }
 
     async startConversation() {
-        // This function sends the *initial* greeting from the chat history
         this.aiTalking = true;
         const initialHistory = await this.chat.getHistory();
-        const initialResponse = initialHistory[1].parts[0].text;
+        const initialResponseJSON = initialHistory[1].parts[0].text;
 
-        // The initial response is already in our JSON format
-        // We use processResponse, which is built for this.
-        this.processResponse(initialResponse);
+        const elevenLabsWs = this.setupElevenLabsWs();
+
+        try {
+            const parsed = JSON.parse(initialResponseJSON);
+
+            if (elevenLabsWs && elevenLabsWs.readyState === WebSocket.OPEN) {
+                elevenLabsWs.send(JSON.stringify({
+                    text: parsed.response,
+                    try_trigger_generation: true,
+                }));
+                elevenLabsWs.send(JSON.stringify({ text: "" }));
+            }
+
+            this.processResponse(initialResponseJSON);
+        } catch (e) {
+            console.error(`[${this.callSid}] Error processing initial greeting:`, e);
+            this.processResponse(initialResponseJSON);
+        }
     }
 
     async processLLM(transcript) {
         if (!transcript) {
             console.log(`[${this.callSid}] Empty transcript, restarting STT.`);
-            this.aiTalking = false; // Allow user to speak again
-            this.startGoogleSpeechStream(); // Start listening again
+            this.aiTalking = false;
+            this.startGoogleSpeechStream();
             return;
         }
 
-        this.aiTalking = true; // AI is now "thinking" and will talk
-        this.stopGoogleSpeechStream(); // Stop listening while we process and talk
+        this.aiTalking = true;
+        this.stopGoogleSpeechStream();
 
         this.transcript.push({
             sender: "Person on the phone",
@@ -280,22 +273,20 @@ class Call {
             order: this.messageNumber++,
         });
 
-        // --- LOGGING: LLM Request Sent ---
         console.log(`[${this.callSid}] [${Date.now()}] Sending to Gemini: "${transcript}"`);
 
+        const elevenLabsWs = this.setupElevenLabsWs();
+
         try {
-            // --- Optimization 4: LLM Streaming ---
-            // We ask Gemini for a *stream* of text, not a single response.
             const result = await this.chat.sendMessageStream(transcript);
             const stream = result.stream;
 
-            let sentenceBuffer = "";
             let jsonBuffer = "";
             let inJsonBlock = false;
             let firstToken = true;
+            let lastSpeechText = "";
 
             for await (const chunk of stream) {
-                // --- LOGGING: LLM First Token ---
                 if (firstToken) {
                     console.log(`[${this.callSid}] [${Date.now()}] Gemini First Token Received`);
                     firstToken = false;
@@ -303,34 +294,73 @@ class Call {
 
                 const chunkText = chunk.text();
 
-                // --- Handle JSON streaming ---
-                // The JSON response itself might be streamed.
                 if (!inJsonBlock && chunkText.includes('{')) {
                     inJsonBlock = true;
                 }
                 if (inJsonBlock) {
                     jsonBuffer += chunkText;
+
+                    if (elevenLabsWs && elevenLabsWs.readyState === WebSocket.OPEN) {
+                        const startMarker = '"response"';
+                        const startIdx = jsonBuffer.indexOf(startMarker);
+                        if (startIdx !== -1) {
+                            const contentStart = jsonBuffer.indexOf('"', startIdx + startMarker.length);
+                            if (contentStart !== -1) {
+                                let contentEnd = -1;
+                                for (let i = contentStart + 1; i < jsonBuffer.length; i++) {
+                                    if (jsonBuffer[i] === '"' && jsonBuffer[i - 1] !== '\\') {
+                                        contentEnd = i;
+                                        break;
+                                    }
+                                }
+
+                                let currentSpeechText;
+                                if (contentEnd !== -1) {
+                                    currentSpeechText = jsonBuffer.substring(contentStart + 1, contentEnd);
+                                } else {
+                                    currentSpeechText = jsonBuffer.substring(contentStart + 1);
+                                }
+
+                                try {
+                                    currentSpeechText = currentSpeechText.replace(/\\"/g, '"').replace(/\\n/g, '\n');
+                                } catch (e) { }
+
+                                if (currentSpeechText.length > lastSpeechText.length) {
+                                    const newText = currentSpeechText.substring(lastSpeechText.length);
+                                    if (newText.length > 0) {
+                                        elevenLabsWs.send(JSON.stringify({
+                                            text: newText,
+                                            try_trigger_generation: true,
+                                        }));
+                                        lastSpeechText = currentSpeechText;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     if (chunkText.includes('}')) {
                         inJsonBlock = false;
-                        // We have the full JSON, process it.
-                        // We only expect ONE JSON object per turn.
-                        console.log(`[${this.callSid}] Gemini Raw JSON: ${jsonBuffer} `);
+                        console.log(`[${this.callSid}] Gemini Raw JSON: ${jsonBuffer}`);
+
+                        if (elevenLabsWs && elevenLabsWs.readyState === WebSocket.OPEN) {
+                            elevenLabsWs.send(JSON.stringify({ text: "" }));
+                        }
+
                         this.processResponse(jsonBuffer);
-                        jsonBuffer = ""; // Reset for next turn
+                        jsonBuffer = "";
                     }
                 }
             }
         } catch (error) {
-            console.error(`[${this.callSid}] Error streaming from Gemini: `, error);
-            // In case of error, just go back to listening
+            console.error(`[${this.callSid}] Error streaming from Gemini:`, error);
+            if (elevenLabsWs) elevenLabsWs.close();
             this.aiTalking = false;
             this.startGoogleSpeechStream();
         }
     }
 
     calculatePlayback(audioDataLength, sampleRate) {
-        // ulaw is 8 bits (1 byte) per sample.
-        // So byte length / sample rate = duration in seconds
         return audioDataLength / sampleRate;
     }
 
@@ -338,13 +368,11 @@ class Call {
         try {
             let fedToTwilio;
             try {
-                // Remove markdown backticks if present
                 const cleanJson = geminiResponse.replace(/```json\s*/g, "").replace(/```/g, "").trim();
                 fedToTwilio = JSON.parse(cleanJson);
             } catch (e) {
                 console.error(`[${this.callSid}] Failed to parse Gemini JSON:`, e);
                 console.error(`[${this.callSid}] Raw response: ${geminiResponse}`);
-                // Simple retry/recovery: just listen again
                 this.aiTalking = false;
                 this.startGoogleSpeechStream();
                 return;
@@ -357,78 +385,23 @@ class Call {
                 return;
             }
 
-            // We have a valid response to say.
             this.transcript.push({
                 sender: "You",
                 message: fedToTwilio.response,
                 order: this.messageNumber++,
             });
-            this.rating = fedToTwilio.rating; // Assuming this.rating exists
+            this.rating = fedToTwilio.rating;
 
-            // Generate audio and stream it to Twilio
-            // --- LOGGING: TTS Start ---
-            console.log(`[${this.callSid}] [${Date.now()}] Starting TTS Generation`);
-            const audioStream = await this.generateAudio(fedToTwilio.response);
-            console.log(`[${this.callSid}] [${Date.now()}] Streaming TTS to Twilio.`);
+            // Metadata handling only - audio is already sent via WebSocket
+            console.log(`[${this.callSid}] Metadata: rating=${fedToTwilio.rating}, hangUp=${fedToTwilio.hangUp}`);
 
-            // --- LATENCY OPTIMIZATION ---
-            // Start listening IMMEDIATELY, don't wait for audio to finish playing
-            this.aiTalking = false;
-            this.interrupted = false;
-            this.sendingAudio = true;
-            this.twilioPlaying = true; // Assume playing starts soon
-            this.startGoogleSpeechStream();
-
-            let totalAudioLength = 0;
-            const startTime = Date.now();
-
-            for await (const audioChunk of audioStream) {
-                // --- INTERRUPTION HANDLING ---
-                // Stop sending audio if user interrupted
-                if (this.interrupted) {
-                    console.log(`[${this.callSid}] Stopping audio send due to interruption.`);
-                    break;
-                }
-
-                const buffer = Buffer.from(audioChunk).toString("base64");
-                this.sendAudioChunk(buffer);
-                totalAudioLength += audioChunk.length;
-            }
-
-            this.sendingAudio = false;
-
-            const durationInSec = this.calculatePlayback(totalAudioLength, 8000);
-            const durationInMs = durationInSec * 1000;
-
-            // We finished SENDING, but Twilio is still PLAYING.
-            // We need to keep twilioPlaying = true until the audio is done.
-            const timeSinceStart = Date.now() - startTime;
-            const remainingPlayback = Math.max(0, durationInMs - timeSinceStart);
-
-            console.log(`[${this.callSid}] Audio sent. Est. remaining playback: ${remainingPlayback}ms`);
-
-            if (remainingPlayback > 0 && !this.interrupted) {
-                this.playbackTimeout = setTimeout(() => {
-                    this.twilioPlaying = false;
-                    console.log(`[${this.callSid}] Playback finished (est).`);
-
-                    // Check if we should hang up after audio finishes
-                    if (fedToTwilio.hangUp && !this.interrupted) {
-                        console.log(`[${this.callSid}] Hanging up after audio playback.`);
+            if (fedToTwilio.hangUp && !this.interrupted) {
+                setTimeout(() => {
+                    if (!this.interrupted) {
+                        console.log(`[${this.callSid}] Hanging up after AI response.`);
                         this.hangup();
                     }
-                }, remainingPlayback + 200); // Add a small buffer
-            } else {
-                this.twilioPlaying = false;
-                if (fedToTwilio.hangUp && !this.interrupted) {
-                    this.hangup();
-                }
-            }
-
-            if (this.interrupted) {
-                console.log(`[${this.callSid}] Audio interrupted by user. Already listening.`);
-            } else {
-                console.log(`[${this.callSid}] TTS streaming finished.`);
+                }, 2000);
             }
 
         } catch (e) {
@@ -438,13 +411,80 @@ class Call {
         }
     }
 
+    setupElevenLabsWs() {
+        const voiceId = "7EzWGsX10sAS4c9m9cPf";
+        const model = "eleven_turbo_v2";
+        const wsUrl = `wss://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream-input?model_id=${model}`;
+
+        const ws = new WebSocket(wsUrl);
+
+        ws.on("open", () => {
+            console.log(`[${this.callSid}] [${Date.now()}] ElevenLabs WS Connected`);
+            ws.send(JSON.stringify({
+                text: " ",
+                voice_settings: {
+                    stability: 0.5,
+                    similarity_boost: 0.75,
+                },
+                xi_api_key: process.env.ELEVENLABS_KEY,
+            }));
+
+            this.aiTalking = false;
+            this.interrupted = false;
+            this.sendingAudio = true;
+            this.twilioPlaying = true;
+            this.startGoogleSpeechStream();
+        });
+
+        ws.on("message", (data) => {
+            const message = JSON.parse(data);
+
+            if (message.audio) {
+                if (this.interrupted) {
+                    console.log(`[${this.callSid}] Interrupted, skipping WS audio chunk.`);
+                    return;
+                }
+
+                const buffer = message.audio;
+                this.sendAudioChunk(buffer);
+
+                const audioBuffer = Buffer.from(buffer, 'base64');
+                const durationInSec = this.calculatePlayback(audioBuffer.length, 8000);
+                const durationInMs = durationInSec * 1000;
+
+                if (this.playbackTimeout) {
+                    clearTimeout(this.playbackTimeout);
+                }
+                this.twilioPlaying = true;
+                this.playbackTimeout = setTimeout(() => {
+                    this.twilioPlaying = false;
+                    console.log(`[${this.callSid}] WS Playback finished (est).`);
+                }, durationInMs + 500);
+            }
+
+            if (message.isFinal) {
+                console.log(`[${this.callSid}] ElevenLabs WS stream finished.`);
+            }
+        });
+
+        ws.on("error", (error) => {
+            console.error(`[${this.callSid}] ElevenLabs WS Error:`, error);
+        });
+
+        ws.on("close", () => {
+            console.log(`[${this.callSid}] ElevenLabs WS Closed.`);
+            this.sendingAudio = false;
+        });
+
+        return ws;
+    }
+
     sendAudioChunk(chunk) {
         if (this.interrupted) {
             console.log(`[${this.callSid}] Interrupted, skipping audio chunk.`);
             return;
         }
         if (this.ws) {
-            // console.log(`[${this.callSid}] Sending audio chunk (${chunk.length} chars)`);
             this.ws.send(
                 JSON.stringify({
                     event: "media",
@@ -466,57 +506,6 @@ class Call {
                     streamSid: this.streamSid,
                 })
             );
-        }
-    }
-
-    async generateAudio(text) {
-        // Your ElevenLabs function is already streaming-ready, which is perfect.
-        // Just make sure you are using an async generator or returning the stream.
-
-        // black woman 03vEurziQfq3V8WZhQvn
-
-        const id = "7EzWGsX10sAS4c9m9cPf"
-
-
-        const url = `https://api.elevenlabs.io/v1/text-to-speech/${id}?optimize_streaming_latency=4&output_format=ulaw_8000`;
-        console.log(`[${this.callSid}] Generating audio for: "${text}"`);
-        console.log(`[${this.callSid}] THIS IS THE URL: "${text}"`);
-        const body = {
-            model_id: "eleven_turbo_v2",
-            text: text,
-            voice_settings: {
-                stability: 0.5,
-                similarity_boost: 0.75,
-                style: 0,
-                use_speaker_boost: false,
-            },
-        };
-
-        try {
-            // --- LOGGING: TTS Request Sent ---
-            console.log(`[${this.callSid}] [${Date.now()}] Sending ElevenLabs Request`);
-            const response = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "xi-api-key": process.env.ELEVENLABS_KEY,
-                    "Content-Type": "application/json",
-                    "accept": "audio/ulaw",
-                },
-                body: JSON.stringify(body),
-            });
-
-            if (!response.ok) {
-                throw new Error(`ElevenLabs API error: ${response.statusText}`);
-            }
-
-            // --- LOGGING: TTS Response Received ---
-            console.log(`[${this.callSid}] [${Date.now()}] ElevenLabs Response Headers Received`);
-
-            // Return the body stream directly
-            return response.body;
-        } catch (error) {
-            console.error(`[${this.callSid}] ElevenLabs error:`, error);
-            return Readable.from([]); // Return an empty stream on error
         }
     }
 
@@ -548,7 +537,6 @@ class Call {
             console.error(`[${this.callSid}] Error updating call status:`, error);
         }
 
-        // --- Post-call summary logic ---
         if (this.uuid !== "demo" && this.rating > 75) {
             this.isLead = true;
             this.generateCallSummary();
@@ -571,7 +559,6 @@ class Call {
             `;
 
         try {
-            // Use a *different* model for summarization, as the chat model's history is specific
             const summaryModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
             const result = await summaryModel.generateContent(prompt);
             const aiSummary = result.response.text();
@@ -586,7 +573,6 @@ class Call {
                 location: this.agentLocation,
                 message: this.convoSummary,
             };
-            // TODO: Send this response somewhere (e.g., your database or API)
             console.log(`[${this.callSid}] Lead details:`, response);
 
         } catch (error) {
