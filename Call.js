@@ -409,7 +409,7 @@ class Call {
         return new Promise((resolve, reject) => {
             const voiceId = "7EzWGsX10sAS4c9m9cPf";
             const model = "eleven_turbo_v2";
-            const wsUrl = `wss://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream-input?model_id=${model}`;
+            const wsUrl = `wss://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream-input?model_id=${model}&output_format=ulaw_8000`;
 
             const ws = new WebSocket(wsUrl);
 
