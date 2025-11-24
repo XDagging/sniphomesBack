@@ -117,9 +117,7 @@ class Call {
 
             Output your response in the specified JSON format.
             1. "response": The next statement or question you will say.
-            2. "rating": A
-
- number from 1 to 100 indicating the likelihood that this person is a good lead.
+            2. "rating": A number from 1 to 100 indicating the likelihood that this person is a good lead.
             3. "hangUp": A boolean value indicating whether you should hangup.
 
             The conversation history will be provided. Start with your first greeting.
@@ -236,23 +234,20 @@ class Call {
         const initialHistory = await this.chat.getHistory();
         const initialResponseJSON = initialHistory[1].parts[0].text;
 
-        const elevenLabsWs = this.setupElevenLabsWs();
-
         try {
             const parsed = JSON.parse(initialResponseJSON);
 
-            if (elevenLabsWs && elevenLabsWs.readyState === WebSocket.OPEN) {
-                elevenLabsWs.send(JSON.stringify({
-                    text: parsed.response,
-                    try_trigger_generation: true,
-                }));
-                elevenLabsWs.send(JSON.stringify({ text: "" }));
-            }
+            const elevenLabsWs = await this.setupElevenLabsWs();
+
+            elevenLabsWs.send(JSON.stringify({
+                text: parsed.response,
+                try_trigger_generation: true,
+            }));
+            elevenLabsWs.send(JSON.stringify({ text: "" }));
 
             this.processResponse(initialResponseJSON);
         } catch (e) {
             console.error(`[${this.callSid}] Error processing initial greeting:`, e);
-            this.processResponse(initialResponseJSON);
         }
     }
 
@@ -275,7 +270,7 @@ class Call {
 
         console.log(`[${this.callSid}] [${Date.now()}] Sending to Gemini: "${transcript}"`);
 
-        const elevenLabsWs = this.setupElevenLabsWs();
+        const elevenLabsWs = await this.setupElevenLabsWs();
 
         try {
             const result = await this.chat.sendMessageStream(transcript);
@@ -392,7 +387,6 @@ class Call {
             });
             this.rating = fedToTwilio.rating;
 
-            // Metadata handling only - audio is already sent via WebSocket
             console.log(`[${this.callSid}] Metadata: rating=${fedToTwilio.rating}, hangUp=${fedToTwilio.hangUp}`);
 
             if (fedToTwilio.hangUp && !this.interrupted) {
@@ -412,71 +406,75 @@ class Call {
     }
 
     setupElevenLabsWs() {
-        const voiceId = "7EzWGsX10sAS4c9m9cPf";
-        const model = "eleven_turbo_v2";
-        const wsUrl = `wss://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream-input?model_id=${model}`;
+        return new Promise((resolve, reject) => {
+            const voiceId = "7EzWGsX10sAS4c9m9cPf";
+            const model = "eleven_turbo_v2";
+            const wsUrl = `wss://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream-input?model_id=${model}`;
 
-        const ws = new WebSocket(wsUrl);
+            const ws = new WebSocket(wsUrl);
 
-        ws.on("open", () => {
-            console.log(`[${this.callSid}] [${Date.now()}] ElevenLabs WS Connected`);
-            ws.send(JSON.stringify({
-                text: " ",
-                voice_settings: {
-                    stability: 0.5,
-                    similarity_boost: 0.75,
-                },
-                xi_api_key: process.env.ELEVENLABS_KEY,
-            }));
+            ws.on("open", () => {
+                console.log(`[${this.callSid}] [${Date.now()}] ElevenLabs WS Connected`);
+                ws.send(JSON.stringify({
+                    text: " ",
+                    voice_settings: {
+                        stability: 0.5,
+                        similarity_boost: 0.75,
+                    },
+                    xi_api_key: process.env.ELEVENLABS_KEY,
+                }));
 
-            this.aiTalking = false;
-            this.interrupted = false;
-            this.sendingAudio = true;
-            this.twilioPlaying = true;
-            this.startGoogleSpeechStream();
-        });
-
-        ws.on("message", (data) => {
-            const message = JSON.parse(data);
-
-            if (message.audio) {
-                if (this.interrupted) {
-                    console.log(`[${this.callSid}] Interrupted, skipping WS audio chunk.`);
-                    return;
-                }
-
-                const buffer = message.audio;
-                this.sendAudioChunk(buffer);
-
-                const audioBuffer = Buffer.from(buffer, 'base64');
-                const durationInSec = this.calculatePlayback(audioBuffer.length, 8000);
-                const durationInMs = durationInSec * 1000;
-
-                if (this.playbackTimeout) {
-                    clearTimeout(this.playbackTimeout);
-                }
+                this.aiTalking = false;
+                this.interrupted = false;
+                this.sendingAudio = true;
                 this.twilioPlaying = true;
-                this.playbackTimeout = setTimeout(() => {
-                    this.twilioPlaying = false;
-                    console.log(`[${this.callSid}] WS Playback finished (est).`);
-                }, durationInMs + 500);
-            }
+                this.startGoogleSpeechStream();
 
-            if (message.isFinal) {
-                console.log(`[${this.callSid}] ElevenLabs WS stream finished.`);
-            }
+                resolve(ws);
+            });
+
+            ws.on("message", (data) => {
+                const message = JSON.parse(data);
+
+                if (message.audio) {
+                    console.log(`[${this.callSid}] Received audio chunk from ElevenLabs`);
+                    if (this.interrupted) {
+                        console.log(`[${this.callSid}] Interrupted, skipping WS audio chunk.`);
+                        return;
+                    }
+
+                    const buffer = message.audio;
+                    this.sendAudioChunk(buffer);
+
+                    const audioBuffer = Buffer.from(buffer, 'base64');
+                    const durationInSec = this.calculatePlayback(audioBuffer.length, 8000);
+                    const durationInMs = durationInSec * 1000;
+
+                    if (this.playbackTimeout) {
+                        clearTimeout(this.playbackTimeout);
+                    }
+                    this.twilioPlaying = true;
+                    this.playbackTimeout = setTimeout(() => {
+                        this.twilioPlaying = false;
+                        console.log(`[${this.callSid}] WS Playback finished (est).`);
+                    }, durationInMs + 500);
+                }
+
+                if (message.isFinal) {
+                    console.log(`[${this.callSid}] ElevenLabs WS stream finished.`);
+                }
+            });
+
+            ws.on("error", (error) => {
+                console.error(`[${this.callSid}] ElevenLabs WS Error:`, error);
+                reject(error);
+            });
+
+            ws.on("close", () => {
+                console.log(`[${this.callSid}] ElevenLabs WS Closed.`);
+                this.sendingAudio = false;
+            });
         });
-
-        ws.on("error", (error) => {
-            console.error(`[${this.callSid}] ElevenLabs WS Error:`, error);
-        });
-
-        ws.on("close", () => {
-            console.log(`[${this.callSid}] ElevenLabs WS Closed.`);
-            this.sendingAudio = false;
-        });
-
-        return ws;
     }
 
     sendAudioChunk(chunk) {
