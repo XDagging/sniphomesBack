@@ -141,10 +141,7 @@ class Call {
             // Start the conversation
             this.startConversation();
             this.noStart = true;
-
-
         }
-
 
         this.ws.on("message", (message) => {
             // console.log("we got a message inside the websocket")
@@ -158,15 +155,6 @@ class Call {
                     // We write it to Google STT stream
                     if (this.googleSpeechStream && this.googleSpeechStream.writable) {
                         this.googleSpeechStream.write(msg.media.payload);
-
-                        // --- Interruption Detection ---
-                        // If AI is sending audio and user starts speaking, interrupt!
-                        if (this.sendingAudio && !this.userSpeaking) {
-                            console.log(`[${this.callSid}] User interrupting AI!`);
-                            this.interrupted = true;
-                            this.sendingAudio = false;
-                            this.sendClear(); // Clear Twilio's audio queue immediately
-                        }
 
                         // --- Simple VAD (Voice Activity Detection) ---
                         // We reset a timer every time we get new audio.
@@ -184,7 +172,7 @@ class Call {
                                     // The 'isFinal' result from STT will trigger the LLM
                                 }
                             }
-                        }, 600); // 1.2 seconds of silence
+                        }, 600); // 0.6 seconds of silence
                     }
                     break;
                 case "stop":
@@ -208,7 +196,7 @@ class Call {
                     encoding: "MULAW",
                     sampleRateHertz: 8000,
                     languageCode: "en-US",
-                    interimResults: false, // We only care about final results
+                    interimResults: true, // We need interim results for faster interruption
                 },
             })
             .on("error", (error) => {
@@ -216,19 +204,31 @@ class Call {
             })
             .on("data", (data) => {
                 const result = data.results[0];
-                if (result && result.alternatives[0] && result.isFinal) {
+                if (result && result.alternatives[0]) {
                     const transcript = result.alternatives[0].transcript.trim();
-                    console.log(`[${this.callSid}] STT Final: "${transcript}"`);
 
-                    if (this.speechTimeout) {
-                        clearTimeout(this.speechTimeout);
-                        this.speechTimeout = null;
+                    // --- Interruption Detection ---
+                    if (this.sendingAudio && transcript.length > 0) {
+                        console.log(`[${this.callSid}] User interrupting AI (STT): "${transcript}"`);
+                        this.interrupted = true;
+                        this.sendingAudio = false;
+                        this.sendClear();
                     }
-                    this.userSpeaking = false;
 
-                    // --- This is the trigger ---
-                    // We got a final transcript, now process it with the LLM.
-                    this.processLLM(transcript);
+                    if (result.isFinal) {
+                        const transcript = result.alternatives[0].transcript.trim();
+                        console.log(`[${this.callSid}] STT Final: "${transcript}"`);
+
+                        if (this.speechTimeout) {
+                            clearTimeout(this.speechTimeout);
+                            this.speechTimeout = null;
+                        }
+                        this.userSpeaking = false;
+
+                        // --- This is the trigger ---
+                        // We got a final transcript, now process it with the LLM.
+                        this.processLLM(transcript);
+                    }
                 }
             });
     }
@@ -294,14 +294,14 @@ class Call {
                         inJsonBlock = false;
                         // We have the full JSON, process it.
                         // We only expect ONE JSON object per turn.
-                        console.log(`[${this.callSid}] Gemini Raw JSON: ${jsonBuffer}`);
+                        console.log(`[${this.callSid}] Gemini Raw JSON: ${jsonBuffer} `);
                         this.processResponse(jsonBuffer);
                         jsonBuffer = ""; // Reset for next turn
                     }
                 }
             }
         } catch (error) {
-            console.error(`[${this.callSid}] Error streaming from Gemini:`, error);
+            console.error(`[${this.callSid}] Error streaming from Gemini: `, error);
             // In case of error, just go back to listening
             this.aiTalking = false;
             this.startGoogleSpeechStream();
@@ -319,7 +319,7 @@ class Call {
             let fedToTwilio;
             try {
                 // Remove markdown backticks if present
-                const cleanJson = geminiResponse.replace(/```json/g, "").replace(/```/g, "").trim();
+                const cleanJson = geminiResponse.replace(/```json\s*/g, "").replace(/```/g, "").trim();
                 fedToTwilio = JSON.parse(cleanJson);
             } catch (e) {
                 console.error(`[${this.callSid}] Failed to parse Gemini JSON:`, e);
@@ -452,6 +452,7 @@ class Call {
                 headers: {
                     "xi-api-key": process.env.ELEVENLABS_KEY,
                     "Content-Type": "application/json",
+                    "accept": "audio/ulaw",
                 },
                 body: JSON.stringify(body),
             });
@@ -507,11 +508,11 @@ class Call {
             .join("\n\n");
 
         const prompt = `I'm providing a transcript of a conversation between a real estate agent and a client.
-        
-        Give a 150 character summary of the key points in the conversation that would be useful to a real estate agent.
-        
-        Here is the transcript: ${readableTranscript}
-        `;
+            
+            Give a 150 character summary of the key points in the conversation that would be useful to a real estate agent.
+            
+            Here is the transcript: ${readableTranscript}
+            `;
 
         try {
             // Use a *different* model for summarization, as the chat model's history is specific
