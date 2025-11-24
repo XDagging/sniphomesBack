@@ -39,7 +39,10 @@ class Call {
         this.aiTalking = false;
         this.userSpeaking = false;
         this.speechTimeout = null;
+
         this.sendingAudio = false; // Track if we're actively sending audio to Twilio
+        this.twilioPlaying = false; // Track if Twilio is likely playing audio
+        this.playbackTimeout = null;
         this.interrupted = false; // Track if user interrupted the AI
 
         this.aiDuration = 0;
@@ -208,10 +211,18 @@ class Call {
                     const transcript = result.alternatives[0].transcript.trim();
 
                     // --- Interruption Detection ---
-                    if (this.sendingAudio && transcript.length > 0) {
+                    // Check if we are sending audio OR if Twilio is still playing it
+                    if ((this.sendingAudio || this.twilioPlaying) && transcript.length > 0) {
                         console.log(`[${this.callSid}] User interrupting AI (STT): "${transcript}"`);
                         this.interrupted = true;
                         this.sendingAudio = false;
+                        this.twilioPlaying = false; // Stop tracking playback
+
+                        if (this.playbackTimeout) {
+                            clearTimeout(this.playbackTimeout);
+                            this.playbackTimeout = null;
+                        }
+
                         this.sendClear();
                     }
 
@@ -354,9 +365,11 @@ class Call {
             this.aiTalking = false;
             this.interrupted = false;
             this.sendingAudio = true;
+            this.twilioPlaying = true; // Assume playing starts soon
             this.startGoogleSpeechStream();
 
             let totalAudioLength = 0;
+            const startTime = Date.now();
 
             for await (const audioChunk of audioStream) {
                 // --- INTERRUPTION HANDLING ---
@@ -376,19 +389,35 @@ class Call {
             const durationInSec = this.calculatePlayback(totalAudioLength, 8000);
             const durationInMs = durationInSec * 1000;
 
+            // We finished SENDING, but Twilio is still PLAYING.
+            // We need to keep twilioPlaying = true until the audio is done.
+            const timeSinceStart = Date.now() - startTime;
+            const remainingPlayback = Math.max(0, durationInMs - timeSinceStart);
+
+            console.log(`[${this.callSid}] Audio sent. Est. remaining playback: ${remainingPlayback}ms`);
+
+            if (remainingPlayback > 0 && !this.interrupted) {
+                this.playbackTimeout = setTimeout(() => {
+                    this.twilioPlaying = false;
+                    console.log(`[${this.callSid}] Playback finished (est).`);
+
+                    // Check if we should hang up after audio finishes
+                    if (fedToTwilio.hangUp && !this.interrupted) {
+                        console.log(`[${this.callSid}] Hanging up after audio playback.`);
+                        this.hangup();
+                    }
+                }, remainingPlayback + 200); // Add a small buffer
+            } else {
+                this.twilioPlaying = false;
+                if (fedToTwilio.hangUp && !this.interrupted) {
+                    this.hangup();
+                }
+            }
+
             if (this.interrupted) {
                 console.log(`[${this.callSid}] Audio interrupted by user. Already listening.`);
             } else {
                 console.log(`[${this.callSid}] TTS streaming finished.`);
-
-                // Check if we should hang up after audio finishes
-                if (fedToTwilio.hangUp) {
-                    // Wait for audio to finish playing before hanging up
-                    setTimeout(() => {
-                        console.log(`[${this.callSid}] Hanging up after audio playback.`);
-                        this.hangup();
-                    }, durationInMs + 300);
-                }
             }
 
         } catch (e) {
@@ -480,6 +509,11 @@ class Call {
         if (this.hangupTimer) {
             clearTimeout(this.hangupTimer);
             this.hangupTimer = null;
+        }
+
+        if (this.playbackTimeout) {
+            clearTimeout(this.playbackTimeout);
+            this.playbackTimeout = null;
         }
 
         this.stopGoogleSpeechStream();
