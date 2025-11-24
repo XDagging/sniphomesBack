@@ -44,6 +44,7 @@ class Call {
         this.twilioPlaying = false;
         this.playbackTimeout = null;
         this.interrupted = false;
+        this.elevenLabsWs = null; // Track current ElevenLabs WebSocket
 
         this.aiDuration = 0;
 
@@ -203,6 +204,12 @@ class Call {
                             this.playbackTimeout = null;
                         }
 
+                        // Close the ElevenLabs WebSocket to stop audio generation
+                        if (this.elevenLabsWs) {
+                            this.elevenLabsWs.close();
+                            this.elevenLabsWs = null;
+                        }
+
                         this.sendClear();
                     }
 
@@ -237,13 +244,13 @@ class Call {
         try {
             const parsed = JSON.parse(initialResponseJSON);
 
-            const elevenLabsWs = await this.setupElevenLabsWs();
+            this.elevenLabsWs = await this.setupElevenLabsWs();
 
-            elevenLabsWs.send(JSON.stringify({
+            this.elevenLabsWs.send(JSON.stringify({
                 text: parsed.response,
                 try_trigger_generation: true,
             }));
-            elevenLabsWs.send(JSON.stringify({ text: "" }));
+            this.elevenLabsWs.send(JSON.stringify({ text: "" }));
 
             this.processResponse(initialResponseJSON);
         } catch (e) {
@@ -270,7 +277,7 @@ class Call {
 
         console.log(`[${this.callSid}] [${Date.now()}] Sending to Gemini: "${transcript}"`);
 
-        const elevenLabsWs = await this.setupElevenLabsWs();
+        this.elevenLabsWs = await this.setupElevenLabsWs();
 
         try {
             const result = await this.chat.sendMessageStream(transcript);
@@ -295,7 +302,7 @@ class Call {
                 if (inJsonBlock) {
                     jsonBuffer += chunkText;
 
-                    if (elevenLabsWs && elevenLabsWs.readyState === WebSocket.OPEN) {
+                    if (this.elevenLabsWs && this.elevenLabsWs.readyState === WebSocket.OPEN) {
                         const startMarker = '"response"';
                         const startIdx = jsonBuffer.indexOf(startMarker);
                         if (startIdx !== -1) {
@@ -323,7 +330,7 @@ class Call {
                                 if (currentSpeechText.length > lastSpeechText.length) {
                                     const newText = currentSpeechText.substring(lastSpeechText.length);
                                     if (newText.length > 0) {
-                                        elevenLabsWs.send(JSON.stringify({
+                                        this.elevenLabsWs.send(JSON.stringify({
                                             text: newText,
                                             try_trigger_generation: true,
                                         }));
@@ -338,8 +345,8 @@ class Call {
                         inJsonBlock = false;
                         console.log(`[${this.callSid}] Gemini Raw JSON: ${jsonBuffer}`);
 
-                        if (elevenLabsWs && elevenLabsWs.readyState === WebSocket.OPEN) {
-                            elevenLabsWs.send(JSON.stringify({ text: "" }));
+                        if (this.elevenLabsWs && this.elevenLabsWs.readyState === WebSocket.OPEN) {
+                            this.elevenLabsWs.send(JSON.stringify({ text: "" }));
                         }
 
                         this.processResponse(jsonBuffer);
@@ -349,7 +356,10 @@ class Call {
             }
         } catch (error) {
             console.error(`[${this.callSid}] Error streaming from Gemini:`, error);
-            if (elevenLabsWs) elevenLabsWs.close();
+            if (this.elevenLabsWs) {
+                this.elevenLabsWs.close();
+                this.elevenLabsWs = null;
+            }
             this.aiTalking = false;
             this.startGoogleSpeechStream();
         }
