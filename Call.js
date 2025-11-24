@@ -228,7 +228,8 @@ class Call {
 
                     if (result.isFinal) {
                         const transcript = result.alternatives[0].transcript.trim();
-                        console.log(`[${this.callSid}] STT Final: "${transcript}"`);
+                        // --- LOGGING: STT Final ---
+                        console.log(`[${this.callSid}] [${Date.now()}] STT Final: "${transcript}"`);
 
                         if (this.speechTimeout) {
                             clearTimeout(this.speechTimeout);
@@ -279,7 +280,8 @@ class Call {
             order: this.messageNumber++,
         });
 
-        console.log(`[${this.callSid}] Sending to Gemini: "${transcript}"`);
+        // --- LOGGING: LLM Request Sent ---
+        console.log(`[${this.callSid}] [${Date.now()}] Sending to Gemini: "${transcript}"`);
 
         try {
             // --- Optimization 4: LLM Streaming ---
@@ -290,8 +292,15 @@ class Call {
             let sentenceBuffer = "";
             let jsonBuffer = "";
             let inJsonBlock = false;
+            let firstToken = true;
 
             for await (const chunk of stream) {
+                // --- LOGGING: LLM First Token ---
+                if (firstToken) {
+                    console.log(`[${this.callSid}] [${Date.now()}] Gemini First Token Received`);
+                    firstToken = false;
+                }
+
                 const chunkText = chunk.text();
 
                 // --- Handle JSON streaming ---
@@ -357,8 +366,10 @@ class Call {
             this.rating = fedToTwilio.rating; // Assuming this.rating exists
 
             // Generate audio and stream it to Twilio
+            // --- LOGGING: TTS Start ---
+            console.log(`[${this.callSid}] [${Date.now()}] Starting TTS Generation`);
             const audioStream = await this.generateAudio(fedToTwilio.response);
-            console.log(`[${this.callSid}] Streaming TTS to Twilio.`);
+            console.log(`[${this.callSid}] [${Date.now()}] Streaming TTS to Twilio.`);
 
             // --- LATENCY OPTIMIZATION ---
             // Start listening IMMEDIATELY, don't wait for audio to finish playing
@@ -482,6 +493,8 @@ class Call {
         };
 
         try {
+            // --- LOGGING: TTS Request Sent ---
+            console.log(`[${this.callSid}] [${Date.now()}] Sending ElevenLabs Request`);
             const response = await fetch(url, {
                 method: "POST",
                 headers: {
@@ -495,6 +508,9 @@ class Call {
             if (!response.ok) {
                 throw new Error(`ElevenLabs API error: ${response.statusText}`);
             }
+
+            // --- LOGGING: TTS Response Received ---
+            console.log(`[${this.callSid}] [${Date.now()}] ElevenLabs Response Headers Received`);
 
             // Return the body stream directly
             return response.body;
