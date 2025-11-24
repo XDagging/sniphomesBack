@@ -399,7 +399,12 @@ class Call {
     }
 
     sendAudioChunk(chunk) {
+        if (this.interrupted) {
+            console.log(`[${this.callSid}] Interrupted, skipping audio chunk.`);
+            return;
+        }
         if (this.ws) {
+            // console.log(`[${this.callSid}] Sending audio chunk (${chunk.length} chars)`);
             this.ws.send(
                 JSON.stringify({
                     event: "media",
@@ -414,6 +419,7 @@ class Call {
 
     sendClear() {
         if (this.ws) {
+            console.log(`[${this.callSid}] Sending clear event to Twilio.`);
             this.ws.send(
                 JSON.stringify({
                     event: "clear",
