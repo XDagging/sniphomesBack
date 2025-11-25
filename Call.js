@@ -189,7 +189,7 @@ class Call {
                 if (result && result.alternatives[0]) {
                     const transcript = result.alternatives[0].transcript.trim();
                     console.log(`${this.callSid}] [${Date.now()}] STT Interim:`, this.interrupted, this.sendingAudio, this.twilioPlaying);
-                    
+
                     if ((this.sendingAudio || this.twilioPlaying) && transcript.length > 0) {
                         console.log(`[${this.callSid}] User interrupting AI (STT): "${transcript}"`);
                         this.interrupted = true;
@@ -454,14 +454,14 @@ class Call {
                     const durationInSec = this.calculatePlayback(audioBuffer.length, 8000);
                     const durationInMs = durationInSec * 1000;
 
-                    if (this.playbackTimeout) {
-                        clearTimeout(this.playbackTimeout);
-                    }
+                    // if (this.playbackTimeout) {
+                    //     clearTimeout(this.playbackTimeout);
+                    // }
                     this.twilioPlaying = true;
-                    this.playbackTimeout = setTimeout(() => {
-                        this.twilioPlaying = false;
-                        console.log(`[${this.callSid}] WS Playback finished (est).`);
-                    }, durationInMs + 500);
+                    // this.playbackTimeout = setTimeout(() => {
+                    //     this.twilioPlaying = false;
+                    //     console.log(`[${this.callSid}] WS Playback finished (est).`);
+                    // }, durationInMs + 500);
                 }
 
                 if (message.isFinal) {
