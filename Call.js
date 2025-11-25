@@ -6,23 +6,7 @@ const { Readable } = require("stream");
 
 // --- Google TTS Setup ---
 // Attempt to use the user's key if provided, otherwise default to ADC
-let ttsClient;
-try {
-    if (process.env.GOOGLE_SPEECH_TO_TEXT_KEY) {
-        // Check if it looks like JSON
-        if (process.env.GOOGLE_SPEECH_TO_TEXT_KEY.trim().startsWith('{')) {
-            ttsClient = new TextToSpeechClient({ credentials: JSON.parse(process.env.GOOGLE_SPEECH_TO_TEXT_KEY) });
-        } else {
-            // Assume it's a file path
-            ttsClient = new TextToSpeechClient({ keyFilename: process.env.GOOGLE_SPEECH_TO_TEXT_KEY });
-        }
-    } else {
-        ttsClient = new TextToSpeechClient();
-    }
-} catch (e) {
-    console.error("Failed to initialize TTS client with custom key, falling back to default:", e);
-    ttsClient = new TextToSpeechClient();
-}
+let ttsClient = new TextToSpeechClient(process.env.GOOGLE_SPEECH_TO_TEXT_KEY);
 
 // --- Gemini Setup ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
