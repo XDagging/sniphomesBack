@@ -439,7 +439,7 @@ class Call {
                     return;
                 }
 
-                this.sendAudioChunk(audioContent.toString('base64'));
+                this.sendAudioChunk(audioContent);
 
                 const durationInSec = this.calculatePlayback(audioContent.length, 8000);
                 const durationInMs = durationInSec * 1000;
