@@ -6,7 +6,23 @@ const { Readable } = require("stream");
 
 // --- Google TTS Setup ---
 // Attempt to use the user's key if provided, otherwise default to ADC
-let ttsClient = new TextToSpeechClient(process.env.GOOGLE_SPEECH_TO_TEXT_KEY);
+let ttsClient;
+try {
+    if (process.env.GOOGLE_SPEECH_TO_TEXT_KEY) {
+        // Check if it looks like JSON
+        if (process.env.GOOGLE_SPEECH_TO_TEXT_KEY.trim().startsWith('{')) {
+            ttsClient = new TextToSpeechClient({ credentials: JSON.parse(process.env.GOOGLE_SPEECH_TO_TEXT_KEY) });
+        } else {
+            // Assume it's a file path
+            ttsClient = new TextToSpeechClient({ keyFilename: process.env.GOOGLE_SPEECH_TO_TEXT_KEY });
+        }
+    } else {
+        ttsClient = new TextToSpeechClient();
+    }
+} catch (e) {
+    console.error("Failed to initialize TTS client with custom key, falling back to default:", e);
+    ttsClient = new TextToSpeechClient();
+}
 
 // --- Gemini Setup ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
@@ -52,6 +68,7 @@ class Call {
         this.speechBuffer = ""; // Buffer for LLM text
         this.ttsQueue = []; // Queue for TTS requests to ensure order
         this.isProcessingQueue = false;
+        this.shouldHangup = false; // Flag to trigger hangup after playback
 
         this.aiDuration = 0;
 
@@ -215,6 +232,7 @@ class Call {
                         this.speechBuffer = "";
                         this.ttsQueue = [];
                         this.isProcessingQueue = false;
+                        this.shouldHangup = false; // Cancel hangup on interruption
 
                         this.sendClear();
                     }
@@ -393,13 +411,9 @@ class Call {
 
             console.log(`[${this.callSid}] Metadata: rating=${fedToTwilio.rating}, hangUp=${fedToTwilio.hangUp}`);
 
-            if (fedToTwilio.hangUp && !this.interrupted) {
-                setTimeout(() => {
-                    if (!this.interrupted) {
-                        console.log(`[${this.callSid}] Hanging up after AI response.`);
-                        this.hangup();
-                    }
-                }, 2000);
+            if (fedToTwilio.hangUp) {
+                console.log(`[${this.callSid}] Hangup requested. Waiting for audio to finish.`);
+                this.shouldHangup = true;
             }
 
         } catch (e) {
@@ -471,6 +485,7 @@ class Call {
             if (this.interrupted) {
                 this.ttsQueue = [];
                 this.isProcessingQueue = false;
+                this.shouldHangup = false; // Cancel hangup on interruption
                 return;
             }
 
@@ -491,6 +506,12 @@ class Call {
                 this.playbackTimeout = setTimeout(() => {
                     this.twilioPlaying = false;
                     console.log(`[${this.callSid}] TTS Playback finished (est).`);
+
+                    // Check if we need to hang up and queue is empty
+                    if (this.shouldHangup && this.ttsQueue.length === 0) {
+                        console.log(`[${this.callSid}] Audio finished, executing delayed hangup.`);
+                        this.hangup();
+                    }
                 }, durationInMs + 500);
             }
         }
