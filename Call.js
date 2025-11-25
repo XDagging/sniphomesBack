@@ -1,8 +1,11 @@
 require("dotenv").config();
 const speech = require("@google-cloud/speech");
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
+const { TextToSpeechClient } = require("@google-cloud/text-to-speech");
 const { Readable } = require("stream");
-const WebSocket = require("ws");
+
+// --- Google TTS Setup ---
+const ttsClient = new TextToSpeechClient(process.env.GOOGLE_SPEECH_TO_TEXT_KEY);
 
 // --- Gemini Setup ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
@@ -44,6 +47,7 @@ class Call {
         this.twilioPlaying = false;
         this.playbackTimeout = null;
         this.interrupted = false;
+        this.ttsStream = null; // Track current TTS Stream
 
         this.aiDuration = 0;
 
@@ -110,6 +114,9 @@ class Call {
 
             If they ask for any other mean of communication tell them the following: "Sorry, he only operates via phone number."
             Remember, the real estate agent operates in ${personOperating} meaning that if they ask anything any details about the home, tell them that its located in ${personOperating}
+
+            Add pauses when deemed appropiate. To add a pause, use insert the following syntax: <break time='0.5s' /> with the time= being the amount of time that you want it to pause for. For example, <break time="0.5s" /> will pause for 0.5 second. This should be in the response: field
+
             ${promptBool}
 
             Output your response in the specified JSON format.
@@ -188,7 +195,6 @@ class Call {
                 const result = data.results[0];
                 if (result && result.alternatives[0]) {
                     const transcript = result.alternatives[0].transcript.trim();
-                    console.log(`${this.callSid}] [${Date.now()}] STT Interim:`, this.interrupted, this.sendingAudio, this.twilioPlaying);
 
                     if ((this.sendingAudio || this.twilioPlaying) && transcript.length > 0) {
                         console.log(`[${this.callSid}] User interrupting AI (STT): "${transcript}"`);
@@ -199,6 +205,12 @@ class Call {
                         if (this.playbackTimeout) {
                             clearTimeout(this.playbackTimeout);
                             this.playbackTimeout = null;
+                        }
+
+                        // Destroy the TTS Stream to stop audio generation
+                        if (this.ttsStream) {
+                            this.ttsStream.destroy();
+                            this.ttsStream = null;
                         }
 
                         this.sendClear();
@@ -213,14 +225,12 @@ class Call {
                             this.speechTimeout = null;
                         }
                         this.userSpeaking = false;
+
                         this.processLLM(transcript);
                     }
                 }
             });
-
     }
-
-
 
     stopGoogleSpeechStream() {
         if (this.googleSpeechStream) {
@@ -228,8 +238,6 @@ class Call {
             this.googleSpeechStream.end();
         }
     }
-
-
 
     async startConversation() {
         this.aiTalking = true;
@@ -239,21 +247,21 @@ class Call {
         try {
             const parsed = JSON.parse(initialResponseJSON);
 
-            const elevenLabsWs = await this.setupElevenLabsWs();
+            this.ttsStream = this.setupGoogleTTSStream();
 
-            elevenLabsWs.send(JSON.stringify({
-                text: parsed.response,
-                try_trigger_generation: true,
-            }));
-            elevenLabsWs.send(JSON.stringify({ text: "" }));
+            // Send the greeting text
+            if (this.ttsStream) {
+                this.ttsStream.write({
+                    input: { text: parsed.response }
+                });
+                this.ttsStream.end();
+            }
 
             this.processResponse(initialResponseJSON);
         } catch (e) {
             console.error(`[${this.callSid}] Error processing initial greeting:`, e);
         }
     }
-
-
 
     async processLLM(transcript) {
         if (!transcript) {
@@ -274,7 +282,7 @@ class Call {
 
         console.log(`[${this.callSid}] [${Date.now()}] Sending to Gemini: "${transcript}"`);
 
-        const elevenLabsWs = await this.setupElevenLabsWs();
+        this.ttsStream = this.setupGoogleTTSStream();
 
         try {
             const result = await this.chat.sendMessageStream(transcript);
@@ -299,7 +307,7 @@ class Call {
                 if (inJsonBlock) {
                     jsonBuffer += chunkText;
 
-                    if (elevenLabsWs && elevenLabsWs.readyState === WebSocket.OPEN) {
+                    if (this.ttsStream && !this.ttsStream.destroyed) {
                         const startMarker = '"response"';
                         const startIdx = jsonBuffer.indexOf(startMarker);
                         if (startIdx !== -1) {
@@ -327,10 +335,9 @@ class Call {
                                 if (currentSpeechText.length > lastSpeechText.length) {
                                     const newText = currentSpeechText.substring(lastSpeechText.length);
                                     if (newText.length > 0) {
-                                        elevenLabsWs.send(JSON.stringify({
-                                            text: newText,
-                                            try_trigger_generation: true,
-                                        }));
+                                        this.ttsStream.write({
+                                            input: { text: newText }
+                                        });
                                         lastSpeechText = currentSpeechText;
                                     }
                                 }
@@ -342,8 +349,8 @@ class Call {
                         inJsonBlock = false;
                         console.log(`[${this.callSid}] Gemini Raw JSON: ${jsonBuffer}`);
 
-                        if (elevenLabsWs && elevenLabsWs.readyState === WebSocket.OPEN) {
-                            elevenLabsWs.send(JSON.stringify({ text: "" }));
+                        if (this.ttsStream && !this.ttsStream.destroyed) {
+                            this.ttsStream.end();
                         }
 
                         this.processResponse(jsonBuffer);
@@ -353,7 +360,10 @@ class Call {
             }
         } catch (error) {
             console.error(`[${this.callSid}] Error streaming from Gemini:`, error);
-            if (elevenLabsWs) elevenLabsWs.close();
+            if (this.ttsStream) {
+                this.ttsStream.destroy();
+                this.ttsStream = null;
+            }
             this.aiTalking = false;
             this.startGoogleSpeechStream();
         }
@@ -393,7 +403,7 @@ class Call {
 
             console.log(`[${this.callSid}] Metadata: rating=${fedToTwilio.rating}, hangUp=${fedToTwilio.hangUp}`);
 
-            if (fedToTwilio.hangUp && !this.interrupted && !this.aiTalking) {
+            if (fedToTwilio.hangUp && !this.interrupted) {
                 setTimeout(() => {
                     if (!this.interrupted) {
                         console.log(`[${this.callSid}] Hanging up after AI response.`);
@@ -409,76 +419,62 @@ class Call {
         }
     }
 
-    setupElevenLabsWs() {
-        return new Promise((resolve, reject) => {
-            const voiceId = "7EzWGsX10sAS4c9m9cPf";
-            const model = "eleven_turbo_v2";
-            const wsUrl = `wss://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream-input?model_id=${model}&output_format=ulaw_8000`;
+    setupGoogleTTSStream() {
+        const stream = ttsClient.streamingSynthesize();
 
-            const ws = new WebSocket(wsUrl);
+        stream.on('data', (response) => {
+            const { audioContent } = response;
+            if (audioContent) {
+                console.log(`[${this.callSid}] Received audio chunk from Google TTS`);
+                if (this.interrupted) {
+                    console.log(`[${this.callSid}] Interrupted, skipping TTS audio chunk.`);
+                    return;
+                }
 
-            ws.on("open", () => {
-                console.log(`[${this.callSid}] [${Date.now()}] ElevenLabs WS Connected`);
-                ws.send(JSON.stringify({
-                    text: " ",
-                    voice_settings: {
-                        stability: 0.5,
-                        similarity_boost: 0.75,
-                    },
-                    xi_api_key: process.env.ELEVENLABS_KEY,
-                }));
+                this.sendAudioChunk(audioContent.toString('base64'));
 
-                this.aiTalking = true;
-                this.interrupted = false;
-                this.sendingAudio = true;
+                const durationInSec = this.calculatePlayback(audioContent.length, 8000);
+                const durationInMs = durationInSec * 1000;
+
+                if (this.playbackTimeout) {
+                    clearTimeout(this.playbackTimeout);
+                }
                 this.twilioPlaying = true;
-                this.startGoogleSpeechStream();
-
-                resolve(ws);
-            });
-
-            ws.on("message", (data) => {
-                const message = JSON.parse(data);
-
-                if (message.audio) {
-                    console.log(`[${this.callSid}] Received audio chunk from ElevenLabs`);
-                    if (this.interrupted) {
-                        console.log(`[${this.callSid}] Interrupted, skipping WS audio chunk.`);
-                        return;
-                    }
-
-                    const buffer = message.audio;
-                    this.sendAudioChunk(buffer);
-
-                    const audioBuffer = Buffer.from(buffer, 'base64');
-                    const durationInSec = this.calculatePlayback(audioBuffer.length, 8000);
-                    const durationInMs = durationInSec * 1000;
-
-                    // if (this.playbackTimeout) {
-                    //     clearTimeout(this.playbackTimeout);
-                    // }
-                    this.twilioPlaying = true;
-                    // this.playbackTimeout = setTimeout(() => {
-                    //     this.twilioPlaying = false;
-                    //     console.log(`[${this.callSid}] WS Playback finished (est).`);
-                    // }, durationInMs + 500);
-                }
-
-                if (message.isFinal) {
-                    console.log(`[${this.callSid}] ElevenLabs WS stream finished.`);
-                }
-            });
-
-            ws.on("error", (error) => {
-                console.error(`[${this.callSid}] ElevenLabs WS Error:`, error);
-                reject(error);
-            });
-
-            ws.on("close", () => {
-                console.log(`[${this.callSid}] ElevenLabs WS Closed.`);
-                this.sendingAudio = false;
-            });
+                this.playbackTimeout = setTimeout(() => {
+                    this.twilioPlaying = false;
+                    console.log(`[${this.callSid}] TTS Playback finished (est).`);
+                }, durationInMs + 500);
+            }
         });
+
+        stream.on('error', (err) => {
+            console.error(`[${this.callSid}] Google TTS Stream Error:`, err);
+        });
+
+        // Send initial config
+        const request = {
+            streamingConfig: {
+                audioConfig: {
+                    audioEncoding: 'MULAW',
+                    sampleRateHertz: 8000,
+                },
+                voice: {
+                    languageCode: 'en-US',
+                    name: 'en-US-Neural2-F',
+                    ssmlGender: 'FEMALE',
+                },
+            },
+        };
+        stream.write(request);
+
+        // Start listening for interruptions immediately
+        this.aiTalking = false;
+        this.interrupted = false;
+        this.sendingAudio = true;
+        this.twilioPlaying = true;
+        this.startGoogleSpeechStream();
+
+        return stream;
     }
 
     sendAudioChunk(chunk) {
@@ -524,6 +520,11 @@ class Call {
         }
 
         this.stopGoogleSpeechStream();
+
+        if (this.ttsStream) {
+            this.ttsStream.destroy();
+            this.ttsStream = null;
+        }
 
         if (this.ws) {
             this.ws.close();
