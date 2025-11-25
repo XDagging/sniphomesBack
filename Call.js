@@ -188,7 +188,8 @@ class Call {
                 const result = data.results[0];
                 if (result && result.alternatives[0]) {
                     const transcript = result.alternatives[0].transcript.trim();
-
+                    console.log(`${this.callSid}] [${Date.now()}] STT Interim:`, this.interrupted, this.sendingAudio, this.twilioPlaying);
+                    
                     if ((this.sendingAudio || this.twilioPlaying) && transcript.length > 0) {
                         console.log(`[${this.callSid}] User interrupting AI (STT): "${transcript}"`);
                         this.interrupted = true;
@@ -212,12 +213,14 @@ class Call {
                             this.speechTimeout = null;
                         }
                         this.userSpeaking = false;
-
                         this.processLLM(transcript);
                     }
                 }
             });
+
     }
+
+
 
     stopGoogleSpeechStream() {
         if (this.googleSpeechStream) {
@@ -225,6 +228,8 @@ class Call {
             this.googleSpeechStream.end();
         }
     }
+
+
 
     async startConversation() {
         this.aiTalking = true;
@@ -247,6 +252,8 @@ class Call {
             console.error(`[${this.callSid}] Error processing initial greeting:`, e);
         }
     }
+
+
 
     async processLLM(transcript) {
         if (!transcript) {
