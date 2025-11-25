@@ -48,12 +48,10 @@ class Call {
         this.twilioPlaying = false;
         this.playbackTimeout = null;
         this.interrupted = false;
+        this.ttsStream = null; // Track current TTS Stream
 
-        this.speechBuffer = ""; // Buffer for LLM text
-        this.ttsQueue = []; // Queue for TTS requests to ensure order
-        this.isProcessingQueue = false;
-        this.shouldHangup = false; // Flag to trigger hangup after playback
         this.estimatedPlaybackEnd = 0; // Track when playback is expected to finish
+        this.shouldHangup = false;
 
         this.aiDuration = 0;
 
@@ -213,12 +211,14 @@ class Call {
                             this.playbackTimeout = null;
                         }
 
-                        // Clear TTS Queue and Buffer
-                        this.speechBuffer = "";
-                        this.ttsQueue = [];
-                        this.isProcessingQueue = false;
-                        this.shouldHangup = false; // Cancel hangup on interruption
-                        this.estimatedPlaybackEnd = 0; // Reset playback tracking
+                        // Destroy the TTS Stream to stop audio generation
+                        if (this.ttsStream) {
+                            this.ttsStream.destroy();
+                            this.ttsStream = null;
+                        }
+
+                        this.estimatedPlaybackEnd = 0;
+                        this.shouldHangup = false;
 
                         this.sendClear();
                     }
@@ -254,9 +254,15 @@ class Call {
         try {
             const parsed = JSON.parse(initialResponseJSON);
 
+            this.ttsStream = this.setupGoogleTTSStream();
+
             // Send the greeting text
-            this.bufferAndSendTTS(parsed.response);
-            this.flushTTS(); // Ensure any remaining text is sent
+            if (this.ttsStream) {
+                this.ttsStream.write({
+                    input: { text: parsed.response }
+                });
+                this.ttsStream.end();
+            }
 
             this.processResponse(initialResponseJSON);
         } catch (e) {
@@ -283,8 +289,7 @@ class Call {
 
         console.log(`[${this.callSid}] [${Date.now()}] Sending to Gemini: "${transcript}"`);
 
-        // Reset buffer for new turn
-        this.speechBuffer = "";
+        this.ttsStream = this.setupGoogleTTSStream();
 
         try {
             const result = await this.chat.sendMessageStream(transcript);
@@ -309,35 +314,39 @@ class Call {
                 if (inJsonBlock) {
                     jsonBuffer += chunkText;
 
-                    const startMarker = '"response"';
-                    const startIdx = jsonBuffer.indexOf(startMarker);
-                    if (startIdx !== -1) {
-                        const contentStart = jsonBuffer.indexOf('"', startIdx + startMarker.length);
-                        if (contentStart !== -1) {
-                            let contentEnd = -1;
-                            for (let i = contentStart + 1; i < jsonBuffer.length; i++) {
-                                if (jsonBuffer[i] === '"' && jsonBuffer[i - 1] !== '\\') {
-                                    contentEnd = i;
-                                    break;
+                    if (this.ttsStream && !this.ttsStream.destroyed) {
+                        const startMarker = '"response"';
+                        const startIdx = jsonBuffer.indexOf(startMarker);
+                        if (startIdx !== -1) {
+                            const contentStart = jsonBuffer.indexOf('"', startIdx + startMarker.length);
+                            if (contentStart !== -1) {
+                                let contentEnd = -1;
+                                for (let i = contentStart + 1; i < jsonBuffer.length; i++) {
+                                    if (jsonBuffer[i] === '"' && jsonBuffer[i - 1] !== '\\') {
+                                        contentEnd = i;
+                                        break;
+                                    }
                                 }
-                            }
 
-                            let currentSpeechText;
-                            if (contentEnd !== -1) {
-                                currentSpeechText = jsonBuffer.substring(contentStart + 1, contentEnd);
-                            } else {
-                                currentSpeechText = jsonBuffer.substring(contentStart + 1);
-                            }
+                                let currentSpeechText;
+                                if (contentEnd !== -1) {
+                                    currentSpeechText = jsonBuffer.substring(contentStart + 1, contentEnd);
+                                } else {
+                                    currentSpeechText = jsonBuffer.substring(contentStart + 1);
+                                }
 
-                            try {
-                                currentSpeechText = currentSpeechText.replace(/\\"/g, '"').replace(/\\n/g, '\n');
-                            } catch (e) { }
+                                try {
+                                    currentSpeechText = currentSpeechText.replace(/\\"/g, '"').replace(/\\n/g, '\n');
+                                } catch (e) { }
 
-                            if (currentSpeechText.length > lastSpeechText.length) {
-                                const newText = currentSpeechText.substring(lastSpeechText.length);
-                                if (newText.length > 0) {
-                                    this.bufferAndSendTTS(newText);
-                                    lastSpeechText = currentSpeechText;
+                                if (currentSpeechText.length > lastSpeechText.length) {
+                                    const newText = currentSpeechText.substring(lastSpeechText.length);
+                                    if (newText.length > 0) {
+                                        this.ttsStream.write({
+                                            input: { text: newText }
+                                        });
+                                        lastSpeechText = currentSpeechText;
+                                    }
                                 }
                             }
                         }
@@ -347,7 +356,9 @@ class Call {
                         inJsonBlock = false;
                         console.log(`[${this.callSid}] Gemini Raw JSON: ${jsonBuffer}`);
 
-                        this.flushTTS(); // Send any remaining text in buffer
+                        if (this.ttsStream && !this.ttsStream.destroyed) {
+                            this.ttsStream.end();
+                        }
 
                         this.processResponse(jsonBuffer);
                         jsonBuffer = "";
@@ -356,8 +367,10 @@ class Call {
             }
         } catch (error) {
             console.error(`[${this.callSid}] Error streaming from Gemini:`, error);
-            this.speechBuffer = "";
-            this.ttsQueue = [];
+            if (this.ttsStream) {
+                this.ttsStream.destroy();
+                this.ttsStream = null;
+            }
             this.aiTalking = false;
             this.startGoogleSpeechStream();
         }
@@ -400,6 +413,11 @@ class Call {
             if (fedToTwilio.hangUp) {
                 console.log(`[${this.callSid}] Hangup requested. Waiting for audio to finish.`);
                 this.shouldHangup = true;
+
+                // If audio is already finished (unlikely if streaming, but possible), hangup now
+                if (!this.twilioPlaying && !this.sendingAudio) {
+                    this.hangup();
+                }
             }
 
         } catch (e) {
@@ -409,78 +427,18 @@ class Call {
         }
     }
 
-    bufferAndSendTTS(text) {
-        this.speechBuffer += text;
+    setupGoogleTTSStream() {
+        const stream = ttsClient.streamingSynthesize();
 
-        // Simple sentence detection
-        const sentenceEndings = /[.!?\n]/;
-        let match;
-        while ((match = this.speechBuffer.match(sentenceEndings))) {
-            const endIndex = match.index + 1;
-            const sentence = this.speechBuffer.substring(0, endIndex).trim();
-            this.speechBuffer = this.speechBuffer.substring(endIndex);
+        stream.on('data', (response) => {
+            const { audioContent } = response;
+            if (audioContent) {
+                console.log(`[${this.callSid}] Received audio chunk from Google TTS`);
+                if (this.interrupted) {
+                    console.log(`[${this.callSid}] Interrupted, skipping TTS audio chunk.`);
+                    return;
+                }
 
-            if (sentence.length > 0) {
-                this.queueTTS(sentence);
-            }
-        }
-    }
-
-    flushTTS() {
-        if (this.speechBuffer.trim().length > 0) {
-            this.queueTTS(this.speechBuffer.trim());
-            this.speechBuffer = "";
-        }
-    }
-
-    queueTTS(text) {
-        // Create a promise for this chunk of audio
-        const ttsPromise = (async () => {
-            try {
-                console.log(`[${this.callSid}] Generating TTS for: "${text}"`);
-                const request = {
-                    input: { text: text },
-                    voice: {
-                        languageCode: 'en-US',
-                        name: 'en-US-Neural2-F',
-                        ssmlGender: 'FEMALE',
-                    },
-                    audioConfig: {
-                        audioEncoding: 'MULAW',
-                        sampleRateHertz: 8000,
-                    },
-                };
-
-                const [response] = await ttsClient.synthesizeSpeech(request);
-                console.log(`[${this.callSid}] TTS generated successfully.`, response);
-                return response.audioContent;
-            } catch (error) {
-                console.error(`[${this.callSid}] TTS Generation Error:`, error);
-                return null;
-            }
-        })();
-
-        this.ttsQueue.push(ttsPromise);
-        this.processTTSQueue();
-    }
-
-    async processTTSQueue() {
-        if (this.isProcessingQueue) return;
-        this.isProcessingQueue = true;
-
-        while (this.ttsQueue.length > 0) {
-            if (this.interrupted) {
-                this.ttsQueue = [];
-                this.isProcessingQueue = false;
-                this.shouldHangup = false; // Cancel hangup on interruption
-                return;
-            }
-
-            const currentPromise = this.ttsQueue.shift();
-            const audioContent = await currentPromise;
-
-            if (audioContent && !this.interrupted) {
-                console.log(`[${this.callSid}] Sending TTS audio chunk to Twilio`);
                 this.sendAudioChunk(audioContent.toString('base64'));
 
                 const durationInSec = this.calculatePlayback(audioContent.length, 8000);
@@ -495,23 +453,47 @@ class Call {
                 }
                 this.twilioPlaying = true;
 
-                // Set timeout for the cumulative end time
                 const timeUntilEnd = this.estimatedPlaybackEnd - now;
 
                 this.playbackTimeout = setTimeout(() => {
                     this.twilioPlaying = false;
                     console.log(`[${this.callSid}] TTS Playback finished (est).`);
 
-                    // Check if we need to hang up and queue is empty
-                    if (this.shouldHangup && this.ttsQueue.length === 0) {
+                    if (this.shouldHangup) {
                         console.log(`[${this.callSid}] Audio finished, executing delayed hangup.`);
                         this.hangup();
                     }
                 }, timeUntilEnd + 500); // Add buffer
             }
-        }
+        });
 
-        this.isProcessingQueue = false;
+        stream.on('error', (err) => {
+            console.error(`[${this.callSid}] Google TTS Stream Error:`, err);
+        });
+
+        // Send initial config
+        const request = {
+            streamingConfig: {
+                audioConfig: {
+                    audioEncoding: 'MULAW',
+                    sampleRateHertz: 8000,
+                },
+                voice: {
+                    languageCode: 'en-US',
+                    name: 'en-US-Chirp3-HD-Aoede', // Chirp 3 HD Voice
+                },
+            },
+        };
+        stream.write(request);
+
+        // Start listening for interruptions immediately
+        this.aiTalking = false;
+        this.interrupted = false;
+        this.sendingAudio = true;
+        this.twilioPlaying = true;
+        this.startGoogleSpeechStream();
+
+        return stream;
     }
 
     sendAudioChunk(chunk) {
@@ -557,6 +539,11 @@ class Call {
         }
 
         this.stopGoogleSpeechStream();
+
+        if (this.ttsStream) {
+            this.ttsStream.destroy();
+            this.ttsStream = null;
+        }
 
         if (this.ws) {
             this.ws.close();
