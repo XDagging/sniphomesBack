@@ -452,6 +452,7 @@ class Call {
                 };
 
                 const [response] = await ttsClient.synthesizeSpeech(request);
+                console.log(`[${this.callSid}] TTS generated successfully.`, response);
                 return response.audioContent;
             } catch (error) {
                 console.error(`[${this.callSid}] TTS Generation Error:`, error);
