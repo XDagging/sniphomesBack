@@ -111,9 +111,6 @@ class Call {
 
             If they ask for any other mean of communication tell them the following: "Sorry, he only operates via phone number."
             Remember, the real estate agent operates in ${personOperating} meaning that if they ask anything any details about the home, tell them that its located in ${personOperating}
-
-            Add pauses when deemed appropiate. To add a pause, use insert the following syntax: <break time='0.5s' /> with the time= being the amount of time that you want it to pause for. For example, <break time="0.5s" /> will pause for 0.5 second. This should be in the response: field
-
             ${promptBool}
 
             Output your response in the specified JSON format.
@@ -399,7 +396,7 @@ class Call {
 
             console.log(`[${this.callSid}] Metadata: rating=${fedToTwilio.rating}, hangUp=${fedToTwilio.hangUp}`);
 
-            if (fedToTwilio.hangUp && !this.interrupted) {
+            if (fedToTwilio.hangUp && !this.interrupted && !this.aiTalking) {
                 setTimeout(() => {
                     if (!this.interrupted) {
                         console.log(`[${this.callSid}] Hanging up after AI response.`);
@@ -434,7 +431,7 @@ class Call {
                     xi_api_key: process.env.ELEVENLABS_KEY,
                 }));
 
-                this.aiTalking = false;
+                this.aiTalking = true;
                 this.interrupted = false;
                 this.sendingAudio = true;
                 this.twilioPlaying = true;
