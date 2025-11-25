@@ -53,6 +53,7 @@ class Call {
         this.ttsQueue = []; // Queue for TTS requests to ensure order
         this.isProcessingQueue = false;
         this.shouldHangup = false; // Flag to trigger hangup after playback
+        this.estimatedPlaybackEnd = 0; // Track when playback is expected to finish
 
         this.aiDuration = 0;
 
@@ -217,6 +218,7 @@ class Call {
                         this.ttsQueue = [];
                         this.isProcessingQueue = false;
                         this.shouldHangup = false; // Cancel hangup on interruption
+                        this.estimatedPlaybackEnd = 0; // Reset playback tracking
 
                         this.sendClear();
                     }
@@ -483,10 +485,18 @@ class Call {
                 const durationInSec = this.calculatePlayback(audioContent.length, 8000);
                 const durationInMs = durationInSec * 1000;
 
+                // Update estimated end time (cumulative)
+                const now = Date.now();
+                this.estimatedPlaybackEnd = Math.max(this.estimatedPlaybackEnd, now) + durationInMs;
+
                 if (this.playbackTimeout) {
                     clearTimeout(this.playbackTimeout);
                 }
                 this.twilioPlaying = true;
+
+                // Set timeout for the cumulative end time
+                const timeUntilEnd = this.estimatedPlaybackEnd - now;
+
                 this.playbackTimeout = setTimeout(() => {
                     this.twilioPlaying = false;
                     console.log(`[${this.callSid}] TTS Playback finished (est).`);
@@ -496,7 +506,7 @@ class Call {
                         console.log(`[${this.callSid}] Audio finished, executing delayed hangup.`);
                         this.hangup();
                     }
-                }, durationInMs + 500);
+                }, timeUntilEnd + 500); // Add buffer
             }
         }
 
