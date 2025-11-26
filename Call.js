@@ -35,6 +35,8 @@ class Call {
         this.streamSid = "";
         this.ws = null;
         this.googleSpeechClient = new speech.SpeechClient();
+
+        // This variable is to speech to text
         this.googleSpeechStream = null;
 
         this.transcript = [];
@@ -177,6 +179,8 @@ class Call {
     }
 
     startGoogleSpeechStream() {
+        // this is for speech to text.
+
         if (this.googleSpeechStream) {
             this.googleSpeechStream.destroy();
             this.googleSpeechStream = null;
@@ -439,6 +443,8 @@ class Call {
                     return;
                 }
                 const audioChunk = audioContent.toString("base64");
+
+                console.log("Audio Chunk: ", audioChunk);
                 this.sendAudioChunk(audioChunk);
 
                 const durationInSec = this.calculatePlayback(audioContent.length, 8000);
@@ -480,7 +486,7 @@ class Call {
                 },
                 voice: {
                     languageCode: 'en-US',
-                    name: 'en-US-Chirp3-HD-Aoede', // Chirp 3 HD Voice
+                    name: 'en-US-Wavenet-A', // Chirp 3 HD Voice
                 },
             },
         };
