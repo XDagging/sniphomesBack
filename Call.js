@@ -3,8 +3,9 @@ const speech = require("@google-cloud/speech");
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
 const { TextToSpeechClient } = require("@google-cloud/text-to-speech");
 const { Readable } = require("stream");
-// Add this with your other imports
-const { AudioConverter } = require('@tw2gem/audio-converter');
+// Add these with your other imports
+const { resample } = require('wave-resampler');
+const { mulaw } = require('alawmulaw');
 
 // --- Google TTS Setup ---
 // Attempt to use the user's key if provided, otherwise default to ADC
@@ -445,10 +446,24 @@ class Call {
                     return;
                 }
                 // const audioChunk = audioContent.toString("base64");
-                const pcm24k_base64 = audioContent.toString('base64');
+                const pcm8kBuffer = resample(audioContent, 24000, 8000, { bitDepth: 16 });
 
-                // 2. Transcode the base64 string to 8kHz MULAW (this is a synchronous call)
-                const audioChunk = AudioConverter.convertBase64PCM24kToBase64MuLaw8k(pcm24k_base64);
+                // 2. The 'alawmulaw' library needs an Int16Array, not a Buffer.
+                // We create a "view" of the 8kHz buffer in 16-bit format.
+                const pcm8kInt16 = new Int16Array(
+                    pcm8kBuffer.buffer,
+                    pcm8kBuffer.byteOffset,
+                    pcm8kBuffer.length / 2
+                );
+
+                // 3. Encode the 16-bit PCM array into an 8-bit MULAW array.
+                const mulawSamples = mulaw.encode(pcm8kInt16); // This returns a Uint8Array
+
+                // 4. Convert the 8-bit MULAW array back into a Buffer.
+                const mulawBuffer = Buffer.from(mulawSamples);
+
+
+                const audioChunk = mulawBuffer.toString("base64");
                 console.log("Audio Chunk: ", audioChunk);
                 this.sendAudioChunk(audioChunk);
 
