@@ -462,7 +462,7 @@ class Call {
 
                 // 3. Encode the 16-bit PCM array into an 8-bit MULAW array.
                 const mulawSamples = mulaw.encode(pcm8kInt16); // This returns a Uint8Array
-                console.log(`[${this.callSid}] Sizes: PCM 8k=${pcm8kBuffer.length} bytes -> Int16=${pcm8kInt16.length} samples -> MULAW=${mulawSamples.length} samples`);
+                console.log(`[${this.callSid}] Sizes: PCM 8k=${pcm8kInt16.length} bytes -> Int16=${pcm8kInt16.length} samples -> MULAW=${mulawSamples.length} samples`);
                 // 4. Convert the 8-bit MULAW array back into a Buffer.
                 const mulawBuffer = Buffer.from(mulawSamples);
 
