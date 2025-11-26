@@ -3,12 +3,10 @@ const speech = require("@google-cloud/speech");
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
 const { TextToSpeechClient } = require("@google-cloud/text-to-speech");
 const { Readable } = require("stream");
-// Add these with your other imports
 const waveResampler = require('wave-resampler');
 const { mulaw } = require('alawmulaw');
 
 // --- Google TTS Setup ---
-// Attempt to use the user's key if provided, otherwise default to ADC
 let ttsClient = new TextToSpeechClient(process.env.GOOGLE_SPEECH_TO_TEXT_KEY);
 
 // --- Gemini Setup ---
@@ -39,7 +37,6 @@ class Call {
         this.ws = null;
         this.googleSpeechClient = new speech.SpeechClient();
 
-        // This variable is to speech to text
         this.googleSpeechStream = null;
 
         this.transcript = [];
@@ -53,9 +50,9 @@ class Call {
         this.twilioPlaying = false;
         this.playbackTimeout = null;
         this.interrupted = false;
-        this.ttsStream = null; // Track current TTS Stream
+        this.ttsStream = null;
 
-        this.estimatedPlaybackEnd = 0; // Track when playback is expected to finish
+        this.estimatedPlaybackEnd = 0;
         this.shouldHangup = false;
 
         this.aiDuration = 0;
@@ -182,8 +179,6 @@ class Call {
     }
 
     startGoogleSpeechStream() {
-        // this is for speech to text.
-
         if (this.googleSpeechStream) {
             this.googleSpeechStream.destroy();
             this.googleSpeechStream = null;
@@ -218,7 +213,6 @@ class Call {
                             this.playbackTimeout = null;
                         }
 
-                        // Destroy the TTS Stream to stop audio generation
                         if (this.ttsStream) {
                             this.ttsStream.destroy();
                             this.ttsStream = null;
@@ -263,7 +257,6 @@ class Call {
 
             this.ttsStream = this.setupGoogleTTSStream();
 
-            // Send the greeting text
             if (this.ttsStream) {
                 this.ttsStream.write({
                     input: { text: parsed.response }
@@ -421,7 +414,6 @@ class Call {
                 console.log(`[${this.callSid}] Hangup requested. Waiting for audio to finish.`);
                 this.shouldHangup = true;
 
-                // If audio is already finished (unlikely if streaming, but possible), hangup now
                 if (!this.twilioPlaying && !this.sendingAudio) {
                     this.hangup();
                 }
@@ -446,52 +438,36 @@ class Call {
                     return;
                 }
 
+                const inputSamples = [];
+                for (let i = 0; i < audioContent.length; i += 2) {
+                    inputSamples.push(audioContent.readInt16LE(i));
+                }
 
-                const inputBuffer = new Int16Array(
-                    audioContent.buffer.slice(
-                        audioContent.byteOffset,
-                        audioContent.byteOffset + audioContent.length
-                    )
-                )
-                const pcm8kBuffer = waveResampler.resample(inputBuffer, 24000, 8000, {
+                console.log(`[${this.callSid}] Input samples: ${inputSamples.length} (from ${audioContent.length} bytes)`);
+
+                const resampledData = waveResampler.resample(inputSamples, 24000, 8000, {
                     method: "sinc",
                     LPF: true,
                     bitDepth: 16
                 });
-                // const audioChunk = audioContent.toString("base64");
-                // const pcm8kBuffer = resample(audioContent, 24000, 8000, {
-                //     method: "sinc",
-                //     LPF: true,
-                //     bitDepth: 16
-                // });
 
-                // if (pcm8kBuffer.length % 2 !== 0) {
-                //     console.error(`[${this.callSid}] !!! CRITICAL: Resampled buffer has ODD byte length: ${pcm8kBuffer.length}`);
-                //     // This is a guaranteed source of static!
-                // }
-                // 2. The 'alawmulaw' library needs an Int16Array, not a Buffer.
-                // We create a "view" of the 8kHz buffer in 16-bit format.
-                const pcm8kInt16 = new Int16Array(
-                    pcm8kBuffer.buffer,
-                    pcm8kBuffer.byteOffset,
-                    pcm8kBuffer.length / 2
-                );
+                console.log(`[${this.callSid}] Resampled output length: ${resampledData.length}`);
 
-                // 3. Encode the 16-bit PCM array into an 8-bit MULAW array.
-                const mulawSamples = mulaw.encode(pcm8kInt16); // This returns a Uint8Array
-                console.log(`[${this.callSid}] Sizes: PCM 8k=${pcm8kInt16.length} bytes -> Int16=${pcm8kInt16.length} samples -> MULAW=${mulawSamples.length} samples`);
-                // 4. Convert the 8-bit MULAW array back into a Buffer.
+                const pcm8kInt16 = new Int16Array(resampledData.length);
+                for (let i = 0; i < resampledData.length; i++) {
+                    pcm8kInt16[i] = resampledData[i];
+                }
+
+                const mulawSamples = mulaw.encode(pcm8kInt16);
+                console.log(`[${this.callSid}] Sizes: PCM 8k=${pcm8kInt16.length} samples -> MULAW=${mulawSamples.length} samples`);
+
                 const mulawBuffer = Buffer.from(mulawSamples);
-
-
                 const audioChunk = mulawBuffer.toString("base64");
-                console.log("Audio Chunk: ", audioChunk.length);
                 this.sendAudioChunk(audioChunk);
 
                 const durationInSec = this.calculatePlayback(mulawBuffer.length, 8000);
                 const durationInMs = durationInSec * 1000;
 
-                // Update estimated end time (cumulative)
                 const now = Date.now();
                 this.estimatedPlaybackEnd = Math.max(this.estimatedPlaybackEnd, now) + durationInMs;
 
@@ -510,7 +486,7 @@ class Call {
                         console.log(`[${this.callSid}] Audio finished, executing delayed hangup.`);
                         this.hangup();
                     }
-                }, timeUntilEnd + 500); // Add buffer
+                }, timeUntilEnd + 500);
             }
         });
 
@@ -518,7 +494,6 @@ class Call {
             console.error(`[${this.callSid}] Google TTS Stream Error:`, err);
         });
 
-        // Send initial config
         const request = {
             streamingConfig: {
                 audioConfig: {
@@ -527,13 +502,12 @@ class Call {
                 },
                 voice: {
                     languageCode: 'en-US',
-                    name: 'en-US-Chirp3-HD-Aoede', // Chirp 3 HD Voice
+                    name: 'en-US-Chirp3-HD-Aoede',
                 },
             },
         };
         stream.write(request);
 
-        // Start listening for interruptions immediately
         this.aiTalking = false;
         this.interrupted = false;
         this.sendingAudio = true;
@@ -621,11 +595,11 @@ class Call {
             .join("\n\n");
 
         const prompt = `I'm providing a transcript of a conversation between a real estate agent and a client.
-            
-            Give a 150 character summary of the key points in the conversation that would be useful to a real estate agent.
-            
-            Here is the transcript: ${readableTranscript}
-            `;
+                
+                Give a 150 character summary of the key points in the conversation that would be useful to a real estate agent.
+                
+                Here is the transcript: ${readableTranscript}
+                `;
 
         try {
             const summaryModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
