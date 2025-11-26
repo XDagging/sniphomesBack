@@ -502,7 +502,7 @@ class Call {
                 },
                 voice: {
                     languageCode: 'en-US',
-                    name: 'en-US-Chirp3-HD-Aoede',
+                    name: 'en-US-Chirp3-HD-Zubenelgenubi',
                 },
             },
         };
