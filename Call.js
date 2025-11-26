@@ -446,18 +446,18 @@ class Call {
                     return;
                 }
                 // const audioChunk = audioContent.toString("base64");
-                const pcm8kBuffer = resample(audioContent, 24000, 8000, { bitDepth: 16 });
+                // const pcm8kBuffer = resample(audioContent, 24000, 8000, { bitDepth: 16 });
 
-                if (pcm8kBuffer.length % 2 !== 0) {
-                    console.error(`[${this.callSid}] !!! CRITICAL: Resampled buffer has ODD byte length: ${pcm8kBuffer.length}`);
-                    // This is a guaranteed source of static!
-                }
+                // if (pcm8kBuffer.length % 2 !== 0) {
+                //     console.error(`[${this.callSid}] !!! CRITICAL: Resampled buffer has ODD byte length: ${pcm8kBuffer.length}`);
+                //     // This is a guaranteed source of static!
+                // }
                 // 2. The 'alawmulaw' library needs an Int16Array, not a Buffer.
                 // We create a "view" of the 8kHz buffer in 16-bit format.
                 const pcm8kInt16 = new Int16Array(
-                    pcm8kBuffer.buffer,
-                    pcm8kBuffer.byteOffset,
-                    pcm8kBuffer.length / 2
+                    audioContent.buffer,
+                    audioContent.byteOffset,
+                    audioContent.length / 2
                 );
 
                 // 3. Encode the 16-bit PCM array into an 8-bit MULAW array.
@@ -506,7 +506,7 @@ class Call {
             streamingConfig: {
                 audioConfig: {
                     audioEncoding: 'LINEAR16',
-                    sampleRateHertz: 24000,
+                    sampleRateHertz: 8000,
                 },
                 voice: {
                     languageCode: 'en-US',
