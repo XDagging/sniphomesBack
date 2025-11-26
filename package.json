@@ -28,6 +28,7 @@
     "stripe": "^17.1.0",
     "twilio": "^5.3.3",
     "uuid": "^10.0.0",
+    "wave-resampler": "^1.0.0",
     "ws": "^8.18.0"
   },
   "type": "commonjs"
