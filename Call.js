@@ -3,6 +3,8 @@ const speech = require("@google-cloud/speech");
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
 const { TextToSpeechClient } = require("@google-cloud/text-to-speech");
 const { Readable } = require("stream");
+// Add this with your other imports
+const { AudioConverter } = require('@tw2gem/audio-converter');
 
 // --- Google TTS Setup ---
 // Attempt to use the user's key if provided, otherwise default to ADC
@@ -442,8 +444,11 @@ class Call {
                     console.log(`[${this.callSid}] Interrupted, skipping TTS audio chunk.`);
                     return;
                 }
-                const audioChunk = audioContent.toString("base64");
+                // const audioChunk = audioContent.toString("base64");
+                const pcm24k_base64 = audioContent.toString('base64');
 
+                // 2. Transcode the base64 string to 8kHz MULAW (this is a synchronous call)
+                const audioChunk = AudioConverter.convertBase64PCM24kToBase64MuLaw8k(pcm24k_base64);
                 console.log("Audio Chunk: ", audioChunk);
                 this.sendAudioChunk(audioChunk);
 
@@ -481,12 +486,12 @@ class Call {
         const request = {
             streamingConfig: {
                 audioConfig: {
-                    audioEncoding: 'MULAW',
-                    sampleRateHertz: 8000,
+                    audioEncoding: 'LINEAR16',
+                    sampleRateHertz: 24000,
                 },
                 voice: {
                     languageCode: 'en-US',
-                    name: 'en-US-Wavenet-A', // Chirp 3 HD Voice
+                    name: 'en-US-Chirp3-HD-Aoede', // Chirp 3 HD Voice
                 },
             },
         };
