@@ -121,8 +121,6 @@ class Call {
             If they ask for any other mean of communication tell them the following: "Sorry, he only operates via phone number."
             Remember, the real estate agent operates in ${personOperating} meaning that if they ask anything any details about the home, tell them that its located in ${personOperating}
 
-            Add pauses when deemed appropiate. To add a pause, use insert the following syntax: <break time='0.5s' /> with the time= being the amount of time that you want it to pause for. For example, <break time="0.5s" /> will pause for 0.5 second. This should be in the response: field
-
             ${promptBool}
 
             Output your response in the specified JSON format.
