@@ -438,8 +438,8 @@ class Call {
                     console.log(`[${this.callSid}] Interrupted, skipping TTS audio chunk.`);
                     return;
                 }
-
-                this.sendAudioChunk(audioContent.toString('base64'));
+                const audioChunk = audioContent.toString("base64");
+                this.sendAudioChunk(audioChunk);
 
                 const durationInSec = this.calculatePlayback(audioContent.length, 8000);
                 const durationInMs = durationInSec * 1000;
