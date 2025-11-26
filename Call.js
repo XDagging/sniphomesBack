@@ -433,13 +433,13 @@ class Call {
         stream.on('data', (response) => {
             const { audioContent } = response;
             if (audioContent) {
-                console.log(`[${this.callSid}] Received audio chunk from Google TTS`);
+                console.log(`[${this.callSid}] Received audio chunk from Google TTS`, audioContent);
                 if (this.interrupted) {
                     console.log(`[${this.callSid}] Interrupted, skipping TTS audio chunk.`);
                     return;
                 }
 
-                this.sendAudioChunk(audioContent);
+                this.sendAudioChunk(audioContent.toString('base64'));
 
                 const durationInSec = this.calculatePlayback(audioContent.length, 8000);
                 const durationInMs = durationInSec * 1000;
