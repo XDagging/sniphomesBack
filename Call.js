@@ -440,7 +440,7 @@ class Call {
         stream.on('data', (response) => {
             const { audioContent } = response;
             if (audioContent) {
-                console.log(`[${this.callSid}] Received audio chunk from Google TTS`, audioContent);
+                console.log(`[${this.callSid}] Received audio chunk from Google TTS`, audioContent.length);
                 if (this.interrupted) {
                     console.log(`[${this.callSid}] Interrupted, skipping TTS audio chunk.`);
                     return;
@@ -448,6 +448,10 @@ class Call {
                 // const audioChunk = audioContent.toString("base64");
                 const pcm8kBuffer = resample(audioContent, 24000, 8000, { bitDepth: 16 });
 
+                if (pcm8kBuffer.length % 2 !== 0) {
+                    console.error(`[${this.callSid}] !!! CRITICAL: Resampled buffer has ODD byte length: ${pcm8kBuffer.length}`);
+                    // This is a guaranteed source of static!
+                }
                 // 2. The 'alawmulaw' library needs an Int16Array, not a Buffer.
                 // We create a "view" of the 8kHz buffer in 16-bit format.
                 const pcm8kInt16 = new Int16Array(
@@ -458,16 +462,16 @@ class Call {
 
                 // 3. Encode the 16-bit PCM array into an 8-bit MULAW array.
                 const mulawSamples = mulaw.encode(pcm8kInt16); // This returns a Uint8Array
-
+                console.log(`[${this.callSid}] Sizes: PCM 8k=${pcm8kBuffer.length} bytes -> Int16=${pcm8kInt16.length} samples -> MULAW=${mulawSamples.length} samples`);
                 // 4. Convert the 8-bit MULAW array back into a Buffer.
                 const mulawBuffer = Buffer.from(mulawSamples);
 
 
                 const audioChunk = mulawBuffer.toString("base64");
-                console.log("Audio Chunk: ", audioChunk);
+                console.log("Audio Chunk: ", audioChunk.length);
                 this.sendAudioChunk(audioChunk);
 
-                const durationInSec = this.calculatePlayback(audioContent.length, 8000);
+                const durationInSec = this.calculatePlayback(mulawBuffer.length, 8000);
                 const durationInMs = durationInSec * 1000;
 
                 // Update estimated end time (cumulative)
