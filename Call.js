@@ -32,6 +32,8 @@ class Call {
         this.agentLocation = agentLocation;
         this.agentName = agentName;
 
+
+        this.timeIntervalForSocket = null;
         this.noStart = false;
         this.streamSid = "";
         this.ws = null;
@@ -151,6 +153,8 @@ class Call {
                     break;
                 case "media":
                     if (this.googleSpeechStream && this.googleSpeechStream.writable) {
+
+
                         this.googleSpeechStream.write(msg.media.payload);
 
                         this.userSpeaking = true;
@@ -254,6 +258,18 @@ class Call {
             const parsed = JSON.parse(initialResponseJSON);
 
             this.ttsStream = this.setupGoogleTTSStream();
+            this.timeIntervalForSocket = setInterval(() => {
+
+                if (this.ttsStream.writable) {
+                    this.ttsStream.write({
+                        input: { text: "" }
+                    });
+                } else {
+                    clearInterval(this.timeIntervalForSocket);
+                    this.timeIntervalForSocket = null;
+                }
+            }, 1000);
+            // sent an interval that sends a message once every second to the ttsStream
 
             if (this.ttsStream) {
                 this.ttsStream.write({
@@ -426,6 +442,7 @@ class Call {
 
     setupGoogleTTSStream() {
         const stream = ttsClient.streamingSynthesize();
+
 
         stream.on('data', (response) => {
             const { audioContent } = response;
