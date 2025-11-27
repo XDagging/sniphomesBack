@@ -265,6 +265,7 @@ class Call {
                         input: { text: "" }
                     });
                 } else {
+                    console.log("We cleared the interval");
                     clearInterval(this.timeIntervalForSocket);
                     this.timeIntervalForSocket = null;
                 }
