@@ -259,8 +259,9 @@ class Call {
 
             this.ttsStream = this.setupGoogleTTSStream();
             this.timeIntervalForSocket = setInterval(() => {
-                console.log("We just sent interval");
-                if (!this.ttsStream.closed) {
+
+                if (this.ttsStream && !this.ttsStream.closed && !this.ttsStream.destroyed) {
+                    console.log("we are writing to keep alive.");
                     this.ttsStream.write({
                         input: { text: "" }
                     });
