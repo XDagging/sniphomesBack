@@ -259,7 +259,7 @@ class Call {
 
             this.ttsStream = this.setupGoogleTTSStream();
             this.timeIntervalForSocket = setInterval(() => {
-
+                console.log("We just sent interval");
                 if (this.ttsStream.writable) {
                     this.ttsStream.write({
                         input: { text: "" }
