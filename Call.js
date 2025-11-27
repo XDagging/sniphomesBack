@@ -32,6 +32,9 @@ class Call {
         this.agentLocation = agentLocation;
         this.agentName = agentName;
 
+        this.businessName = "Quattro BodyShop";
+        this.businessLocation = "Hyattsville, Maryland";
+
 
         this.timeIntervalForSocket = null;
         this.noStart = false;
@@ -85,7 +88,7 @@ class Call {
                     role: "model",
                     parts: [{
                         text: JSON.stringify({
-                            response: `Hello, I am ${this.agentName}, a real estate agent. I was wondering if you were interested in ${this.agentAction}ing a house?`,
+                            response: `Hi this is ${this.businessName} how may we help you today?`,
                             rating: 5,
                             hangUp: false
                         })
