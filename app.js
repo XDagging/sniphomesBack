@@ -681,6 +681,30 @@ app.post("/xml", (req,res) => {
 const dynamicCalls = {};
 
 
+// app.post("/callSomeone", (req,res) => {
+//     try {
+//         const
+
+
+
+
+//     } catch(e) {
+//         console.log("there was an error in callSomeone", e);
+
+//         res.status(400).send(JSON.stringify({
+//             code: "err",
+//             message: "there was an error"
+//         }))
+
+
+
+//     }
+
+
+// })
+
+
+
 function callSomeone(phoneNumber, agentName, agentArea, agentAction, uuid) {
 
 
@@ -768,8 +792,25 @@ wss.on("connection", function (ws) {
                     ws.removeListener("message", startListener);
 
                 } else {
-                    console.error(`[${callSid}] No call instance found. Hanging up WebSocket.`);
-                    ws.close();
+                    const phoneNum = "+11000000000"; // Dummy number
+                    // This must mean that it is an inbound call;
+                    if (!dynamicCalls[callSid]) {
+                        const newCallInstance = new Call(
+                            callSid,
+                            phoneNum,
+                            "sell",
+                            "bethesda",
+                            "Carlos",
+                            "demo",
+                        );
+                        dynamicCalls[callSid] = newCallInstance;
+                    
+                    }
+                   
+
+
+                    // console.error(`[${callSid}] No call instance found. Hanging up WebSocket.`);
+                    // ws.close();
                 }
             } else {
                 // This could be a "connected" message, which we can ignore
