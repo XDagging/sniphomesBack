@@ -796,7 +796,7 @@ wss.on("connection", function (ws) {
                     // This must mean that it is an inbound call;
                     if (!dynamicCalls[callSid]) {
                         const newCallInstance = new Call(
-                            callSid,
+                            streamId,
                             phoneNum,
                             "sell",
                             "bethesda",
@@ -804,6 +804,8 @@ wss.on("connection", function (ws) {
                             "demo",
                         );
                         dynamicCalls[callSid] = newCallInstance;
+                        newCallInstance.setWebsocket(ws, streamId);
+                        ws.removeListener("message", startListener);
                     
                     }
                    
