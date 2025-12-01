@@ -764,7 +764,7 @@ wss.on("connection", function (ws) {
     const startListener = (message) => {
         try {
             const parsedMsg = JSON.parse(message.toString());
-            console.log("we got to here")
+            console.log("we got to here", parsedMsg)
             // We only care about the "start" message to associate the WebSocket
             if (parsedMsg.event === "start" && parsedMsg.start && parsedMsg.start.callSid) {
                 const callSid = parsedMsg.start.callSid;
