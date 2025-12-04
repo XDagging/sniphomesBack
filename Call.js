@@ -87,7 +87,7 @@ class Call {
                     enum: ["respond", "hangup", "transfer"] 
                 }
                     },
-                    required: ["response", "rating", "hangUp"],
+                    required: ["response", "rating"],
                 },
             },
             safetySettings,
