@@ -114,7 +114,8 @@ class Call {
         });
 
         console.log(`[${this.callSid}] New call initialized.`);
-        this.hangupTimer = setTimeout(() => this.hangup(), 180 * 1000);
+        this.hangupTimer = setTimeout(() => this.hangup(), 300 * 1000);
+        // maximum of five minutes per call.
     }
 
     buildSystemPrompt(personName, personOperating, personLook) {
@@ -149,8 +150,6 @@ Interruptions: If a caller interrupts, stop talking immediately and listen, then
 
 3. Main Task: Booking an Appointment
 This is your primary goal. Follow these steps in order:
-
-Confirm Location: Always ask which location they prefer first: "Just to be sure, are you looking to book at our Hyattsville location or our [Other Location] location?"
 
 Offer Times: When they're ready, "check" the calendar. Pause, then offer 2-3 specific 30-minute slots.
 
@@ -437,7 +436,7 @@ async sendBackgroundAudio() {
         // Store interval ID in the class instance
         this.backgroundInterval = setInterval(() => {
             // Safety check inside the loop
-            if (this.interrupted || !this.sendingAudio) {
+            if (this.twilioPlaying) {
                 this.stopBackgroundAudio();
                 this.sendClear();
                 console.log(`[${this.callSid}] Background audio stopped (flag check).`);
