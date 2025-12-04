@@ -425,6 +425,8 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
             if (this.interrupted || !this.sendingAudio) {
                 clearInterval(intervalId);
                 this.sendClear();
+                this.sendingAudio = false;
+                console.log(`[${this.callSid}] Background audio sending interrupted.`);
                 return;
             }
 
