@@ -382,7 +382,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
             this.timeIntervalForSocket = setInterval(() => {
 
                 if (this.ttsStream && !this.ttsStream.closed && !this.ttsStream.destroyed) {
-                    console.log("we are writing to keep alive.");
+                    // console.log("we are writing to keep alive.");
                     this.ttsStream.write({
                         input: { text: "" }
                     });
@@ -415,9 +415,9 @@ async sendBackgroundAudio() {
         }
 
         // Logic check: Don't start if interrupted or AI is talking
-        if (this.interrupted || this.twilioPlaying) {
-            return;
-        }
+        // if (this.) {
+        //     return;
+        // }
 
         try {
             this.backgroundAudio = fs.readFileSync("ulawOfficeAmbience.wav");
@@ -626,6 +626,8 @@ async sendBackgroundAudio() {
                     console.log(`[${this.callSid}] Interrupted, skipping TTS audio chunk.`);
                     return;
                 }
+                this.sendClear();
+                
 
                 const inputSamples = [];
                 for (let i = 0; i < audioContent.length; i += 2) {
@@ -680,7 +682,7 @@ async sendBackgroundAudio() {
         });
 
         stream.on('error', (err) => {
-            console.error(`[${this.callSid}] Google TTS Stream Error:`, err);
+            // console.error(`[${this.callSid}] Google TTS Stream Error:`, err);
         });
 
         const request = {
