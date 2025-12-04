@@ -428,6 +428,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
             // Check if we have reached the end of the file
             if (offset >= this.backgroundAudio.length) {
                 clearInterval(intervalId);
+                this.sendClear();
                 this.sendingAudio = false;
                 // Optional: Loop the audio by resetting offset to 44 here
                 return;
