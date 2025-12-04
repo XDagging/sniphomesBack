@@ -36,6 +36,8 @@ class Call {
         this.businessName = "Quattro BodyShop";
         this.businessLocation = "Bethesda, Maryland";
 
+        // this.sendingBackgroundAudio = false;
+
 
         this.timeIntervalForSocket = null;
         this.noStart = false;
@@ -416,17 +418,19 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
 
         // Use setInterval to stream audio at the correct pace (real-time)
         const intervalId = setInterval(() => {
-
+            // this.sendBackgroundAudio = true;
 
             
             // Check interruption flags inside the loop
             if (this.interrupted || !this.sendingAudio) {
                 clearInterval(intervalId);
+                this.sendClear();
                 return;
             }
 
             // Check if we have reached the end of the file
             if (offset >= this.backgroundAudio.length) {
+                console.log(`[${this.callSid}] Finished sending background audio.`);
                 clearInterval(intervalId);
                 this.sendClear();
                 this.sendingAudio = false;
@@ -452,6 +456,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
         }, packetDuration); // Run this every 20ms
     }
 }
+
     async processLLM(transcript) {
         if (!transcript) {
             console.log(`[${this.callSid}] Empty transcript, restarting STT.`);
