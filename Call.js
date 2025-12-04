@@ -311,8 +311,8 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                     encoding: "MULAW",
                     sampleRateHertz: 8000,
                     languageCode: "en-US",
-                    interimResults: true,
                 },
+                interimResults: true,
             })
             .on("error", (error) => {
                 console.error(`[${this.callSid}] STT Error:`, error);
