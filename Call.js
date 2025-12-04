@@ -319,6 +319,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
             })
             .on("data", (data) => {
                 const result = data.results[0];
+                console.log("this is the data", result);
                 if (result && result.alternatives[0]) {
                     const transcript = result.alternatives[0].transcript.trim();
                     
