@@ -39,6 +39,10 @@ class Call {
         // this.sendingBackgroundAudio = false;
 
 
+        this.alreadySending = false;
+
+
+
         this.timeIntervalForSocket = null;
         this.noStart = false;
         this.streamSid = "";
@@ -286,11 +290,14 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
     }
 
     stopBackgroundAudio() {
+      
         if (this.backgroundInterval) {
             clearInterval(this.backgroundInterval);
             this.backgroundInterval = null;
+            
         }
         this.sendingAudio = false;
+        this.alreadySending = false;
         // Optional: Send a clear here if you want to ensure the buffer is empty
         // this.sendClear(); 
     }
@@ -302,7 +309,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
         }
 
         console.log(`[${this.callSid}] Starting new Google STT stream.`);
-        if (!this.interrupted && !this.sendingAudio) {
+        if (!this.interrupted && !this.sendingAudio && !this.alreadySending) {
             this.sendBackgroundAudio();
         }
         this.googleSpeechStream = this.googleSpeechClient
@@ -427,7 +434,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                     this.timeIntervalForSocket = null;
                 }
             }, 1000);
-            // sent an interval that sends a message once every second to the ttsStream
+            // sent an interval that sends a message once  second to the ttsStream
 
             if (this.ttsStream) {
                 this.ttsStream.write({
@@ -446,6 +453,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
 async sendBackgroundAudio() {
         console.log("WE ARE SENDING BACKGROUND AUDIO")
         // Prevent multiple intervals running
+        this.alreadySending = true;
         if (this.backgroundInterval) {
             clearInterval(this.backgroundInterval);
         }
@@ -468,13 +476,16 @@ async sendBackgroundAudio() {
         let offset = 44; 
 
         this.sendingAudio = true;
+        this.sendingBackgroundAudio = true;
 
         // Store interval ID in the class instance
         this.backgroundInterval = setInterval(() => {
             // Safety check inside the loop
             if (this.twilioPlaying) {
                 this.stopBackgroundAudio();
+                
                 this.sendClear();
+                
                 console.log(`[${this.callSid}] Background audio stopped (flag check).`);
                 return;
             }
@@ -764,6 +775,15 @@ async sendBackgroundAudio() {
 
     sendClear() {
         if (this.ws) {
+
+            // lets just put all the variable management in here;
+
+            this.aiTalking = false;
+            this.sendingAudio = false;
+            this.twilioPlaying = false;
+
+
+
             console.log(`[${this.callSid}] Sending clear event to Twilio.`);
             this.ws.send(
                 JSON.stringify({
