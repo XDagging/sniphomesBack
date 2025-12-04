@@ -626,7 +626,7 @@ async sendBackgroundAudio() {
                     console.log(`[${this.callSid}] Interrupted, skipping TTS audio chunk.`);
                     return;
                 }
-                this.sendClear();
+                // this.sendClear();
                 
 
                 const inputSamples = [];
