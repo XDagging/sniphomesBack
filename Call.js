@@ -409,6 +409,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
 
 
 async sendBackgroundAudio() {
+        console.log("WE ARE SENDING BACKGROUND AUDIO")
         // Prevent multiple intervals running
         if (this.backgroundInterval) {
             clearInterval(this.backgroundInterval);
@@ -634,7 +635,7 @@ async sendBackgroundAudio() {
                     inputSamples.push(audioContent.readInt16LE(i));
                 }
 
-                console.log(`[${this.callSid}] Input samples: ${inputSamples.length} (from ${audioContent.length} bytes)`);
+                // console.log(`[${this.callSid}] Input samples: ${inputSamples.length} (from ${audioContent.length} bytes)`);
 
                 const resampledData = waveResampler.resample(inputSamples, 24000, 8000, {
                     method: "sinc",
@@ -642,7 +643,7 @@ async sendBackgroundAudio() {
                     bitDepth: 16
                 });
 
-                console.log(`[${this.callSid}] Resampled output length: ${resampledData.length}`);
+                // console.log(`[${this.callSid}] Resampled output length: ${resampledData.length}`);
 
                 const pcm8kInt16 = new Int16Array(resampledData.length);
                 for (let i = 0; i < resampledData.length; i++) {
@@ -650,7 +651,7 @@ async sendBackgroundAudio() {
                 }
 
                 const mulawSamples = mulaw.encode(pcm8kInt16);
-                console.log(`[${this.callSid}] Sizes: PCM 8k=${pcm8kInt16.length} samples -> MULAW=${mulawSamples.length} samples`);
+                // console.log(`[${this.callSid}] Sizes: PCM 8k=${pcm8kInt16.length} samples -> MULAW=${mulawSamples.length} samples`);
 
                 const mulawBuffer = Buffer.from(mulawSamples);
                 const audioChunk = mulawBuffer.toString("base64");
@@ -671,7 +672,7 @@ async sendBackgroundAudio() {
 
                 this.playbackTimeout = setTimeout(() => {
                     this.twilioPlaying = false;
-                    console.log(`[${this.callSid}] TTS Playback finished (est).`);
+                    // console.log(`[${this.callSid}] TTS Playback finished (est).`);
 
                     if (this.shouldHangup) {
                         console.log(`[${this.callSid}] Audio finished, executing delayed hangup.`);
