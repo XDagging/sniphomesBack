@@ -720,6 +720,7 @@ async sendBackgroundAudio() {
 
                 this.playbackTimeout = setTimeout(() => {
                     this.twilioPlaying = false;
+                    this.sendingAudio = false;
                     // console.log(`[${this.callSid}] TTS Playback finished (est).`);
 
                     if (this.shouldHangup) {
