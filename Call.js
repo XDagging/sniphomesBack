@@ -302,7 +302,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
         }
 
         console.log(`[${this.callSid}] Starting new Google STT stream.`);
-        if (!this.interrupted) {
+        if (!this.interrupted && !this.sendingAudio) {
             this.sendBackgroundAudio();
         }
         this.googleSpeechStream = this.googleSpeechClient
@@ -596,7 +596,7 @@ async sendBackgroundAudio() {
             this.rating = fedToTwilio.rating;
 
             console.log(`[${this.callSid}] Metadata: rating=${fedToTwilio.rating}, hangUp=${fedToTwilio.hangUp}`);
-
+            console.log("this was the entire gemini response: ", fedToTwilio);
             if (fedToTwilio.hangUp) {
                 console.log(`[${this.callSid}] Hangup requested. Waiting for audio to finish.`);
                 this.shouldHangup = true;
