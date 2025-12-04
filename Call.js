@@ -289,6 +289,9 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
         }
 
         console.log(`[${this.callSid}] Starting new Google STT stream.`);
+        if (!this.interrupted) {
+            sendBackgroundAudio();
+        }
         this.googleSpeechStream = this.googleSpeechClient
             .streamingRecognize({
                 config: {
@@ -305,6 +308,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                 const result = data.results[0];
                 if (result && result.alternatives[0]) {
                     const transcript = result.alternatives[0].transcript.trim();
+                    
 
                     if ((this.sendingAudio || this.twilioPlaying) && transcript.length > 0) {
                         console.log(`[${this.callSid}] User interrupting AI (STT): "${transcript}"`);
@@ -388,6 +392,64 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
         }
     }
 
+
+ async sendBackgroundAudio() {
+    // 1. Check your flags
+    if (!this.interrupted && !this.sendingAudio && !this.twilioPlaying) {
+        
+        // Load the file
+        this.backgroundAudio = fs.readFileSync("ulawOfficeAmbience.wav");
+
+        // CONFIGURATION
+        const sampleRate = 8000; // 8kHz
+        const packetDuration = 20; // 20ms is standard for Twilio
+        
+        // 1 byte per sample for mulaw means 160 bytes for 20ms
+        const chunkSize = Math.ceil(sampleRate * (packetDuration / 1000)); 
+
+        // CRITICAL: Start offset at 44 to skip the standard WAV header
+        // If you don't do this, you will hear a loud POP at the start.
+        let offset = 44; 
+
+        this.sendingAudio = true;
+
+        // Use setInterval to stream audio at the correct pace (real-time)
+        const intervalId = setInterval(() => {
+
+
+            
+            // Check interruption flags inside the loop
+            if (this.interrupted || !this.sendingAudio) {
+                clearInterval(intervalId);
+                return;
+            }
+
+            // Check if we have reached the end of the file
+            if (offset >= this.backgroundAudio.length) {
+                clearInterval(intervalId);
+                this.sendingAudio = false;
+                // Optional: Loop the audio by resetting offset to 44 here
+                return;
+            }
+
+            // Calculate end of chunk
+            const end = Math.min(offset + chunkSize, this.backgroundAudio.length);
+            
+            // Slice the buffer
+            const chunk = this.backgroundAudio.slice(offset, end);
+            
+            // Convert to base64 for Twilio
+            const audioChunk = chunk.toString("base64");
+            
+            // Send to Twilio
+            this.sendAudioChunk(audioChunk);
+
+            // CRITICAL: Increment the offset
+            offset += chunkSize;
+
+        }, packetDuration); // Run this every 20ms
+    }
+}
     async processLLM(transcript) {
         if (!transcript) {
             console.log(`[${this.callSid}] Empty transcript, restarting STT.`);
@@ -621,7 +683,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                 },
                 voice: {
                     languageCode: 'en-US',
-                    name: 'en-US-News-N',
+                    name: 'en-US-Chirp3-HD-Sadachbia',
                 },
             },
         };
