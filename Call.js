@@ -684,7 +684,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                 },
                 voice: {
                     languageCode: 'en-US',
-                    name: 'en-US-Chirp-HD-Fenrir',
+                    name: 'en-US-Chirp3-HD-Fenrir',
                 },
             },
         };
