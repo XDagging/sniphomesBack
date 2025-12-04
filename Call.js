@@ -309,7 +309,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
         }
 
         console.log(`[${this.callSid}] Starting new Google STT stream.`);
-        if (!this.interrupted && !this.sendingAudio && !this.alreadySending) {
+        if (!this.interrupted && !this.sendingAudio && !this.alreadySending && !this.shouldHangup) {
             this.sendBackgroundAudio();
         } else {
             console.log("We are not sending background audio because", !this.interrupted, !this.sendingAudio, !this.alreadySending);
@@ -336,6 +336,11 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                     
 
                     if ((this.sendingAudio || this.twilioPlaying) && transcript.length > 0) {
+
+                        if (this.shouldHangup) {
+                            console.log(`[${this.callSid}] Hangup pending. Ignoring interruption: "${transcript}"`);
+                            return; 
+                        }
                         console.log(`[${this.callSid}] User interrupting AI (STT): "${transcript}"`);
                         this.interrupted = true;
                         this.sendingAudio = false;
