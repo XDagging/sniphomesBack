@@ -81,6 +81,7 @@ class Call {
                 customerName: { type: "STRING" },
                 vehicleModel: { type: "STRING" },
                 customerEmail: { type: "STRING" },
+                hangup: { type: "BOOLEAN" },
                 paymentMethod: { type: "STRING", enum: ["insurance", "out-of-pocket", "unknown"] },
 
                 // --- MODIFIED ACTION FIELD (see next section) ---
@@ -89,7 +90,7 @@ class Call {
                     enum: ["respond", "hangup", "transfer"] 
                 }
                     },
-                    required: ["response", "rating"],
+                    required: ["response", "rating", "hangup"],
                 },
             },
             safetySettings,
