@@ -3,6 +3,7 @@ const speech = require("@google-cloud/speech");
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
 const { TextToSpeechClient } = require("@google-cloud/text-to-speech");
 const { Readable } = require("stream");
+const fs = require("fs");
 const waveResampler = require('wave-resampler');
 const { mulaw } = require('alawmulaw');
 
