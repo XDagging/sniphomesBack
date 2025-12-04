@@ -365,8 +365,8 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
 
                     // we should probably stop talking and start listening:
                     if ((this.sendingAudio || this.twilioPlaying)) {
-
-                        console.log(`[${this.callSid}] User interrupting AI (STT): "${transcript}"`);
+                        console.log("we are interrupting because of interim results")
+                        // console.log(`[${this.callSid}] User interrupting AI (STT): "${transcript}"`);
                         this.interrupted = true;
                         this.sendingAudio = false;
                         this.twilioPlaying = false;
