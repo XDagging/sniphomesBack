@@ -484,9 +484,10 @@ async sendBackgroundAudio() {
         this.backgroundInterval = setInterval(() => {
             // Safety check inside the loop
             if (this.twilioPlaying) {
+                console.log("for some reason, this was clicked.")
                 this.stopBackgroundAudio();
                 
-                this.sendClear();
+                // this.sendClear();
                 
                 console.log(`[${this.callSid}] Background audio stopped (flag check).`);
                 return;
@@ -668,6 +669,10 @@ async sendBackgroundAudio() {
 
 
         stream.on('data', (response) => {
+            this.aiTalking = false;
+            this.interrupted = false;
+            this.sendingAudio = true;
+            this.twilioPlaying = true;
             const { audioContent } = response;
             if (audioContent) {
                 console.log(`[${this.callSid}] Received audio chunk from Google TTS`, audioContent.length);
@@ -749,10 +754,7 @@ async sendBackgroundAudio() {
         };
         stream.write(request);
 
-        this.aiTalking = false;
-        this.interrupted = false;
-        this.sendingAudio = true;
-        this.twilioPlaying = true;
+        
         this.startGoogleSpeechStream();
 
         return stream;
@@ -781,9 +783,9 @@ async sendBackgroundAudio() {
 
             // lets just put all the variable management in here;
 
-            this.aiTalking = false;
-            this.sendingAudio = false;
-            this.twilioPlaying = false;
+            // this.aiTalking = false;
+            // this.sendingAudio = false;
+            // this.twilioPlaying = false;
 
 
 
