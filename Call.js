@@ -59,7 +59,7 @@ class Call {
         this.playbackTimeout = null;
         this.interrupted = false;
         this.ttsStream = null;
-
+        this.backgroundInterval = null;
         this.estimatedPlaybackEnd = 0;
         this.shouldHangup = false;
 
@@ -285,6 +285,16 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
         });
     }
 
+    stopBackgroundAudio() {
+        if (this.backgroundInterval) {
+            clearInterval(this.backgroundInterval);
+            this.backgroundInterval = null;
+        }
+        this.sendingAudio = false;
+        // Optional: Send a clear here if you want to ensure the buffer is empty
+        // this.sendClear(); 
+    }
+
     startGoogleSpeechStream() {
         if (this.googleSpeechStream) {
             this.googleSpeechStream.destroy();
@@ -318,6 +328,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                         this.interrupted = true;
                         this.sendingAudio = false;
                         this.twilioPlaying = false;
+                        this.stopBackgroundAudio();
 
                         if (this.playbackTimeout) {
                             clearTimeout(this.playbackTimeout);
@@ -396,68 +407,55 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
     }
 
 
- async sendBackgroundAudio() {
-    // 1. Check your flags
-    if (!this.interrupted && !this.sendingAudio && !this.twilioPlaying) {
-        
-        // Load the file
-        this.backgroundAudio = fs.readFileSync("ulawOfficeAmbience.wav");
+async sendBackgroundAudio() {
+        // Prevent multiple intervals running
+        if (this.backgroundInterval) {
+            clearInterval(this.backgroundInterval);
+        }
 
-        // CONFIGURATION
-        const sampleRate = 8000; // 8kHz
-        const packetDuration = 20; // 20ms is standard for Twilio
-        
-        // 1 byte per sample for mulaw means 160 bytes for 20ms
+        // Logic check: Don't start if interrupted or AI is talking
+        if (this.interrupted || this.twilioPlaying) {
+            return;
+        }
+
+        try {
+            this.backgroundAudio = fs.readFileSync("ulawOfficeAmbience.wav");
+        } catch (e) {
+            console.error("Could not load background audio file.");
+            return;
+        }
+
+        const sampleRate = 8000;
+        const packetDuration = 20; 
         const chunkSize = Math.ceil(sampleRate * (packetDuration / 1000)); 
-
-        // CRITICAL: Start offset at 44 to skip the standard WAV header
-        // If you don't do this, you will hear a loud POP at the start.
         let offset = 44; 
 
         this.sendingAudio = true;
 
-        // Use setInterval to stream audio at the correct pace (real-time)
-        const intervalId = setInterval(() => {
-            // this.sendBackgroundAudio = true;
-
-            
-            // Check interruption flags inside the loop
+        // Store interval ID in the class instance
+        this.backgroundInterval = setInterval(() => {
+            // Safety check inside the loop
             if (this.interrupted || !this.sendingAudio) {
-                clearInterval(intervalId);
+                this.stopBackgroundAudio();
                 this.sendClear();
-                this.sendingAudio = false;
-                console.log(`[${this.callSid}] Background audio sending interrupted.`);
+                console.log(`[${this.callSid}] Background audio stopped (flag check).`);
                 return;
             }
 
-            // Check if we have reached the end of the file
             if (offset >= this.backgroundAudio.length) {
-                console.log(`[${this.callSid}] Finished sending background audio.`);
-                clearInterval(intervalId);
-                this.sendClear();
-                this.sendingAudio = false;
-                // Optional: Loop the audio by resetting offset to 44 here
-                return;
+                // Loop the audio
+                offset = 44;
             }
 
-            // Calculate end of chunk
             const end = Math.min(offset + chunkSize, this.backgroundAudio.length);
-            
-            // Slice the buffer
             const chunk = this.backgroundAudio.slice(offset, end);
-            
-            // Convert to base64 for Twilio
             const audioChunk = chunk.toString("base64");
             
-            // Send to Twilio
             this.sendAudioChunk(audioChunk);
-
-            // CRITICAL: Increment the offset
             offset += chunkSize;
 
-        }, packetDuration); // Run this every 20ms
+        }, packetDuration);
     }
-}
 
     async processLLM(transcript) {
         if (!transcript) {
