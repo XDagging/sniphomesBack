@@ -320,7 +320,9 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
             .on("data", (data) => {
                 const result = data.results[0];
                 console.log("this is the data", result);
-                if (result && result.alternatives[0]) {
+
+
+                if (result && result.isFinal && result.alternatives[0]) {
                     const transcript = result.alternatives[0].transcript.trim();
                     
 
@@ -359,6 +361,39 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
 
                         this.processLLM(transcript);
                     }
+                } else if (result && !result.isFinal && result.alternatives[0].transcript.length > 2) {
+
+                    // we should probably stop talking and start listening:
+                    if ((this.sendingAudio || this.twilioPlaying)) {
+
+                        console.log(`[${this.callSid}] User interrupting AI (STT): "${transcript}"`);
+                        this.interrupted = true;
+                        this.sendingAudio = false;
+                        this.twilioPlaying = false;
+                        this.stopBackgroundAudio();
+
+                        if (this.playbackTimeout) {
+                            clearTimeout(this.playbackTimeout);
+                            this.playbackTimeout = null;
+                        }
+
+                        if (this.ttsStream) {
+                            this.ttsStream.destroy();
+                            this.ttsStream = null;
+                        }
+
+                        this.estimatedPlaybackEnd = 0;
+                        this.shouldHangup = false;
+
+                        this.sendClear();
+                    }
+
+
+
+
+
+
+
                 }
             });
     }
