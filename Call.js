@@ -290,7 +290,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
 
         console.log(`[${this.callSid}] Starting new Google STT stream.`);
         if (!this.interrupted) {
-            sendBackgroundAudio();
+            this.sendBackgroundAudio();
         }
         this.googleSpeechStream = this.googleSpeechClient
             .streamingRecognize({
