@@ -212,7 +212,7 @@ const sendMail = (email, subject, body) => {
 
 
 
-mongoose.connect("mongodb://localhost:27017/houseDB")
+// mongoose.connect("mongodb://localhost:27017/houseDB")
 
 
 const codeSchema = new mongoose.Schema({
