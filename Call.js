@@ -337,7 +337,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
 
                     if ((this.sendingAudio || this.twilioPlaying) && transcript.length > 0) {
 
-                        if (this.shouldHangup) {
+                        if (this.shouldHangup) {    
                             console.log(`[${this.callSid}] Hangup pending. Ignoring interruption: "${transcript}"`);
                             return; 
                         }
@@ -345,6 +345,8 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                         this.interrupted = true;
                         this.sendingAudio = false;
                         this.twilioPlaying = false;
+
+                        // we are doing this because this means that we should stfu and start responding.
                         this.stopBackgroundAudio();
 
                         if (this.playbackTimeout) {
@@ -384,7 +386,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                         this.interrupted = true;
                         this.sendingAudio = false;
                         this.twilioPlaying = false;
-                        this.stopBackgroundAudio();
+                        // this.stopBackgroundAudio();
 
                         if (this.playbackTimeout) {
                             clearTimeout(this.playbackTimeout);
