@@ -661,6 +661,8 @@ async sendBackgroundAudio() {
 
                 if (!this.twilioPlaying && !this.sendingAudio) {
                     this.hangup();
+                } else {
+                    console.log("we didint hangup because", !this.twilioPlaying, !this.sendingAudio);
                 }
             }
 
