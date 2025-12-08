@@ -664,6 +664,8 @@ async sendBackgroundAudio() {
                 } else {
                     console.log("we didint hangup because", !this.twilioPlaying, !this.sendingAudio);
                 }
+            } else {
+                console.log("this is what we fed to twilio", fedToTwilio)
             }
 
         } catch (e) {
