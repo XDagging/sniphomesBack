@@ -309,11 +309,11 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
         }
 
         console.log(`[${this.callSid}] Starting new Google STT stream.`);
-        if (!this.interrupted && !this.sendingAudio && !this.alreadySending && !this.shouldHangup) {
-            this.sendBackgroundAudio();
-        } else {
-            console.log("We are not sending background audio because", !this.interrupted, !this.sendingAudio, !this.alreadySending);
-        }
+        // if (!this.interrupted && !this.sendingAudio && !this.alreadySending && !this.shouldHangup) {
+        //     this.sendBackgroundAudio();
+        // } else {
+        //     console.log("We are not sending background audio because", !this.interrupted, !this.sendingAudio, !this.alreadySending);
+        // }
         this.googleSpeechStream = this.googleSpeechClient
             .streamingRecognize({
                 config: {
@@ -731,6 +731,11 @@ async sendBackgroundAudio() {
                 const timeUntilEnd = this.estimatedPlaybackEnd - now;
 
                 this.playbackTimeout = setTimeout(() => {
+                    
+
+                    if (!this.interrupted) {
+                        this.sendBackgroundAudio();
+                    }
                     this.twilioPlaying = false;
                     this.sendingAudio = false;
                     // console.log(`[${this.callSid}] TTS Playback finished (est).`);
