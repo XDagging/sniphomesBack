@@ -659,11 +659,11 @@ async sendBackgroundAudio() {
                 console.log(`[${this.callSid}] Hangup requested. Waiting for audio to finish.`);
                 this.shouldHangup = true;
 
-                if (!this.twilioPlaying && !this.sendingAudio) {
-                    this.hangup();
-                } else {
-                    console.log("we didint hangup because", !this.twilioPlaying, !this.sendingAudio);
-                }
+                // if (!this.twilioPlaying && !this.sendingAudio) {
+                //     this.hangup();
+                // } else {
+                //     console.log("we didint hangup because", !this.twilioPlaying, !this.sendingAudio);
+                // }
             } else {
                 console.log("this is what we fed to twilio", fedToTwilio)
             }
