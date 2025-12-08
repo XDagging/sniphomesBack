@@ -9,16 +9,15 @@ require("dotenv").config();
 async function getX(date) {
     try {
         console.log("this is the schedule", process.env.CALENDLY_API_KEY);
-    const response = await fetch(`GET https://api.calendly.com/scheduled_events`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.CALENDLY_API_KEY}`,
-
-        }
-    });     
-    console.log("status code", response.status);
-    return await response.json();         
+        const response = await fetch(`GET https://api.calendly.com/scheduled_events`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.CALENDLY_API_KEY}`,
+            }
+        });     
+        console.log("status code", response.status);
+        return await response.json();         
     } catch(e) {
         console.log("there was an error in collecting schedules")
     }
