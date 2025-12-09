@@ -796,7 +796,7 @@ wss.on("connection", function (ws) {
                     const phoneNum = "+11000000000"; // Dummy number
                     // This must mean that it is an inbound call;
                     if (!dynamicCalls[callSid]) {
-                        const newCallInstance = new Call(
+                        const newCallInstance = Call.create(
                             streamId,
                             phoneNum,
                             "sell",
