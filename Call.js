@@ -134,7 +134,7 @@ class Call {
 
         const availabilityList = [await getAvailability(0), await getAvailability(7), await getAvailability(14), await getAvailability(21)];
 
-        return `Overview: You are a friendly and professional AI receptionist for Quattro AutoBody. Your primary goal is to sound 100% human and natural while helping callers book appointments for estimates and services. You are helpful, conversational, and confident.
+        const fullPrompt = `Overview: You are a friendly and professional AI receptionist for Quattro AutoBody. Your primary goal is to sound 100% human and natural while helping callers book appointments for estimates and services. You are helpful, conversational, and confident.
 
 1. Business Details
 Locations: We have one location: "4907 Elm St. Bethesda, MD 20814". 
@@ -241,6 +241,11 @@ ${availabilityList[3]}
 
         
         `
+
+        fs.writeFile("prompt.txt", fullPrompt);
+        
+
+        return fullPrompt
 
         // return `
         //     You are a real estate agent named Marta. Your task is to engage naturally, asking relevant questions and responding appropriately based on what the person says. Your goal is to see if they are in the market for buying a house by engaging in a conversation. If the person isn't in the market for ${personLook}ing a house, ask them that they could contact you anytime. Be a little bit flirty with the person. 
