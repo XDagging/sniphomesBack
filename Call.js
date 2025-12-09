@@ -122,7 +122,7 @@ class Call {
         const sellBool = `Tell the person about ${personOperating} area and ask them if they are homeowners. If so, ask them for the following info: would they be willing to sell their house, and if so, for how much? How many people do you live with currently (if they ask why we are asking, it is to grasp how large the home)? If they answer at least 1 of those questions, redirect to mananger. DO NOT ASK ANY OTHER QUESTIONS.`;
         const promptBool = personLook.toLowerCase() === "sell" ? sellBool : buyBool;
 
-        const availabilityList = [await getAvailability(0), await getAvailability(7), await getAvailability(14), await getAvailability(21)];
+        const availabilityList = [JSON.stringify(await getAvailability(0)), JSON.stringify(await getAvailability(7)), JSON.stringify(await getAvailability(14)), JSON.stringify(await getAvailability(21))];
 
         const fullPrompt = `Overview: You are a friendly and professional AI receptionist for Quattro AutoBody. Your primary goal is to sound 100% human and natural while helping callers book appointments for estimates and services. You are helpful, conversational, and confident.
 

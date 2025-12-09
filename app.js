@@ -714,9 +714,9 @@ function callSomeone(phoneNumber, agentName, agentArea, agentAction, uuid) {
             to: `+1${phoneNumber}`,
             from: `+12403660377`,
         })
-        .then((call) => {
+        .then(async(call) => {
             // we need to check if this is buggy or not
-            dynamicCalls[call.sid] = Call.create(
+            dynamicCalls[call.sid] = await Call.create(
                 call.sid,
                 phoneNumber,
                 agentAction,
@@ -762,7 +762,7 @@ wss.on("connection", function (ws) {
 
     // We can't associate the call yet. We need to wait for the "start" message
     // to get the callSid and streamSid.
-    const startListener = (message) => {
+    const startListener = async(message) => {
         try {
             const parsedMsg = JSON.parse(message.toString());
             console.log("we got to here", parsedMsg)
@@ -796,7 +796,7 @@ wss.on("connection", function (ws) {
                     const phoneNum = "+11000000000"; // Dummy number
                     // This must mean that it is an inbound call;
                     if (!dynamicCalls[callSid]) {
-                        const newCallInstance = Call.create(
+                        const newCallInstance = await Call.create(
                             streamId,
                             phoneNum,
                             "sell",
