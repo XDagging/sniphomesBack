@@ -445,11 +445,11 @@ ${availabilityList[3]}
 
     async startConversation() {
         this.aiTalking = true;
-        const initialHistory = await this.chat.getHistory();
-        const initialResponseJSON = initialHistory[1].parts[0].text;
+        // const initialHistory = await this.chat.getHistory();
+        const initialResponseJSON = `Hi this is ${this.businessName} how may we help you today?`;
 
         try {
-            const parsed = JSON.parse(initialResponseJSON);
+            const parsed = initialResponseJSON
 
             this.ttsStream = this.setupGoogleTTSStream();
             this.timeIntervalForSocket = setInterval(() => {
