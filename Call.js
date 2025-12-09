@@ -109,7 +109,7 @@ class Call {
 
     // 3. Static Factory Method
     static async create(callSid, phoneNumber, agentAction, agentLocation, agentName, uuid) {
-        const instance = new VoiceAgent(callSid, phoneNumber, agentAction, agentLocation, agentName, uuid);
+        const instance = new Call(callSid, phoneNumber, agentAction, agentLocation, agentName, uuid);
         await instance.init(); // Wait for the async work
         return instance;       // Return the fully ready object
     }
