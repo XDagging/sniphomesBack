@@ -478,7 +478,7 @@ ${availabilityList[3]}
                 this.ttsStream.end();
             }
 
-            this.processResponse(initialResponseJSON);
+            this.processResponse(JSON.stringify(initialResponseJSON));
         } catch (e) {
             console.error(`[${this.callSid}] Error processing initial greeting:`, e);
         }
