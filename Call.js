@@ -2,6 +2,7 @@ require("dotenv").config();
 const speech = require("@google-cloud/speech");
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
 const { TextToSpeechClient } = require("@google-cloud/text-to-speech");
+const { getAvailability } = require("./calendly");
 const { Readable } = require("stream");
 const fs = require("fs");
 const waveResampler = require('wave-resampler');
@@ -122,7 +123,7 @@ class Call {
         // maximum of five minutes per call.
     }
 
-    buildSystemPrompt(personName, personOperating, personLook) {
+    async buildSystemPrompt(personName, personOperating, personLook) {
         const personNumber = "3011233212";
         const formattedNumber = "three, zero, one, one, two, three, three, two, one, two";
 
@@ -211,6 +212,29 @@ AI: Awesome. I'll get you all set for Thursday at 10. Can I get your first and l
 
 6. Final Rule
 Never give stage cues like [pause] or [sigh]. Just perform the action.
+
+Availability: 
+
+This is the availability for the next month: 
+
+This week:
+${JSON.stringify(await getAvailability(0))}
+
+Next week:
+
+${JSON.stringify(await getAvailability(7))}
+
+Two weeks from now: 
+${JSON.stringify(await getAvailability(14))}
+
+Three weeks from now: 
+
+${JSON.stringify(await getAvailability(21))}
+
+
+
+
+
 
         
         `
