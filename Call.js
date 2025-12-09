@@ -446,10 +446,14 @@ ${availabilityList[3]}
     async startConversation() {
         this.aiTalking = true;
         // const initialHistory = await this.chat.getHistory();
-        const initialResponseJSON = `Hi this is ${this.businessName} how may we help you today?`;
+        const initialResponseJSON = {
+                            response: `Hi this is ${this.businessName} how may we help you today?`,
+                            rating: 5,
+                            hangUp: false
+                        }
 
         try {
-            const parsed = initialResponseJSON
+            const parsed = initialResponseJSON;
 
             this.ttsStream = this.setupGoogleTTSStream();
             this.timeIntervalForSocket = setInterval(() => {
