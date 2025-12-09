@@ -715,7 +715,8 @@ function callSomeone(phoneNumber, agentName, agentArea, agentAction, uuid) {
             from: `+12403660377`,
         })
         .then((call) => {
-            dynamicCalls[call.sid] = new Call(
+            // we need to check if this is buggy or not
+            dynamicCalls[call.sid] = Call.create(
                 call.sid,
                 phoneNumber,
                 agentAction,

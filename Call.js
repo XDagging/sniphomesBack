@@ -37,29 +37,18 @@ class Call {
 
         this.businessName = "Quattro BodyShop";
         this.businessLocation = "Bethesda, Maryland";
-
-        // this.sendingBackgroundAudio = false;
-
-
         this.alreadySending = false;
-
-
-
         this.timeIntervalForSocket = null;
         this.noStart = false;
         this.streamSid = "";
         this.ws = null;
         this.googleSpeechClient = new speech.SpeechClient();
-
         this.googleSpeechStream = null;
-
         this.transcript = [];
         this.messageNumber = 0;
-
         this.aiTalking = false;
         this.userSpeaking = false;
         this.speechTimeout = null;
-
         this.sendingAudio = false;
         this.twilioPlaying = false;
         this.playbackTimeout = null;
@@ -68,9 +57,9 @@ class Call {
         this.backgroundInterval = null;
         this.estimatedPlaybackEnd = 0;
         this.shouldHangup = false;
-
         this.aiDuration = 0;
 
+        // Initialize model here, but don't start chat yet
         this.model = genAI.getGenerativeModel({
             model: "gemini-2.5-flash",
             generationConfig: {
@@ -79,30 +68,28 @@ class Call {
                 responseSchema: {
                     type: "OBJECT",
                     properties: {
-                      
-                        response: { type: "STRING" }, // What the AI says
-                rating: { type: "NUMBER" },   // Your lead rating
-
-                // --- NEW DATA FIELDS ---
-                customerName: { type: "STRING" },
-                vehicleModel: { type: "STRING" },
-                customerEmail: { type: "STRING" },
-                hangup: { type: "BOOLEAN" },
-                paymentMethod: { type: "STRING", enum: ["insurance", "out-of-pocket", "unknown"] },
-
-                // --- MODIFIED ACTION FIELD (see next section) ---
-                action: { 
-                    type: "STRING", 
-                    enum: ["respond", "hangup", "transfer"] 
-                }
+                        response: { type: "STRING" },
+                        rating: { type: "NUMBER" },
+                        customerName: { type: "STRING" },
+                        vehicleModel: { type: "STRING" },
+                        customerEmail: { type: "STRING" },
+                        hangup: { type: "BOOLEAN" },
+                        paymentMethod: { type: "STRING", enum: ["insurance", "out-of-pocket", "unknown"] },
+                        action: { type: "STRING", enum: ["respond", "hangup", "transfer"] }
                     },
                     required: ["response", "rating", "hangup"],
                 },
             },
             safetySettings,
         });
+    }
 
-        const systemPrompt = this.buildSystemPrompt(agentName, agentLocation, agentAction);
+    // 2. Move async logic to a method
+    async init() {
+        const systemPrompt = await this.buildSystemPrompt(this.agentName, this.agentLocation, this.agentAction);
+        
+        console.log("we are returning the system prompt", systemPrompt);
+        
         this.chat = this.model.startChat({
             history: [
                 { role: "user", parts: [{ text: systemPrompt }] },
@@ -118,10 +105,13 @@ class Call {
                 }
             ],
         });
+    }
 
-        console.log(`[${this.callSid}] New call initialized.`);
-        this.hangupTimer = setTimeout(() => this.hangup(), 300 * 1000);
-        // maximum of five minutes per call.
+    // 3. Static Factory Method
+    static async create(callSid, phoneNumber, agentAction, agentLocation, agentName, uuid) {
+        const instance = new VoiceAgent(callSid, phoneNumber, agentAction, agentLocation, agentName, uuid);
+        await instance.init(); // Wait for the async work
+        return instance;       // Return the fully ready object
     }
 
     async buildSystemPrompt(personName, personOperating, personLook) {
@@ -242,7 +232,7 @@ ${availabilityList[3]}
         
         `
 
-        fs.writeFile("prompt.txt", fullPrompt);
+       
         
 
         return fullPrompt
