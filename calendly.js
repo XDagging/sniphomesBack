@@ -175,4 +175,4 @@ async function getAvailability(daysInAdvance) {
 
 
 
-module.exports = getAvailability;
+module.exports = { getAvailability };
