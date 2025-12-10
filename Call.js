@@ -684,6 +684,11 @@ ${availabilityList[3]}
             console.log(`[${this.callSid}] Metadata: rating=${fedToTwilio.rating}, hangUp=${fedToTwilio.hangup}`);
             console.log("this is what we fed to twilio", fedToTwilio);
 
+            if (fedToTwilio.action === "transfer") {
+                await this.transferCall();
+                return;
+            }
+
             // If we have all appointment details, attempt to schedule
             if (fedToTwilio.customerName && fedToTwilio.vehicleModel && fedToTwilio.customerEmail && fedToTwilio.paymentMethod) {
                 const currentAttempt = JSON.stringify({
@@ -722,6 +727,21 @@ ${availabilityList[3]}
             this.startGoogleSpeechStream();
         }
     }
+    async transferCall() {
+        console.log(`[${this.callSid}] Transferring call to ${this.transferNumber}`);
+        this.sendClear(); // Stop any current audio
+
+        try {
+            await client.calls(this.callSid).update({
+                twiml: `<Response><Dial>${this.transferNumber}</Dial></Response>`
+            });
+            console.log(`[${this.callSid}] Call transferred successfully.`);
+            this.shouldHangup = true; // Stop processing further interactions
+        } catch (error) {
+            console.error(`[${this.callSid}] Error transferring call:`, error);
+        }
+    }
+
     async handleAppointment(details) {
         try {
             const result = await scheduleAppointment(details);
