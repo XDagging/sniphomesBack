@@ -76,7 +76,8 @@ class Call {
                         customerEmail: { type: "STRING" },
                         hangup: { type: "BOOLEAN" },
                         paymentMethod: { type: "STRING", enum: ["insurance", "out-of-pocket", "unknown"] },
-                        action: { type: "STRING", enum: ["respond", "hangup", "transfer"] }
+                        action: { type: "STRING", enum: ["respond", "hangup", "transfer"] },
+                        appointmentTime: { type: "STRING" }
                     },
                     required: ["response", "rating", "hangup"],
                 },
@@ -685,13 +686,26 @@ ${availabilityList[3]}
 
             // If we have all appointment details, attempt to schedule
             if (fedToTwilio.customerName && fedToTwilio.vehicleModel && fedToTwilio.customerEmail && fedToTwilio.paymentMethod) {
-                const scheduleMsg = await this.handleAppointment(fedToTwilio);
-                console.log(`[${this.callSid}] Appointment result: ${scheduleMsg}`);
+                const currentAttempt = JSON.stringify({
+                    n: fedToTwilio.customerName,
+                    v: fedToTwilio.vehicleModel,
+                    e: fedToTwilio.customerEmail,
+                    p: fedToTwilio.paymentMethod,
+                    t: fedToTwilio.appointmentTime
+                });
 
-                // Chain the result back to Gemini so it can speak the confirmation
-                // We pretend this is a system message in the transcript
-                await this.processLLM(`System Update: The appointment was attempted. Result: "${scheduleMsg}". Please inform the user.`);
-                return; // Return early, processLLM will handle the flow
+                if (this.lastAttemptedDetails === currentAttempt) {
+                    console.log(`[${this.callSid}] Skipping scheduling - details unchanged from last failure.`);
+                } else {
+                    this.lastAttemptedDetails = currentAttempt;
+                    const scheduleMsg = await this.handleAppointment(fedToTwilio);
+                    console.log(`[${this.callSid}] Appointment result: ${scheduleMsg}`);
+
+                    // Chain the result back to Gemini so it can speak the confirmation
+                    // We pretend this is a system message in the transcript
+                    await this.processLLM(`System Update: The appointment was attempted. Result: "${scheduleMsg}". Please inform the user.`);
+                    return; // Return early, processLLM will handle the flow
+                }
             }
 
             if (fedToTwilio.hangup) {
@@ -712,14 +726,14 @@ ${availabilityList[3]}
         try {
             const result = await scheduleAppointment(details);
             if (result && result.resource && result.resource.uri) {
-                return `Your appointment has been scheduled. A confirmation email has been sent.`;
+                return `STATUS: SUCCESS. URI: ${result.resource.uri}`;
             }
             this.sendClear();
-            return `I was unable to schedule the appointment. Would you like to try another time, or would you like me to transfer you to a human agent?`;
+            return `STATUS: FAILED. Reason: Unable to schedule. Offer transfer to ${this.transferNumber} or new time.`;
         } catch (e) {
             console.error(`[${this.callSid}] Scheduling error:`, e);
             this.sendClear();
-            return `I was unable to schedule the appointment. Would you like to try another time, or would you like me to transfer you to a human agent?`;
+            return `STATUS: FAILED. Reason: Error scheduling. Offer transfer to ${this.transferNumber} or new time.`;
         }
     }
 
