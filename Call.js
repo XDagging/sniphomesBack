@@ -58,7 +58,7 @@ class Call {
         this.estimatedPlaybackEnd = 0;
         this.shouldHangup = false;
         this.aiDuration = 0;
-        this.transferNumber = "301-466-7117";
+        this.transferNumber = "202-210-6202";
         this.isTransferring = false;
         this.initializationPromise = null;
 
