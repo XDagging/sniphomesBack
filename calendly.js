@@ -6,7 +6,7 @@ require("dotenv").config();
 
 
 // we will hardcode the calendly event key;
-
+let eventType = "";
 async function getCurrentUser() {
     try {
         // console.log("this is the schedule", process.env.CALENDLY_API_KEY);
@@ -93,26 +93,25 @@ async function scheduleAppointment(eventData) {
 
         // 1. You must know the Event Type URI (e.g. "The 30 Min Service Call")
         // You can get this from GET /event_types
-        const EVENT_TYPE_URI = process.env.CALENDLY_EVENT_TYPE_URI;
+        const EVENT_TYPE_URI = eventType;
 
         const payload = {
             event_type: EVENT_TYPE_URI,
-            target: {
-                start_time: appointmentTime, // Must be in UTC ISO format (e.g., "2025-10-25T14:30:00Z")
-                timezone: "America/New_York"
-            },
+            start_time: appointmentTime, // Must be in UTC ISO format (e.g., "2025-10-25T14:30:00Z")
+            // timezone: "America/New_York",
             invitee: {
                 email: email,
                 name: name,
+                timezone: "America/New_York",
                 // phone: phone,
                 text_reminder_number: phone,
                 // "text_reminder_number" is usually not settable directly via API unless mapped to a question
                 // But you can pass custom answers for your questions:
             },
             questions_and_answers: [
-                { "question": "Model", "answer": model },
-                { "question": "Make", "answer": make },
-                { "question": "Insurance Claim", "answer": insuranceClaim }
+                { "question": "Model", "answer": model, "position": 0 },
+                { "question": "Make", "answer": make, "position": 1 },
+                { "question": "Insurance Claim", "answer": insuranceClaim, "position": 2 }
             ]
         };
 
@@ -139,21 +138,25 @@ async function scheduleAppointment(eventData) {
 
 
 
-async function testFunction() {
+// async function testFunction() {
 
-    const x = await scheduleAppointment({
-        email: "marac@sniphomes.com",
-        name: "marac",
-        phone: "3011233212",
-        model: "model",
-        make: "make",
-        insuranceClaim: "insuranceClaim",
-        appointmentTime: "appointmentTime"
-    })
-    console.log(x)
-}
+//     const x = await getAvailability(7);
+//     console.log(x);
+//     console.log("uri is", eventType)
 
-testFunction();
+//     const y = await scheduleAppointment({
+//         email: "marac@sniphomes.com",
+//         name: "marac",
+//         phone: "+1 301-123-3212",
+//         model: "model",
+//         make: "make",
+//         insuranceClaim: "insuranceClaim",
+//         appointmentTime: "2025-12-12T18:30:00.000000Z",
+//     })
+//     console.log(y)
+// }
+
+// testFunction();
 
 async function getAvailability(daysInAdvance) {
     // 1. Get User
@@ -174,6 +177,7 @@ async function getAvailability(daysInAdvance) {
     }
 
     const eventTypeUri = targetEvent.uri; // Keep the full URI
+    eventType = eventTypeUri;
 
     // 4. Get Available Slots (Corrected Logic)
     const availability = await getEventAvailability(userUri, eventTypeUri, daysInAdvance);

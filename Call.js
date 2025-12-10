@@ -757,7 +757,31 @@ ${availabilityList[3]}
 
     async handleAppointment(details) {
         try {
-            const result = await scheduleAppointment(details);
+            // 1. Convert time to UTC ISO string
+            let appointmentTime = details.appointmentTime;
+            try {
+                if (appointmentTime) {
+                    const date = new Date(appointmentTime);
+                    if (!isNaN(date.getTime())) {
+                        appointmentTime = date.toISOString();
+                    }
+                }
+            } catch (err) {
+                console.error(`[${this.callSid}] Date conversion error:`, err);
+            }
+
+            // 2. Construct Payload
+            const payload = {
+                email: details.customerEmail,
+                name: details.customerName,
+                phone: this.phoneNumber, // Use the caller's number
+                model: details.vehicleModel || "N/A",
+                make: "N/A", // Call schema doesn't separate make/model yet
+                insuranceClaim: details.paymentMethod || "unknown",
+                appointmentTime: appointmentTime
+            };
+
+            const result = await scheduleAppointment(payload);
             if (result && result.resource && result.resource.uri) {
                 return `STATUS: SUCCESS. URI: ${result.resource.uri}`;
             }
