@@ -60,6 +60,7 @@ class Call {
         this.aiDuration = 0;
         this.transferNumber = "301-466-7117";
         this.isTransferring = false;
+        this.initializationPromise = null;
 
         // Initialize model here, but don't start chat yet
         this.model = genAI.getGenerativeModel({
@@ -88,33 +89,34 @@ class Call {
     }
 
     // 2. Move async logic to a method
-    async init() {
-        const systemPrompt = await this.buildSystemPrompt(this.agentName, this.agentLocation, this.agentAction);
+    init() {
+        this.initializationPromise = (async () => {
+            const systemPrompt = await this.buildSystemPrompt(this.agentName, this.agentLocation, this.agentAction);
+            console.log("we are returning the system prompt", systemPrompt);
 
-        console.log("we are returning the system prompt", systemPrompt);
-
-        this.chat = this.model.startChat({
-            history: [
-                { role: "user", parts: [{ text: systemPrompt }] },
-                {
-                    role: "model",
-                    parts: [{
-                        text: JSON.stringify({
-                            response: `Hi this is ${this.businessName} how may we help you today?`,
-                            rating: 5,
-                            hangUp: false
-                        })
-                    }]
-                }
-            ],
-        });
+            this.chat = this.model.startChat({
+                history: [
+                    { role: "user", parts: [{ text: systemPrompt }] },
+                    {
+                        role: "model",
+                        parts: [{
+                            text: JSON.stringify({
+                                response: `Hi this is ${this.businessName} how may we help you today?`,
+                                rating: 5,
+                                hangUp: false
+                            })
+                        }]
+                    }
+                ],
+            });
+        })();
     }
 
     // 3. Static Factory Method
     static async create(callSid, phoneNumber, agentAction, agentLocation, agentName, uuid) {
         const instance = new Call(callSid, phoneNumber, agentAction, agentLocation, agentName, uuid);
-        await instance.init(); // Wait for the async work
-        return instance;       // Return the fully ready object
+        instance.init(); // Start async work without awaiting
+        return instance;       // Return the instance immediately
     }
 
     async buildSystemPrompt(personName, personOperating, personLook) {
@@ -554,6 +556,14 @@ ${availabilityList[3]}
 
         this.aiTalking = true;
         this.stopGoogleSpeechStream();
+
+        // Ensure the model is initialized before proceeding
+        try {
+            await this.initializationPromise;
+        } catch (e) {
+            console.error(`[${this.callSid}] Initialization failed:`, e);
+            // Fallback logic could go here, but for now we log error
+        }
 
         this.transcript.push({
             sender: "Person on the phone",
