@@ -10,21 +10,21 @@ require("dotenv").config();
 async function getCurrentUser() {
     try {
         // console.log("this is the schedule", process.env.CALENDLY_API_KEY);
-        
+
         const response = await fetch(`https://api.calendly.com/users/me`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${process.env.CALENDLY_API_KEY}`,
             }
-        });     
+        });
         console.log("status code", response.status);
-        return await response.json();         
-    } catch(e) {
+        return await response.json();
+    } catch (e) {
 
         console.log("there was an error in collecting schedules", e)
     }
-    
+
 }
 
 async function getX(organizationId) {
@@ -37,10 +37,10 @@ async function getX(organizationId) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${process.env.CALENDLY_API_KEY}`,
             }
-        });     
+        });
         console.log("status code", response.status);
-        return await response.json();         
-    } catch(e) {
+        return await response.json();
+    } catch (e) {
 
         console.log("there was an error in collecting schedules", e)
     }
@@ -87,56 +87,36 @@ async function getEventAvailability(userUri, eventTypeUri, daysAhead) {
     }
 }
 
-async function createEvent(eventData) {
+async function scheduleAppointment(eventData) {
     try {
-
-        const {email, name, phone, model, make, insuranceClaim, eventId} = eventData;
-        // before antigravity
+        const { email, name, phone, model, make, insuranceClaim, appointmentTime } = eventData;
         const payload = {
             email: email,
             name: name,
             timezone: "America/New_York",
             text_reminder_number: phone,
+            ...(appointmentTime ? { start_time: appointmentTime } : {}),
             questions_and_answers: [
-                {
-                    "question": "Model",
-                    "answer": model,
-                    "position": 1
-                },
-                {
-                    "question": "Make",
-                    "answer": make,
-                    "position": 2
-                },
-                {
-                    "question": "Insurance Claim",
-                    "answer": insuranceClaim,
-                    "position": 3
-                }
+                { "question": "Model", "answer": model, "position": 1 },
+                { "question": "Make", "answer": make, "position": 2 },
+                { "question": "Insurance Claim", "answer": insuranceClaim, "position": 3 }
             ]
-        }
-        
-        const response = await fetch(`https://api.calendly.com/`, {
-            "method": "POST",
-            "Content-Type": "application/json",
-            "body": JSON.stringify(payload), 
-            "Authorization": `Bearer ${process.env.CALENDLY_API_KEY}`,
-        })
-
+        };
+        const response = await fetch(`https://api.calendly.com/scheduled_events`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${process.env.CALENDLY_API_KEY}`
+            },
+            body: JSON.stringify(payload)
+        });
         return response.json();
-
-    } catch(e) {
-
-        console.log("there was an error in creating event");
-        return;
-
-
-
-
+    } catch (e) {
+        console.log("there was an error in creating scheduled event", e);
+        return null;
     }
-
-
 }
+
 
 
 async function getAvailability(daysInAdvance) {
@@ -147,7 +127,7 @@ async function getAvailability(daysInAdvance) {
 
     // 2. Get Event Types
     const clientSchedules = await getX(organizationUrl);
-    
+
     // 3. Find the specific Event Type
     const nameOfEvent = "Quattro Autobody";
     const targetEvent = clientSchedules.collection.find(event => event.name === nameOfEvent);
@@ -175,4 +155,4 @@ async function getAvailability(daysInAdvance) {
 
 
 
-module.exports = { getAvailability };
+module.exports = { getAvailability, scheduleAppointment };

@@ -2,7 +2,7 @@ require("dotenv").config();
 const speech = require("@google-cloud/speech");
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
 const { TextToSpeechClient } = require("@google-cloud/text-to-speech");
-const { getAvailability } = require("./calendly");
+const { getAvailability, scheduleAppointment } = require("./calendly");
 const { Readable } = require("stream");
 const fs = require("fs");
 const waveResampler = require('wave-resampler');
@@ -87,9 +87,9 @@ class Call {
     // 2. Move async logic to a method
     async init() {
         const systemPrompt = await this.buildSystemPrompt(this.agentName, this.agentLocation, this.agentAction);
-        
+
         console.log("we are returning the system prompt", systemPrompt);
-        
+
         this.chat = this.model.startChat({
             history: [
                 { role: "user", parts: [{ text: systemPrompt }] },
@@ -232,8 +232,8 @@ ${availabilityList[3]}
         
         `
 
-       
-        
+
+
 
         return fullPrompt
 
@@ -312,11 +312,11 @@ ${availabilityList[3]}
     }
 
     stopBackgroundAudio() {
-      
+
         if (this.backgroundInterval) {
             clearInterval(this.backgroundInterval);
             this.backgroundInterval = null;
-            
+
         }
         this.sendingAudio = false;
         this.alreadySending = false;
@@ -355,13 +355,13 @@ ${availabilityList[3]}
 
                 if (result && result.isFinal && result.alternatives[0]) {
                     const transcript = result.alternatives[0].transcript.trim();
-                    
+
 
                     if ((this.sendingAudio || this.twilioPlaying) && transcript.length > 0) {
 
-                        if (this.shouldHangup) {    
+                        if (this.shouldHangup) {
                             console.log(`[${this.callSid}] Hangup pending. Ignoring interruption: "${transcript}"`);
-                            return; 
+                            return;
                         }
                         console.log(`[${this.callSid}] User interrupting AI (STT): "${transcript}"`);
                         this.interrupted = true;
@@ -447,10 +447,10 @@ ${availabilityList[3]}
         this.aiTalking = true;
         // const initialHistory = await this.chat.getHistory();
         const initialResponseJSON = {
-                            response: `Hi this is ${this.businessName} how may we help you today?`,
-                            rating: 5,
-                            hangUp: false
-                        }
+            response: `Hi this is ${this.businessName} how may we help you today?`,
+            rating: 5,
+            hangUp: false
+        }
 
         try {
             const parsed = initialResponseJSON;
@@ -485,7 +485,7 @@ ${availabilityList[3]}
     }
 
 
-async sendBackgroundAudio() {
+    async sendBackgroundAudio() {
         console.log("WE ARE SENDING BACKGROUND AUDIO")
         // Prevent multiple intervals running
         this.alreadySending = true;
@@ -506,9 +506,9 @@ async sendBackgroundAudio() {
         }
 
         const sampleRate = 8000;
-        const packetDuration = 20; 
-        const chunkSize = Math.ceil(sampleRate * (packetDuration / 1000)); 
-        let offset = 44; 
+        const packetDuration = 20;
+        const chunkSize = Math.ceil(sampleRate * (packetDuration / 1000));
+        let offset = 44;
 
         this.sendingAudio = true;
         this.sendingBackgroundAudio = true;
@@ -519,9 +519,9 @@ async sendBackgroundAudio() {
             if (this.twilioPlaying) {
                 console.log("for some reason, this was clicked.")
                 this.stopBackgroundAudio();
-                
+
                 // this.sendClear();
-                
+
                 console.log(`[${this.callSid}] Background audio stopped (flag check).`);
                 return;
             }
@@ -534,7 +534,7 @@ async sendBackgroundAudio() {
             const end = Math.min(offset + chunkSize, this.backgroundAudio.length);
             const chunk = this.backgroundAudio.slice(offset, end);
             const audioChunk = chunk.toString("base64");
-            
+
             this.sendAudioChunk(audioChunk);
             offset += chunkSize;
 
@@ -655,7 +655,7 @@ async sendBackgroundAudio() {
         try {
             let fedToTwilio;
             try {
-                const cleanJson = geminiResponse.replace(/```json\s*/g, "").replace(/```/g, "").trim();
+                const cleanJson = geminiResponse.replace(/```json\\s*/g, "").replace(/```/g, "").trim();
                 fedToTwilio = JSON.parse(cleanJson);
             } catch (e) {
                 console.error(`[${this.callSid}] Failed to parse Gemini JSON:`, e);
@@ -680,24 +680,37 @@ async sendBackgroundAudio() {
             this.rating = fedToTwilio.rating;
 
             console.log(`[${this.callSid}] Metadata: rating=${fedToTwilio.rating}, hangUp=${fedToTwilio.hangup}`);
-            console.log("this was the entire gemini response: ", fedToTwilio);
+            console.log("this is what we fed to twilio", fedToTwilio);
+
+            // If we have all appointment details, attempt to schedule
+            if (fedToTwilio.customerName && fedToTwilio.vehicleModel && fedToTwilio.customerEmail && fedToTwilio.paymentMethod) {
+                const scheduleMsg = await this.handleAppointment(fedToTwilio);
+                // Speak the scheduling result
+                this.ttsStream = this.setupGoogleTTSStream();
+                this.ttsStream.write({ input: { text: scheduleMsg } });
+                this.ttsStream.end();
+            }
+
             if (fedToTwilio.hangup) {
                 console.log(`[${this.callSid}] Hangup requested. Waiting for audio to finish.`);
                 this.shouldHangup = true;
-
-                // if (!this.twilioPlaying && !this.sendingAudio) {
-                //     this.hangup();
-                // } else {
-                //     console.log("we didint hangup because", !this.twilioPlaying, !this.sendingAudio);
-                // }
-            } else {
-                console.log("this is what we fed to twilio", fedToTwilio)
             }
-
         } catch (e) {
             console.error(`[${this.callSid}] Error in processResponse:`, e);
             this.aiTalking = false;
             this.startGoogleSpeechStream();
+        }
+    }
+    async handleAppointment(details) {
+        try {
+            const result = await scheduleAppointment(details);
+            if (result && result.resource && result.resource.uri) {
+                return `Your appointment has been scheduled. A confirmation email has been sent.`;
+            }
+            return 'I was unable to schedule the appointment at this time. Please try again later.';
+        } catch (e) {
+            console.error(`[${this.callSid}] Scheduling error:`, e);
+            return 'Sorry, there was an error scheduling your appointment. Let me try again or you can call back later.';
         }
     }
 
@@ -718,7 +731,7 @@ async sendBackgroundAudio() {
                     return;
                 }
                 // this.sendClear();
-                
+
 
                 const inputSamples = [];
                 for (let i = 0; i < audioContent.length; i += 2) {
@@ -761,7 +774,7 @@ async sendBackgroundAudio() {
                 const timeUntilEnd = this.estimatedPlaybackEnd - now;
 
                 this.playbackTimeout = setTimeout(() => {
-                    
+
 
                     if (!this.interrupted) {
                         this.sendBackgroundAudio();
@@ -796,7 +809,7 @@ async sendBackgroundAudio() {
         };
         stream.write(request);
 
-        
+
         this.startGoogleSpeechStream();
 
         return stream;
