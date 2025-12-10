@@ -58,7 +58,7 @@ class Call {
         this.estimatedPlaybackEnd = 0;
         this.shouldHangup = false;
         this.aiDuration = 0;
-        this.transferNumber = "240-330-2027";
+        this.transferNumber = "301-466-7117";
 
         // Initialize model here, but don't start chat yet
         this.model = genAI.getGenerativeModel({
