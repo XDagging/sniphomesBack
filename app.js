@@ -20,7 +20,7 @@ const WebSocket = require("ws");
 
 const { CronJob } = require("cron")
 
-const {GoogleGenerativeAI} = require("@google/generative-ai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
 
 const model = genAI.getGenerativeModel({
@@ -28,8 +28,8 @@ const model = genAI.getGenerativeModel({
     generationConfig: {
         temperature: 0.2,
         // 0.2
-    },  
-  });
+    },
+});
 
 
 
@@ -71,7 +71,7 @@ app.use(session({
     cookie: {
         path: "/",
         maxAge: 2628000000,
-        httpOnly: true , // This is because i want to track if the cookie changes so i can change accordingly.
+        httpOnly: true, // This is because i want to track if the cookie changes so i can change accordingly.
         sameSite: "none",
         secure: true, // Set the Secure attribute
         domain: process.env.NODE_ENV === "DEV" ? undefined : ".sniphomes.com",
@@ -80,7 +80,7 @@ app.use(session({
     saveUninitialized: true,
     store: new MemoryStore({
         checkPeriod: 86400000 // prune expired entries every 24h
-    }), 
+    }),
     proxy: true,
 }));
 
@@ -123,7 +123,7 @@ let options;
 
 
 if (process.env.NODE_ENV === "DEV") {
-    console.log('\x1b[31m%s\x1b[0m', 'Currently in development mode (switch to PROD when deploying)'); 
+    console.log('\x1b[31m%s\x1b[0m', 'Currently in development mode (switch to PROD when deploying)');
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
     options = {
         key: fs.readFileSync('C:\\Users\\marac\\code\\hackathon-quhacks\\key.pem'),
@@ -182,18 +182,18 @@ const transporter = nodemailer.createTransport({
     port: 465,
     secure: true,
     auth: {
-      // TODO: replace `user` and `pass` values from <https://forwardemail.net>
-      user: process.env.EMAIL,
-      pass: process.env.PASSWORD
+        // TODO: replace `user` and `pass` values from <https://forwardemail.net>
+        user: process.env.EMAIL,
+        pass: process.env.PASSWORD
     }
-  });
+});
 
 
 const sendMail = (email, subject, body) => {
     const mailOptions = {
         from: process.env.EMAIL,
         to: email,
-        subject: subject + "#" + Math.floor(Math.random()*1000),
+        subject: subject + "#" + Math.floor(Math.random() * 1000),
         text: body
     }
 
@@ -293,7 +293,7 @@ const LeadSchema = new mongoose.Schema({
         unique: false,
     }
 
-    
+
 })
 
 
@@ -316,14 +316,14 @@ const UserSchema = new mongoose.Schema({
     email: {
         type: String,
         required: true,
-    }, 
+    },
     password: {
         type: String,
         required: true,
     },
     credits: {
         type: Number,
-        required: true,        
+        required: true,
     },
     campaigns: {
         type: Array,
@@ -340,7 +340,7 @@ const UserSchema = new mongoose.Schema({
     state: {
         type: String,
         required: true
-    }, 
+    },
     operatingArea: {
         type: Array,
         required: true
@@ -382,7 +382,7 @@ const ThreadSchema = new mongoose.Schema({
     receiver: {
         type: String,
         unique: false,
-    }, 
+    },
     callFeature: {
         type: Boolean,
         unique: false,
@@ -410,7 +410,7 @@ const Thread = new mongoose.model("Thread", ThreadSchema)
 
 
 
-app.use('/webhook', express.raw({ type:"application/json"}))
+app.use('/webhook', express.raw({ type: "application/json" }))
 
 app.post("/webhook", async (req, res) => {
     let data;
@@ -420,7 +420,7 @@ app.post("/webhook", async (req, res) => {
     if (webhookSecret) {
         let event;
         let signature = req.headers["stripe-signature"];
-        
+
         console.log(`Signature: ${signature}`);
         console.log(`Raw Body: ${req.body.toString()}`);
 
@@ -489,7 +489,7 @@ app.post("/webhook", async (req, res) => {
             user.subscription = {
                 active: false,
                 renewalDate: user.subscription.renewalDate
-            } 
+            }
             await user.save();
             break;
         }
@@ -504,7 +504,7 @@ app.post("/webhook", async (req, res) => {
 
 
 
-app.get("/sitemap", async(req,res) => {
+app.get("/sitemap", async (req, res) => {
     res.sendFile(__dirname + "/sitemap.xml")
 })
 
@@ -512,24 +512,24 @@ app.get("/sitemap", async(req,res) => {
 
 
 
-app.use(bodyParser.json({limit: "10mb"}))
+app.use(bodyParser.json({ limit: "10mb" }))
 
 
 const generateCode = (length) => {
-    const numbers = [0,1,2,3,4,5,6,7,8,9]
+    const numbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     let code = ""
 
-    for (let i=0; i<length; i++) {
+    for (let i = 0; i < length; i++) {
         code += Math.floor(Math.random() * (numbers.length))
     }
 
     return code
-    
+
 }
 
 function reportError(err) {
     console.log(err)
-    sendMail(process.env.ADMINEMAIL,"Error Occured","An error occured. Here's the error message\n\n" + err)
+    sendMail(process.env.ADMINEMAIL, "Error Occured", "An error occured. Here's the error message\n\n" + err)
 }
 
 
@@ -539,29 +539,29 @@ function reportError(err) {
 const job = new CronJob(
     '0 0 0 * * *',
     () => {
-        User.find().then((users,err) => {
+        User.find().then((users, err) => {
             if (err) {
                 console.log(err)
                 reportError(err)
             } else {
                 if (users) {
-                    
-                    users.map((user,i) => {
+
+                    users.map((user, i) => {
 
                         const currentCampaigns = user.campaigns;
                         const monthMiliseconds = 2628000000;
-             
-                        currentCampaigns.map((campaign,i) => {
+
+                        currentCampaigns.map((campaign, i) => {
                             if (campaign.date > campaign.date + monthMiliseconds) {
                                 campaign.active = false;
 
-                                
+
 
                             }
                         })
 
-                    
-                        User.findOneAndUpdate({uuid: user.uuid}, {campaigns: currentCampaigns}).then((_,err) => {
+
+                        User.findOneAndUpdate({ uuid: user.uuid }, { campaigns: currentCampaigns }).then((_, err) => {
                             if (err) {
                                 console.log(err)
                             } else {
@@ -571,11 +571,11 @@ const job = new CronJob(
 
 
                     })
-                    
-                    
 
 
-                    
+
+
+
 
 
 
@@ -587,24 +587,24 @@ const job = new CronJob(
 
 
 
-    }, 
+    },
     null,
-    true, 
-    
-) 
+    true,
+
+)
 
 
 
 
 
-app.post("/sendVerify", (req,res) => {
-    let {email} = req.body
+app.post("/sendVerify", (req, res) => {
+    let { email } = req.body
 
     try {
         if (!email) {
             throw new Error("invalid request")
         }
-    } catch(e) {
+    } catch (e) {
         console.log(e)
         res.status(400).send(JSON.stringify({
             code: "err",
@@ -614,7 +614,7 @@ app.post("/sendVerify", (req,res) => {
 
     email = email.toLowerCase()
 
-    Code.findOne({emailHash: md5(email)}).then((code,err) => {
+    Code.findOne({ emailHash: md5(email) }).then((code, err) => {
         if (err) {
             console.log(err)
             res.status(500).send(JSON.stringify({
@@ -622,40 +622,40 @@ app.post("/sendVerify", (req,res) => {
                 message: "internal server error"
             }))
         } else {
-            
-           
-    
 
 
 
-                let codeHash =generateCode(8)
-
-                const newCode = new Code({
-                    emailHash: md5(email),
-                    code: codeHash
-                })
-                if (code) {
-                    codeHash = code.code
-                }
-                const body = `Hello. \n\nYou're receiving this email because you requested to verify your email on sniphomes.\n\nIf this isn't you, don't respond\n\nIf this is you, please use the following code: ${codeHash}\n\nFarewell, Sniphomes Team`
-
-                newCode.save().then(() => {
-                    sendMail(email, "Sniphomes Verification Code", body)
 
 
 
-                    res.status(200).send(JSON.stringify({
-                        code: "ok",
-                        message: "code sent"
-                    }))
-                }).catch((err) => {
-                    console.log(err)
-                    res.status(500).send(JSON.stringify({
-                        code: "err",
-                        message: "internal server error"
-                    }))
-                })
-            
+            let codeHash = generateCode(8)
+
+            const newCode = new Code({
+                emailHash: md5(email),
+                code: codeHash
+            })
+            if (code) {
+                codeHash = code.code
+            }
+            const body = `Hello. \n\nYou're receiving this email because you requested to verify your email on sniphomes.\n\nIf this isn't you, don't respond\n\nIf this is you, please use the following code: ${codeHash}\n\nFarewell, Sniphomes Team`
+
+            newCode.save().then(() => {
+                sendMail(email, "Sniphomes Verification Code", body)
+
+
+
+                res.status(200).send(JSON.stringify({
+                    code: "ok",
+                    message: "code sent"
+                }))
+            }).catch((err) => {
+                console.log(err)
+                res.status(500).send(JSON.stringify({
+                    code: "err",
+                    message: "internal server error"
+                }))
+            })
+
         }
     })
 
@@ -673,7 +673,7 @@ app.post("/sendVerify", (req,res) => {
 // Call Routes;
 
 
-app.post("/xml", (req,res) => {
+app.post("/xml", (req, res) => {
     console.log("xml called");
     res.sendFile(__dirname + "/call.xml");
 })
@@ -714,7 +714,7 @@ function callSomeone(phoneNumber, agentName, agentArea, agentAction, uuid) {
             to: `+1${phoneNumber}`,
             from: `+12403660377`,
         })
-        .then(async(call) => {
+        .then(async (call) => {
             // we need to check if this is buggy or not
             dynamicCalls[call.sid] = await Call.create(
                 call.sid,
@@ -727,11 +727,11 @@ function callSomeone(phoneNumber, agentName, agentArea, agentAction, uuid) {
             globalSid = call.sid;
 
             console.log(call);
-            
-        });
-    
 
-    
+        });
+
+
+
 }
 
 
@@ -762,7 +762,7 @@ wss.on("connection", function (ws) {
 
     // We can't associate the call yet. We need to wait for the "start" message
     // to get the callSid and streamSid.
-    const startListener = async(message) => {
+    const startListener = async (message) => {
         try {
             const parsedMsg = JSON.parse(message.toString());
             console.log("we got to here", parsedMsg)
@@ -770,12 +770,12 @@ wss.on("connection", function (ws) {
             if (parsedMsg.event === "start" && parsedMsg.start && parsedMsg.start.callSid) {
                 const callSid = parsedMsg.start.callSid;
                 const streamId = parsedMsg.streamSid;
-                
+
                 console.log(`[${callSid}] WebSocket received start event. Stream SID: ${streamId}`);
 
                 // Find the existing Call object created by your /voice webhook
-                const callInstance = dynamicCalls[callSid]; 
-                
+                const callInstance = dynamicCalls[callSid];
+
                 if (callInstance) {
                     // If you want to track calls by streamId, you can re-key it here.
                     dynamicCalls[streamId] = callInstance;
@@ -787,7 +787,7 @@ wss.on("connection", function (ws) {
                     // add its OWN .on("message") listener to handle all media events.
                     console.log("we gave the websocket");
                     callInstance.setWebsocket(ws, streamId);
-                    
+
                     // We MUST remove this temporary listener now,
                     // otherwise it will conflict with the listener inside the Call class.
                     ws.removeListener("message", startListener);
@@ -797,7 +797,7 @@ wss.on("connection", function (ws) {
                     // This must mean that it is an inbound call;
                     if (!dynamicCalls[callSid]) {
                         const newCallInstance = await Call.create(
-                            streamId,
+                            callSid,
                             phoneNum,
                             "sell",
                             "bethesda",
@@ -807,9 +807,9 @@ wss.on("connection", function (ws) {
                         dynamicCalls[callSid] = newCallInstance;
                         newCallInstance.setWebsocket(ws, streamId);
                         ws.removeListener("message", startListener);
-                    
+
                     }
-                   
+
 
 
                     // console.error(`[${callSid}] No call instance found. Hanging up WebSocket.`);
@@ -824,7 +824,7 @@ wss.on("connection", function (ws) {
             ws.close();
         }
     };
-    
+
     // Add the temporary listener to catch the "start" message
     ws.on("message", startListener);
 
@@ -846,7 +846,7 @@ wss.on("connection", function (ws) {
 
 //     ws.on("close", () => {
 //         console.log("The connection was closed and interval was cleared");
-        
+
 //     });
 
 //     ws.on("message", (message) => {
@@ -928,15 +928,15 @@ wss.on("connection", function (ws) {
 
 
 // Check for valid parameters
-app.post("/register", (req,res) => {
+app.post("/register", (req, res) => {
     let email = req.body.email
-    const {password, phoneNumber, state, code, firstName, lastName} = req.body
+    const { password, phoneNumber, state, code, firstName, lastName } = req.body
 
     try {
         if (!email || !password || !phoneNumber || !state || !code || !firstName || !lastName) {
             throw new Error("invalid request")
         }
-    } catch(e) {
+    } catch (e) {
         console.log(e)
         res.status(400).send(JSON.stringify({
             code: "err",
@@ -951,7 +951,7 @@ app.post("/register", (req,res) => {
 
 
 
-    User.findOne({emailHash: md5(email)}).then((user,err) => {
+    User.findOne({ emailHash: md5(email) }).then((user, err) => {
         if (err) {
             console.log(err)
             res.status(500).send(JSON.stringify({
@@ -965,9 +965,9 @@ app.post("/register", (req,res) => {
                     message: "user already exists"
                 }))
             } else {
-                
 
-                Code.findOne({emailHash: md5(email)}).then((codeVer,err) => {
+
+                Code.findOne({ emailHash: md5(email) }).then((codeVer, err) => {
                     if (err) {
                         console.log(err)
                         res.status(500).send(JSON.stringify({
@@ -985,13 +985,13 @@ app.post("/register", (req,res) => {
                                         message: "internal server error"
                                     }))
                                 } else {
-            
-            
-            
-            
+
+
+
+
 
                                     const userId = uuidv4()
-            
+
                                     const newUser = new User({
                                         uuid: userId,
                                         name: cmod.encrypt(compiledName),
@@ -1020,12 +1020,12 @@ app.post("/register", (req,res) => {
                                             renewalDate: 0,
 
                                         },
-                                        
+
                                     })
 
 
                                     req.session.user = userId
-            
+
                                     newUser.save().then(() => {
                                         res.status(200).send(JSON.stringify({
                                             code: "ok",
@@ -1058,7 +1058,7 @@ app.post("/register", (req,res) => {
 
 
 
-                
+
             }
         }
     })
@@ -1066,14 +1066,14 @@ app.post("/register", (req,res) => {
 
 
 
-app.post("/login", (req,res) => {
-    let {email, password} = req.body
+app.post("/login", (req, res) => {
+    let { email, password } = req.body
 
     try {
         if (!email || !password) {
             throw new Error("invalid request")
         }
-    } catch(e) {
+    } catch (e) {
         console.log(e)
         res.status(400).send(JSON.stringify({
             code: "err",
@@ -1084,9 +1084,9 @@ app.post("/login", (req,res) => {
 
 
     email = email.toLowerCase();
-    
 
-    User.findOne({emailHash: md5(email)}).then((user,err) => {
+
+    User.findOne({ emailHash: md5(email) }).then((user, err) => {
         if (err) {
             console.log(err)
             res.status(500).send(JSON.stringify({
@@ -1131,7 +1131,7 @@ app.post("/login", (req,res) => {
 
 
 
-app.get("/getUser" , (req,res) => {
+app.get("/getUser", (req, res) => {
     // CODE NOT TESTED
 
 
@@ -1142,11 +1142,11 @@ app.get("/getUser" , (req,res) => {
                     code: "err",
                     message: "user not found"
                 }
-            ))        
+            ))
         } else {
-            
 
-            User.findOne({uuid: id}).then((user,err) => {
+
+            User.findOne({ uuid: id }).then((user, err) => {
                 if (err) {
                     console.log(err)
                     res.status(500).send(JSON.stringify({
@@ -1156,7 +1156,7 @@ app.get("/getUser" , (req,res) => {
                 } else {
 
                     let formattedName = cmod.decrypt(user.name)
-                    formattedName = formattedName.substring(0,1).toUpperCase() + formattedName.substring(1,formattedName.split(" ")[0].length)+ " "+formattedName.split(" ")[1].substring(0,1).toUpperCase()
+                    formattedName = formattedName.substring(0, 1).toUpperCase() + formattedName.substring(1, formattedName.split(" ")[0].length) + " " + formattedName.split(" ")[1].substring(0, 1).toUpperCase()
                     res.status(200).send(JSON.stringify({
                         code: "ok",
                         message: {
@@ -1191,7 +1191,7 @@ app.get("/getUser" , (req,res) => {
 })
 
 
-app.get("/getLeads", async(req,res) => {
+app.get("/getLeads", async (req, res) => {
 
     // if (process.env.NODE_ENV === "DEV") {
     //     await new Promise((resolve) => {
@@ -1200,7 +1200,7 @@ app.get("/getLeads", async(req,res) => {
     //             resolve();
     //         },4000)
     //     })
-        
+
     // }
 
     authenticateUser(req).then((id) => {
@@ -1210,7 +1210,7 @@ app.get("/getLeads", async(req,res) => {
                 message: "invalid request"
             }))
         } else {
-            Lead.find({uuid: id}).then((leads,err) => {
+            Lead.find({ uuid: id }).then((leads, err) => {
                 if (err) {
                     console.log(err);
                     res.status(400).send(JSON.stringify({
@@ -1218,63 +1218,64 @@ app.get("/getLeads", async(req,res) => {
                         message: "invalid request"
                     }))
                 } else {
-                    
+
 
                     if (process.env.NODE_ENV === "DEV") {
-                        console.log('\x1b[31m%s\x1b[0m', 'IN DEVELOPMENT MODE: GETLEADS RETURNS THE DEFAULT TESTING VALUE'); 
-                        leads = [{uuid: id,
+                        console.log('\x1b[31m%s\x1b[0m', 'IN DEVELOPMENT MODE: GETLEADS RETURNS THE DEFAULT TESTING VALUE');
+                        leads = [{
+                            uuid: id,
                             date: 1735361710711,
                             new: true,
                             area: 'White County',
                             leadDetails: 'Anthony expressed interest in selling his home.  A phone call was scheduled to discuss his needs and the current market conditions.  The conversation concluded with a plan to connect by phone at a mutually convenient time.\n',
                             transcript: [
-                          {
-                            date: 1735361635415,
-                            sender: 'Trinity@sniphomes.com',
-                            message: 'Hey Anthony\n' +
-                              '\n' +
-                              "I'm Trinity, a local real estate agent in White County.\n" +
-                              '\n' +
-                              "I saw that you lived in White County and was wondering if selling your home is something you'd be open to, the market right now is huge.\n" +
-                              '\n' +
-                              "I'd be delighted to chat with you more about it.\n" +
-                              '\n' +
-                              '\n' +
-                              '\n' +
-                              'Best Regards,\n' +
-                              'Trinity\n' +
-                              'Real Estate'
-                          },
-                          {
-                            date: 1735361661890,
-                            sender: 'xdagging@gmail.com',
-                            message: 'Yes, I would be interested.On Fri, Dec 27, 2024 at 11:53 PM <Trinity@sniphomes.com wrote:'
-                          },
-                          {
-                            date: 1735361663420,
-                            message: 'Hi Anthony,\n' +
-                              '\n' +
-                              "Great to hear you're interested!  To best understand your needs and give you accurate information about selling your home in White County's current market, a quick call would be ideal.  What's your phone number, and what time works best for you to chat? I'm flexible and available most times. \n" +
-                              '\n' +
-                              'Looking forward to speaking with you!',
-                            sender: 'Trinity@sniphomes.com'
-                          },
-                          {
-                            date: 1735361708856,
-                            sender: 'xdagging@gmail.com',
-                            message: 'You can call anytime. my number is 301-272-7224On Fri, Dec 27, 2024 at 11:54 PM <Trinity@sniphomes.com wrote:'
-                          },
-                          {
-                            date: 1735361710081,
-                            message: 'Hi Anthony,\n' +
-                              '\n' +
-                              "Fantastic! I'll give you a call right now at 301-272-7224 to discuss your home sale.  Looking forward to it!",
-                            sender: 'Trinity@sniphomes.com'
-                          }
+                                {
+                                    date: 1735361635415,
+                                    sender: 'Trinity@sniphomes.com',
+                                    message: 'Hey Anthony\n' +
+                                        '\n' +
+                                        "I'm Trinity, a local real estate agent in White County.\n" +
+                                        '\n' +
+                                        "I saw that you lived in White County and was wondering if selling your home is something you'd be open to, the market right now is huge.\n" +
+                                        '\n' +
+                                        "I'd be delighted to chat with you more about it.\n" +
+                                        '\n' +
+                                        '\n' +
+                                        '\n' +
+                                        'Best Regards,\n' +
+                                        'Trinity\n' +
+                                        'Real Estate'
+                                },
+                                {
+                                    date: 1735361661890,
+                                    sender: 'xdagging@gmail.com',
+                                    message: 'Yes, I would be interested.On Fri, Dec 27, 2024 at 11:53 PM <Trinity@sniphomes.com wrote:'
+                                },
+                                {
+                                    date: 1735361663420,
+                                    message: 'Hi Anthony,\n' +
+                                        '\n' +
+                                        "Great to hear you're interested!  To best understand your needs and give you accurate information about selling your home in White County's current market, a quick call would be ideal.  What's your phone number, and what time works best for you to chat? I'm flexible and available most times. \n" +
+                                        '\n' +
+                                        'Looking forward to speaking with you!',
+                                    sender: 'Trinity@sniphomes.com'
+                                },
+                                {
+                                    date: 1735361708856,
+                                    sender: 'xdagging@gmail.com',
+                                    message: 'You can call anytime. my number is 301-272-7224On Fri, Dec 27, 2024 at 11:54 PM <Trinity@sniphomes.com wrote:'
+                                },
+                                {
+                                    date: 1735361710081,
+                                    message: 'Hi Anthony,\n' +
+                                        '\n' +
+                                        "Fantastic! I'll give you a call right now at 301-272-7224 to discuss your home sale.  Looking forward to it!",
+                                    sender: 'Trinity@sniphomes.com'
+                                }
                             ],
                             phoneNumber: '301-272-7224',
                             action: 'sell',
-                    }]
+                        }]
                     }
 
                     res.status(200).send(JSON.stringify({
@@ -1283,56 +1284,56 @@ app.get("/getLeads", async(req,res) => {
                     }))
                 }
             })
-           
+
 
         }
     })
 })
 
 
-app.post("/updateLeadStatus", (req,res) => {
+app.post("/updateLeadStatus", (req, res) => {
     try {
         const threadId = req.body.threadId
         authenticateUser(req).then((id) => {
             if (id === "No user found") {
-    
+
                 res.status(400).send(JSON.stringify({
                     code: "err",
                     message: "invalid request"
                 }))
             } else {
-                Lead.findOneAndUpdate({threadId: threadId}, {new: false}).then(() => {
+                Lead.findOneAndUpdate({ threadId: threadId }, { new: false }).then(() => {
                     res.status(200).send(JSON.stringify({
                         code: "ok",
                         message: "success"
                     }))
                 })
-    
+
             }
         })
 
 
 
-    } catch(e) {
+    } catch (e) {
         console.log(e)
         res.status(400).send(JSON.stringify({
             code: "err",
             message: "invalid request"
         }))
     }
-   
+
 })
 
 
-app.post("/updateUser", (req,res) => {
-    const {operatingArea, aiName} = req.body
+app.post("/updateUser", (req, res) => {
+    const { operatingArea, aiName } = req.body
 
 
     try {
         if (!operatingArea || !aiName) {
             throw new Error("yur")
         }
-    } catch(e) {
+    } catch (e) {
         console.log(e)
         res.status(400).send(JSON.stringify({
             code: "err",
@@ -1351,9 +1352,9 @@ app.post("/updateUser", (req,res) => {
                         code: "err",
                         message: "user not found"
                     }
-                ))        
+                ))
             } else {
-                User.findOne({uuid: id}).then((user,err) => {
+                User.findOne({ uuid: id }).then((user, err) => {
                     if (err) {
                         res.status(500).send(JSON.stringify({
                             code: "err",
@@ -1362,7 +1363,7 @@ app.post("/updateUser", (req,res) => {
                     } else {
                         if (user !== null) {
 
-                            User.findOneAndUpdate({uuid: user.uuid}, {operatingArea: operatingArea, aiSettings: {...user.aiSettings, name: aiName}}).then(() => {
+                            User.findOneAndUpdate({ uuid: user.uuid }, { operatingArea: operatingArea, aiSettings: { ...user.aiSettings, name: aiName } }).then(() => {
                                 res.status(200).send(JSON.stringify({
                                     code: "ok",
                                     message: "success"
@@ -1383,11 +1384,11 @@ app.post("/updateUser", (req,res) => {
             }
         })
 
-        
 
 
 
-    }  else {
+
+    } else {
         res.status(400).send(JSON.stringify({
             code: "err",
             message: "invalid request"
@@ -1402,12 +1403,12 @@ app.post("/updateUser", (req,res) => {
 
 
 
-app.post("/startCampaign", (req,res) => {
-    const {target, credits, aiThreshold, address, message} = req.body;
+app.post("/startCampaign", (req, res) => {
+    const { target, credits, aiThreshold, address, message } = req.body;
 
 
     if (((target === "homebuyers") || (target === "homesellers")) && ((aiThreshold > 0) || (aiThreshold < 101)) && (credits < 100)) {
-        console.log("This occured",credits)
+        console.log("This occured", credits)
         res.status(400).send(JSON.stringify({
             code: "err",
             message: "invalid request"
@@ -1427,7 +1428,7 @@ app.post("/startCampaign", (req,res) => {
         } else {
 
 
-            User.findOne({uuid: id}).then((user,err) => {
+            User.findOne({ uuid: id }).then((user, err) => {
                 if (err) {
                     res.status(500).send(JSON.stringify({
                         code: "err",
@@ -1442,7 +1443,7 @@ app.post("/startCampaign", (req,res) => {
                             }))
                             return
                         }
-                        
+
 
                         if (user.credits < credits) {
                             res.status(403).send(JSON.stringify({
@@ -1464,15 +1465,15 @@ app.post("/startCampaign", (req,res) => {
 
                             // Campaigns expire 30 days after
 
-                            User.findOneAndUpdate({uuid: user.uuid}, {campaigns: [...user.campaigns, newCampaign], credits: user.credits - credits}).then(() => {
+                            User.findOneAndUpdate({ uuid: user.uuid }, { campaigns: [...user.campaigns, newCampaign], credits: user.credits - credits }).then(() => {
                                 console.log(message.email)
-                                const body = `Hello Sebastian.\n\nNew Campaign has started so start collecting data.\n\nCampaign Details:\n\nTarget: ${target}\nCredits: ${credits}\nAiThreshold: ${aiThreshold}\nAddress: ${address}\n\nUuid: ${user.uuid}\n\nMessage: ${message.email.email!=null? message.email.email : "Default"}\n\nSubject: ${message.email.subject!=null?message.email.subject : "Default"}`
+                                const body = `Hello Sebastian.\n\nNew Campaign has started so start collecting data.\n\nCampaign Details:\n\nTarget: ${target}\nCredits: ${credits}\nAiThreshold: ${aiThreshold}\nAddress: ${address}\n\nUuid: ${user.uuid}\n\nMessage: ${message.email.email != null ? message.email.email : "Default"}\n\nSubject: ${message.email.subject != null ? message.email.subject : "Default"}`
 
 
 
                                 sendMail(process.env.ADMINEMAIL, "New Campaign (find data)", body)
-                                
-                                
+
+
                                 res.status(200).send(JSON.stringify({
                                     code: "ok",
                                     message: "campaign started"
@@ -1511,12 +1512,12 @@ app.post("/startCampaign", (req,res) => {
 
 
 
-app.post("/forgotPassword", (req,res) => {
-    const {email} = req.body
+app.post("/forgotPassword", (req, res) => {
+    const { email } = req.body
 
 
     if ((email.split("@").length === 2) && (email.indexOf(".") !== -1)) {
-        User.findOne({emailHash: md5(email)}).then((user,err) => {
+        User.findOne({ emailHash: md5(email) }).then((user, err) => {
             if (err) {
                 console.log(err)
                 res.status(500).send(JSON.stringify({
@@ -1529,7 +1530,7 @@ app.post("/forgotPassword", (req,res) => {
 
                     const code = generateCode(8)
 
-                    User.findOneAndUpdate({uuid: user.uuid}, {forgotCode: code}).then(() => {
+                    User.findOneAndUpdate({ uuid: user.uuid }, { forgotCode: code }).then(() => {
                         const body = `Hello. \n\nYou're receiving this email because you requested to reset your password on sniphomes.\n\nIf this isn't you, don't respond\n\nIf this is you, please use the following code: ${code}\n\nFarewell, Sniphomes Team`
                         sendMail(email, "Sniphomes Password Reset Code", body)
 
@@ -1547,10 +1548,10 @@ app.post("/forgotPassword", (req,res) => {
 
 
                 } else {
-res.status(400).send(JSON.stringify({
-            code: "err",
-            message: "invalid request"
-        }))
+                    res.status(400).send(JSON.stringify({
+                        code: "err",
+                        message: "invalid request"
+                    }))
                 }
 
 
@@ -1567,13 +1568,13 @@ res.status(400).send(JSON.stringify({
 
 
 
-app.post("/updatePassword", (req,res) => {
-    const {email, code, password} = req.body
+app.post("/updatePassword", (req, res) => {
+    const { email, code, password } = req.body
 
     if ((email.split("@").length === 2) && (email.indexOf(".") !== -1)) {
 
 
-        User.findOne({ emailHash: md5(email)}).then((user,err) => {
+        User.findOne({ emailHash: md5(email) }).then((user, err) => {
             if (err) {
                 console.log(err)
                 res.status(500).send(JSON.stringify({
@@ -1581,23 +1582,23 @@ app.post("/updatePassword", (req,res) => {
                     message: "internal server error"
                 }))
             } else {
-                
+
 
                 if (user !== null) {
-                    if (user.forgotCode === (null||undefined)) {
+                    if (user.forgotCode === (null || undefined)) {
                         res.status(400).send(JSON.stringify({
                             code: "err",
                             message: "invalid request"
                         }))
                     } else if (user.forgotCode === code) {
-                        bcrypt.hash(password, saltRounds, (err,hash) => {
+                        bcrypt.hash(password, saltRounds, (err, hash) => {
                             if (err) {
                                 res.status(500).send(JSON.stringify({
                                     code: "err",
                                     message: "interval server error"
                                 }))
                             } else {
-                                User.findOneAndUpdate({uuid: user.uuid}, {password: hash, forgotCode: null}).then(() => {
+                                User.findOneAndUpdate({ uuid: user.uuid }, { password: hash, forgotCode: null }).then(() => {
                                     res.status(200).send(JSON.stringify({
                                         code: "ok",
                                         message: "password updated"
@@ -1634,25 +1635,25 @@ app.post("/updatePassword", (req,res) => {
         }))
     }
 
-    
 
 
 
-    
+
+
 })
 
 
 
 
-app.post("/requestDemo", (req,res) => {
-    const {phoneNumber, email, name} = req.body;
+app.post("/requestDemo", (req, res) => {
+    const { phoneNumber, email, name } = req.body;
 
 
     if ((phoneNumber.length > 5) && (email.split("@").length === 2) && (email.length > 5) && (name.length > 0)) {
-        
 
 
-        Demo.findOne({phoneNumberHash: md5(phoneNumber.trim())}).then((user,err) => {
+
+        Demo.findOne({ phoneNumberHash: md5(phoneNumber.trim()) }).then((user, err) => {
             if (err) {
                 console.log(err)
                 res.status(500).send(JSON.stringify({
@@ -1660,21 +1661,21 @@ app.post("/requestDemo", (req,res) => {
                     message: "internal server error"
                 }))
             } else {
-            
+
                 if (user === null || (email.toLowerCase() === cmod.decrypt(user.email).toLowerCase())) {
 
                     if (user && (user.email.toLowerCase() !== cmod.decrypt(user.email))) {
                         const newDemo = new Demo({
-                        email: cmod.encrypt(email),
-                        emailHash: md5(email),
-                        phoneNumber: cmod.encrypt(phoneNumber.toString()),
-                        phoneNumberHash: md5(phoneNumber.toString()),
-                        name: cmod.encrypt(name)
+                            email: cmod.encrypt(email),
+                            emailHash: md5(email),
+                            phoneNumber: cmod.encrypt(phoneNumber.toString()),
+                            phoneNumberHash: md5(phoneNumber.toString()),
+                            name: cmod.encrypt(name)
                         })
 
                         newDemo.save()
                     }
-               
+
 
 
                     callSomeone(phoneNumber, "Marta", "Prince County", "sell", "demo")
@@ -1712,7 +1713,7 @@ app.post("/requestDemo", (req,res) => {
 
 
 
-    
+
 
 
 
@@ -1731,28 +1732,28 @@ const bookedCalls = new Map();
 
 
 function processLeadConversion(messageId, transcript, phoneNumber) {
-    return new Promise(async(resolve) => {
-        if (messageId) {    
+    return new Promise(async (resolve) => {
+        if (messageId) {
 
-            Thread.findOne({messageId: messageId}).then(async(thread, err) => {
+            Thread.findOne({ messageId: messageId }).then(async (thread, err) => {
                 if (err) {
                     console.log(err)
                     resolve(err)
                 } else {
                     if (thread) {
-    
+
                         // If they have the demo feature enabled
-    
+
                         // Call feature will be added later
                         if (thread.callFeature) {
                             const newLead = new Lead({
                                 uuid: "",
                                 date: Date.now(),
-    
+
                             })
-    
-    
-    
+
+
+
                         } else {
                             // Send Email
                             const leadDetails = await summarizeLeadDetails(transcript, thread.sender);
@@ -1768,11 +1769,11 @@ function processLeadConversion(messageId, transcript, phoneNumber) {
                                 action: thread.action,
                                 new: true,
                             });
-    
-                            await newLead.save();
-    
 
-                            User.findOne({uuid: thread.uuid}).then(async(person,err) => {
+                            await newLead.save();
+
+
+                            User.findOne({ uuid: thread.uuid }).then(async (person, err) => {
                                 if (err) {
                                     console.log(err)
                                     resolve(err)
@@ -1787,28 +1788,28 @@ function processLeadConversion(messageId, transcript, phoneNumber) {
 
 
 
-                                        User.findOneAndUpdate({uuid: person.uuid}, {dashboardStats: newDashboard}).then(async() => {
-                                            
+                                        User.findOneAndUpdate({ uuid: person.uuid }, { dashboardStats: newDashboard }).then(async () => {
+
                                             // This code isn't tested yet
-                                            const body = `Hey, ${cmod.decrypt(person.name).split(" ")[0].substring(0,1).toUpperCase() + cmod.decrypt(person.name).split(" ")[0].substring(1).toLowerCase()},
+                                            const body = `Hey, ${cmod.decrypt(person.name).split(" ")[0].substring(0, 1).toUpperCase() + cmod.decrypt(person.name).split(" ")[0].substring(1).toLowerCase()},
                                             
 You are receiving this email because you just received a new interested lead.
 
 Check your Sniphomes.com dashboard for more details. 
 
                                             `
-                                           
-                                            
+
+
                                             await sendMail(cmod.decrypt(person.email), "New Lead Generated", body)
                                             resolve();
                                         })
-                                        
+
                                         // await person.save();
-                                        
 
 
 
-                                        
+
+
                                     } else {
                                         console.log("Person doesn't exist")
                                         resolve("Person doesn't exist")
@@ -1816,28 +1817,28 @@ Check your Sniphomes.com dashboard for more details.
                                 }
                             })
 
-                            
-                            
-                    
+
+
+
                         }
-                        
+
                     } else {
                         console.log("Message Id is invalid");
                         resolve
-    
+
                     }
                 }
             })
-    
-    
-    
+
+
+
         } else {
             console.log("Process Lead Conversion went wrong")
             resolve()
         }
 
     })
-    
+
 
 
 
@@ -1847,23 +1848,23 @@ Check your Sniphomes.com dashboard for more details.
 // Demo Testing:
 
 
-app.post("/internalEmail", (req,res) => {
-    const {replyToEmail, processEmailChain} = require("./utils.js")
+app.post("/internalEmail", (req, res) => {
+    const { replyToEmail, processEmailChain } = require("./utils.js")
     const internalCredential = req.body.credential || null;
     console.log(internalCredential)
     console.log(process.env.RECEIVE_CREDENTIAL)
     if (internalCredential === process.env.RECEIVE_CREDENTIAL) {
         try {
 
-       
-            
-            const {message, sender, receiver, messageId, subject, originalMessageId} = req.body;
-    
-            if (message || sender || receiver || subject || originalMessageId) { 
-                const queryOriginalId = originalMessageId.substring(1, originalMessageId.length-1)
+
+
+            const { message, sender, receiver, messageId, subject, originalMessageId } = req.body;
+
+            if (message || sender || receiver || subject || originalMessageId) {
+                const queryOriginalId = originalMessageId.substring(1, originalMessageId.length - 1)
                 // replace RE with the actualy subject later but for now this is fine
                 console.log("heres the query messageId:", queryOriginalId)
-                Thread.findOne({messageId: queryOriginalId}).then(async(val,err) => {
+                Thread.findOne({ messageId: queryOriginalId }).then(async (val, err) => {
                     if (err) {
                         console.log(err);
                         res.status(400).send(JSON.stringify(
@@ -1885,20 +1886,20 @@ app.post("/internalEmail", (req,res) => {
 
                         console.log("heres the old thread,", val);
                         console.log("heres the new messageId", messageId)
-                        
+
                         const response = await replyToEmail(receiver, sender, fullTranscript, subject, messageId, val.action);
                         console.log("response", response.mail)
 
-                        
+
 
                         val.transcript = response.transcript;
-                        val.messageId = response.mail.messageId.substring(1,response.mail.messageId.length-1);
+                        val.messageId = response.mail.messageId.substring(1, response.mail.messageId.length - 1);
                         await val.save();
-                        if (response.scheduleCall && response.phoneNumber && response.phoneNumber.length>0) {
-                            Lead.findOne({threadId: val.threadId}).then((lead,err) => {
+                        if (response.scheduleCall && response.phoneNumber && response.phoneNumber.length > 0) {
+                            Lead.findOne({ threadId: val.threadId }).then((lead, err) => {
                                 if (err) {
                                     console.log(err)
-                                    
+
                                 } else {
                                     if (lead) {
                                         // This thread has already led to a lead
@@ -1910,7 +1911,7 @@ app.post("/internalEmail", (req,res) => {
                                     } else {
                                         console.log("Converted to a lead.")
                                         processLeadConversion(val.messageId, response.transcript, response.phoneNumber).then(() => {
-                                            User.findOne({uuid: val.uuid}).then(async (user,err) => {
+                                            User.findOne({ uuid: val.uuid }).then(async (user, err) => {
                                                 if (err) {
                                                     console.log(err);
                                                     res.status(400).send(JSON.stringify({
@@ -1928,8 +1929,8 @@ app.post("/internalEmail", (req,res) => {
                                                         } else {
                                                             currentCase = "Buying"
                                                         }
-                                                        
-                                                        
+
+
                                                         // add to the campaigns field in the User Schema and the dashboard stats.
                                                         // const previousCampaigns = user.campaigns
                                                         // for (let i=0; i<previousCampaigns.length; i++) {
@@ -1947,15 +1948,15 @@ app.post("/internalEmail", (req,res) => {
                                                         // }
                                                         const previousDashboard = user.dashboardStats;
                                                         previousDashboard.leadsGenerated += 1;
-                                                       
+
                                                         user.dashboardStats = previousDashboard
-                                                    
+
                                                         await user.save();
                                                         res.status(200).send(JSON.stringify({
                                                             code: "ok",
                                                             message: "all went well"
                                                         }))
-                                                       
+
 
                                                     } else {
                                                         res.status(403).send(JSON.stringify({
@@ -1968,12 +1969,12 @@ app.post("/internalEmail", (req,res) => {
                                                 }
                                             })
                                         })
-                                        
+
                                     }
                                 }
                             })
 
-                           
+
                         }
 
 
@@ -1981,25 +1982,25 @@ app.post("/internalEmail", (req,res) => {
                 })
 
 
-                
 
-                
-    
-    
+
+
+
+
             } else {
                 res.status(400).send(JSON.stringify({
                     code: "err",
                     message: "invalid request"
                 }))
             }
-    
-    
-    
-    
-    
-    
-    
-        } catch(e) {
+
+
+
+
+
+
+
+        } catch (e) {
             console.log(e);
 
             res.status(400).send(JSON.stringify({
@@ -2015,16 +2016,16 @@ app.post("/internalEmail", (req,res) => {
     }
 
 
-    
+
 })
 
 
 
 
-app.post('/doOutreach', async (req,res) => {
+app.post('/doOutreach', async (req, res) => {
     try {
-        const {internalCredential, uuid, data, area, message, subject} = req.body;
-        const {processOutreach} = require("./utils.js")
+        const { internalCredential, uuid, data, area, message, subject } = req.body;
+        const { processOutreach } = require("./utils.js")
         console.log(internalCredential)
         // console.log(processLeadConversion)
         // const uuid = req.body.uuid;
@@ -2036,11 +2037,11 @@ app.post('/doOutreach', async (req,res) => {
         // 
 
 
-        
+
 
         if (internalCredential === process.env.RECEIVE_CREDENTIAL) {
 
-            User.findOne({uuid: uuid}).then(async (user,err) => {
+            User.findOne({ uuid: uuid }).then(async (user, err) => {
                 if (err) {
                     console.log(err)
                     res.status(400).send(JSON.stringify({
@@ -2049,24 +2050,24 @@ app.post('/doOutreach', async (req,res) => {
                     }))
                 } else {
                     if (user) {
-                        
+
                         const senderEmail = user.aiSettings.name + "@sniphomes.com";
 
 
                         // if ((message.email.length>0) && (message.subject.length>0)) {
                         //     // Add the feature so people can customize the subjectline too
                         // }
-                        processOutreach(data, senderEmail, user.aiSettings.name, area,message, subject).then(async(messageData) => {
+                        processOutreach(data, senderEmail, user.aiSettings.name, area, message, subject).then(async (messageData) => {
                             const idList = messageData.idList;
                             const originalMessage = messageData.message
                             const newData = messageData.newData
-                            console.log("idList",idList)
-                            console.log("original",originalMessage.replace(/(<([^>]+)>)/ig, '').replace("/"))
-                            idList.map((id,i) => {
+                            console.log("idList", idList)
+                            console.log("original", originalMessage.replace(/(<([^>]+)>)/ig, '').replace("/"))
+                            idList.map((id, i) => {
 
-                                
 
-                                const messageId = id.substring(1, id.length-1)
+
+                                const messageId = id.substring(1, id.length - 1)
                                 const newThread = new Thread({
                                     threadId: uuidv4(),
                                     uuid: uuid,
@@ -2091,7 +2092,7 @@ app.post('/doOutreach', async (req,res) => {
                             previousStats.textsSent = newTexts;
 
                             console.log("new previous stats", previousStats)
-                            User.findOneAndUpdate({uuid: user.uuid}, {dashboardStats: previousStats}).then(() => {
+                            User.findOneAndUpdate({ uuid: user.uuid }, { dashboardStats: previousStats }).then(() => {
                                 res.status(200).send(JSON.stringify({
                                     code: "ok",
                                     message: "success"
@@ -2099,9 +2100,9 @@ app.post('/doOutreach', async (req,res) => {
                             })
                             // await user.save();
 
-                            
+
                         })
-                        
+
 
 
 
@@ -2117,7 +2118,7 @@ app.post('/doOutreach', async (req,res) => {
                     }
                 }
             })
-            
+
 
 
 
@@ -2128,18 +2129,18 @@ app.post('/doOutreach', async (req,res) => {
             }))
             return
         }
-        
-
-
-
-
-        
 
 
 
 
 
-    } catch(e) {
+
+
+
+
+
+
+    } catch (e) {
         console.log(e)
         res.status(404).send(JSON.stringify({
             code: "err",
@@ -2150,15 +2151,15 @@ app.post('/doOutreach', async (req,res) => {
 
 
 
-app.get("/addBlocklist/:id", (req,res) => {
+app.get("/addBlocklist/:id", (req, res) => {
     const decoder = new Cryptr(process.env.EMAIL_KEY_CRYPTR, { encoding: 'base64', pbkdf2Iterations: 10000, saltLength: 10 });
-    
+
 
     const id = decodeURIComponent(req.params.id);
 
     try {
         const email = decoder.decrypt(id);
-        
+
         if ((email.indexOf("@") > -1)) {
             unsubscribeEmail(email).then((response) => {
                 if (response.toLowerCase() === "success") {
@@ -2179,29 +2180,29 @@ app.get("/addBlocklist/:id", (req,res) => {
                 message: "success"
             }))
         }
-        
-    } catch(e) {
+
+    } catch (e) {
         reportError(e)
         res.status(500).send(JSON.stringify({
             code: "err",
             message: "invalid request"
         }))
     }
-    
+
 })
 
 
 async function summarizeLeadDetails(transcript, email) {
 
     let readableTranscript = "";
-    for (let i=transcript.length-1; i>0; i--) {
+    for (let i = transcript.length - 1; i > 0; i--) {
         if (email === transcript[i].sender) {
             readableTranscript += "Me: " + transcript[i].message
         } else {
             readableTranscript += "Other Person: " + transcript[i].message;
         }
         readableTranscript += "\n\n"
-        
+
     }
 
     const content = await model.generateContent(`
@@ -2226,7 +2227,7 @@ async function summarizeLeadDetails(transcript, email) {
 
 
 
-app.get("/", (req,res) => {
+app.get("/", (req, res) => {
     res.send("Hello world")
 })
 
@@ -2235,7 +2236,7 @@ app.get("/", (req,res) => {
 
 
 
-server.listen(process.env.PORT, (req,res) => {
+server.listen(process.env.PORT, (req, res) => {
     console.log("Listening on port ", process.env.PORT);
 })
 
@@ -2243,18 +2244,18 @@ server.listen(process.env.PORT, (req,res) => {
 function unsubscribeEmail(email) {
     return new Promise((resolve) => {
 
-        const fileName = email.substring(0,1).toLowerCase() + ".txt"
+        const fileName = email.substring(0, 1).toLowerCase() + ".txt"
 
 
-        fs.readFile(fileName, 'utf8', (err,content) => {
-    
+        fs.readFile(fileName, 'utf8', (err, content) => {
+
             if (err) {
                 // console.log(err);
-    
-                
-                if (email.substring(0,1).toLowerCase() !== email.substring(0,1).toUpperCase()) {
+
+
+                if (email.substring(0, 1).toLowerCase() !== email.substring(0, 1).toUpperCase()) {
                     // means that it is a letter
-    
+
                     fs.writeFile(fileName, email.toLowerCase(), (err) => {
                         if (err) {
                             reportError(err)
@@ -2262,16 +2263,16 @@ function unsubscribeEmail(email) {
                         }
                         resolve("success")
                     })
-    
-    
-    
+
+
+
                 } else {
                     resolve("invalid")
                     console.log('email provided is invalid')
-    
+
                 }
-    
-    
+
+
             } else {
                 fs.appendFile(fileName, `,${email.toLowerCase()}`, (err) => {
                     if (err) {
@@ -2280,16 +2281,16 @@ function unsubscribeEmail(email) {
                         console.log(err)
                     }
                     resolve("success")
-                    
+
                 })
-                
+
             }
-            
+
         })
 
     })
-    
-   
+
+
 
 }
 
@@ -2305,7 +2306,7 @@ function unsubscribeEmail(email) {
 
 
 // exports.processLeadConversion = processLeadConversion;
-module.exports = {processLeadConversion}
+module.exports = { processLeadConversion }
 
 
 
