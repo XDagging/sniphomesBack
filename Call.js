@@ -766,6 +766,7 @@ ${availabilityList[3]}
     }
 
     async handleAppointment(details) {
+        console.log(`[${this.callSid}] handleAppointment called with:`, JSON.stringify(details, null, 2));
         try {
             // 1. Convert time to UTC ISO string
             let appointmentTime = details.appointmentTime;
@@ -774,6 +775,9 @@ ${availabilityList[3]}
                     const date = new Date(appointmentTime);
                     if (!isNaN(date.getTime())) {
                         appointmentTime = date.toISOString();
+                        console.log(`[${this.callSid}] Converted appointmentTime to UTC: ${appointmentTime}`);
+                    } else {
+                        console.error(`[${this.callSid}] Invalid date format received: ${details.appointmentTime}`);
                     }
                 }
             } catch (err) {
@@ -784,21 +788,25 @@ ${availabilityList[3]}
             const payload = {
                 email: details.customerEmail,
                 name: details.customerName,
-                phone: this.phoneNumber, // Use the caller's number
+                phone: this.phoneNumber,
                 model: details.vehicleModel || "N/A",
-                make: "N/A", // Call schema doesn't separate make/model yet
+                make: "N/A",
                 insuranceClaim: details.paymentMethod || "unknown",
                 appointmentTime: appointmentTime
             };
 
+            console.log(`[${this.callSid}] Sending payload to scheduleAppointment:`, JSON.stringify(payload, null, 2));
+
             const result = await scheduleAppointment(payload);
+            console.log(`[${this.callSid}] scheduleAppointment result:`, JSON.stringify(result, null, 2));
+
             if (result && result.resource && result.resource.uri) {
                 return `STATUS: SUCCESS. URI: ${result.resource.uri}`;
             }
             this.sendClear();
             return `STATUS: FAILED. Reason: Unable to schedule. Offer transfer to ${this.transferNumber} or new time.`;
         } catch (e) {
-            console.error(`[${this.callSid}] Scheduling error:`, e);
+            console.error(`[${this.callSid}] Scheduling error in handleAppointment:`, e);
             this.sendClear();
             return `STATUS: FAILED. Reason: Error scheduling. Offer transfer to ${this.transferNumber} or new time.`;
         }

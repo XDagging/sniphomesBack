@@ -88,6 +88,7 @@ async function getEventAvailability(userUri, eventTypeUri, daysAhead) {
 }
 
 async function scheduleAppointment(eventData) {
+    console.log("scheduleAppointment called with:", JSON.stringify(eventData, null, 2));
     try {
         const { email, name, phone, model, make, insuranceClaim, appointmentTime } = eventData;
 
@@ -115,6 +116,8 @@ async function scheduleAppointment(eventData) {
             ]
         };
 
+        console.log("Sending payload to Calendly:", JSON.stringify(payload, null, 2));
+
         const response = await fetch(`https://api.calendly.com/invitees`, { // CHANGED ENDPOINT
             method: "POST",
             headers: {
@@ -126,10 +129,13 @@ async function scheduleAppointment(eventData) {
 
         if (!response.ok) {
             const errorData = await response.json();
+            console.error("Calendly API Error:", JSON.stringify(errorData, null, 2));
             throw new Error(JSON.stringify(errorData));
         }
 
-        return response.json();
+        const responseData = await response.json();
+        console.log("Calendly API Success:", JSON.stringify(responseData, null, 2));
+        return responseData;
     } catch (e) {
         console.log("Error creating scheduled event:", e);
         return null;
