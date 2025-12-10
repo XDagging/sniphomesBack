@@ -547,6 +547,7 @@ ${availabilityList[3]}
     }
 
     async processLLM(transcript) {
+
         if (!transcript) {
             console.log(`[${this.callSid}] Empty transcript, restarting STT.`);
             this.aiTalking = false;
@@ -713,6 +714,15 @@ ${availabilityList[3]}
                 if (this.lastAttemptedDetails === currentAttempt) {
                     console.log(`[${this.callSid}] Skipping scheduling - details unchanged from last failure.`);
                 } else {
+                    // STOP TTS and ensure silence before calling Calendly
+                    if (this.ttsStream) {
+                        this.ttsStream.destroy();
+                        this.ttsStream = null;
+                    }
+                    this.sendingAudio = false;
+                    this.twilioPlaying = false;
+                    this.sendClear();
+
                     this.lastAttemptedDetails = currentAttempt;
                     const scheduleMsg = await this.handleAppointment(fedToTwilio);
                     console.log(`[${this.callSid}] Appointment result: ${scheduleMsg}`);

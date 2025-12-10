@@ -31,8 +31,6 @@ const model = genAI.getGenerativeModel({
     },
 });
 
-
-
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const client = require("twilio")(accountSid, authToken);
@@ -46,23 +44,11 @@ const { ExternalCampaignListInstance } = require('twilio/lib/rest/messaging/v1/e
 // const { FeedbackInstance } = require('twilio/lib/rest/assistants/v1/assistant/feedback.js');
 // const { send } = require('process');
 
-
-
-
-
-
-
-
-
-
-
-
 const app = express();
 const saltRounds = 10
 
 // AWS.config.update({region: "us-east-1"})
 // var ddb = new AWS.DynamoDB({ apiVersion: "2012-08-10" });
-
 
 const cmod = new Cryptr(process.env.SECRET, { encoding: 'base64', pbkdf2Iterations: 10000, saltLength: 20 });
 
@@ -83,9 +69,6 @@ app.use(session({
     }),
     proxy: true,
 }));
-
-
-
 
 function authenticateUser(req) {
 
@@ -119,8 +102,6 @@ function authenticateUser(req) {
 // LocalHOST CORS
 
 let options;
-
-
 
 if (process.env.NODE_ENV === "DEV") {
     console.log('\x1b[31m%s\x1b[0m', 'Currently in development mode (switch to PROD when deploying)');
