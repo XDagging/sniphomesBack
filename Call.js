@@ -59,6 +59,7 @@ class Call {
         this.shouldHangup = false;
         this.aiDuration = 0;
         this.transferNumber = "301-466-7117";
+        this.isTransferring = false;
 
         // Initialize model here, but don't start chat yet
         this.model = genAI.getGenerativeModel({
@@ -730,15 +731,17 @@ ${availabilityList[3]}
     async transferCall() {
         console.log(`[${this.callSid}] Transferring call to ${this.transferNumber}`);
         this.sendClear(); // Stop any current audio
+        this.isTransferring = true; // Flag to prevent hangup() from ending the call
 
         try {
             await client.calls(this.callSid).update({
                 twiml: `<Response><Dial>${this.transferNumber}</Dial></Response>`
             });
             console.log(`[${this.callSid}] Call transferred successfully.`);
-            this.shouldHangup = true; // Stop processing further interactions
+            // this.shouldHangup = true; // Removed this because we don't want to hangup, we want to transfer.
         } catch (error) {
             console.error(`[${this.callSid}] Error transferring call:`, error);
+            this.isTransferring = false; // Reset flag on error so we can hangup if needed
         }
     }
 
@@ -919,6 +922,12 @@ ${availabilityList[3]}
         if (this.ws) {
             this.ws.close();
             this.ws = null;
+        }
+
+        // If we are transferring, DO NOT end the call via Twilio API.
+        if (this.isTransferring) {
+            console.log(`[${this.callSid}] Transfer in progress. Skipping Twilio call termination.`);
+            return;
         }
 
         try {
