@@ -58,6 +58,7 @@ class Call {
         this.estimatedPlaybackEnd = 0;
         this.shouldHangup = false;
         this.aiDuration = 0;
+        this.transferNumber = "240-330-2027";
 
         // Initialize model here, but don't start chat yet
         this.model = genAI.getGenerativeModel({
@@ -713,10 +714,12 @@ ${availabilityList[3]}
             if (result && result.resource && result.resource.uri) {
                 return `Your appointment has been scheduled. A confirmation email has been sent.`;
             }
-            return 'I was unable to schedule the appointment at this time. Please try again later.';
+            this.sendClear();
+            return `I was unable to schedule the appointment. Would you like to try another time, or would you like me to transfer you to a human agent?`;
         } catch (e) {
             console.error(`[${this.callSid}] Scheduling error:`, e);
-            return 'Sorry, there was an error scheduling your appointment. Let me try again or you can call back later.';
+            this.sendClear();
+            return `I was unable to schedule the appointment. Would you like to try another time, or would you like me to transfer you to a human agent?`;
         }
     }
 
