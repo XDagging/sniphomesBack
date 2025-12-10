@@ -685,15 +685,21 @@ ${availabilityList[3]}
             // If we have all appointment details, attempt to schedule
             if (fedToTwilio.customerName && fedToTwilio.vehicleModel && fedToTwilio.customerEmail && fedToTwilio.paymentMethod) {
                 const scheduleMsg = await this.handleAppointment(fedToTwilio);
-                // Speak the scheduling result
-                this.ttsStream = this.setupGoogleTTSStream();
-                this.ttsStream.write({ input: { text: scheduleMsg } });
-                this.ttsStream.end();
+                console.log(`[${this.callSid}] Appointment result: ${scheduleMsg}`);
+
+                // Chain the result back to Gemini so it can speak the confirmation
+                // We pretend this is a system message in the transcript
+                await this.processLLM(`System Update: The appointment was attempted. Result: "${scheduleMsg}". Please inform the user.`);
+                return; // Return early, processLLM will handle the flow
             }
 
             if (fedToTwilio.hangup) {
                 console.log(`[${this.callSid}] Hangup requested. Waiting for audio to finish.`);
                 this.shouldHangup = true;
+            } else {
+                // Only start listening if we didn't hang up and didn't chain a new LLM turn
+                this.aiTalking = false;
+                this.startGoogleSpeechStream();
             }
         } catch (e) {
             console.error(`[${this.callSid}] Error in processResponse:`, e);
