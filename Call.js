@@ -627,6 +627,7 @@ ${availabilityList[3]}
                                 if (currentSpeechText.length > lastSpeechText.length) {
                                     const newText = currentSpeechText.substring(lastSpeechText.length);
                                     if (newText.length > 0) {
+                                        console.log("We are writing right now to the TTS stream: ", newText);
                                         this.ttsStream.write({
                                             input: { text: newText }
                                         });
@@ -779,6 +780,8 @@ ${availabilityList[3]}
                     } else {
                         console.error(`[${this.callSid}] Invalid date format received: ${details.appointmentTime}`);
                     }
+                } else {
+                    return "STATUS: FAILED: You must send an appointment time before continuing.";
                 }
             } catch (err) {
                 console.error(`[${this.callSid}] Date conversion error:`, err);
