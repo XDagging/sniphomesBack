@@ -90,19 +90,33 @@ async function getEventAvailability(userUri, eventTypeUri, daysAhead) {
 async function scheduleAppointment(eventData) {
     try {
         const { email, name, phone, model, make, insuranceClaim, appointmentTime } = eventData;
+
+        // 1. You must know the Event Type URI (e.g. "The 30 Min Service Call")
+        // You can get this from GET /event_types
+        const EVENT_TYPE_URI = process.env.CALENDLY_EVENT_TYPE_URI;
+
         const payload = {
-            email: email,
-            name: name,
-            timezone: "America/New_York",
-            text_reminder_number: phone,
-            ...(appointmentTime ? { start_time: appointmentTime } : {}),
+            event_type: EVENT_TYPE_URI,
+            target: {
+                start_time: appointmentTime, // Must be in UTC ISO format (e.g., "2025-10-25T14:30:00Z")
+                timezone: "America/New_York"
+            },
+            invitee: {
+                email: email,
+                name: name,
+                // phone: phone,
+                text_reminder_number: phone,
+                // "text_reminder_number" is usually not settable directly via API unless mapped to a question
+                // But you can pass custom answers for your questions:
+            },
             questions_and_answers: [
-                { "question": "Model", "answer": model, "position": 1 },
-                { "question": "Make", "answer": make, "position": 2 },
-                { "question": "Insurance Claim", "answer": insuranceClaim, "position": 3 }
+                { "question": "Model", "answer": model },
+                { "question": "Make", "answer": make },
+                { "question": "Insurance Claim", "answer": insuranceClaim }
             ]
         };
-        const response = await fetch(`https://api.calendly.com/scheduled_events`, {
+
+        const response = await fetch(`https://api.calendly.com/invitees`, { // CHANGED ENDPOINT
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -110,14 +124,36 @@ async function scheduleAppointment(eventData) {
             },
             body: JSON.stringify(payload)
         });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(JSON.stringify(errorData));
+        }
+
         return response.json();
     } catch (e) {
-        console.log("there was an error in creating scheduled event", e);
+        console.log("Error creating scheduled event:", e);
         return null;
     }
 }
 
 
+
+async function testFunction() {
+
+    const x = await scheduleAppointment({
+        email: "marac@sniphomes.com",
+        name: "marac",
+        phone: "3011233212",
+        model: "model",
+        make: "make",
+        insuranceClaim: "insuranceClaim",
+        appointmentTime: "appointmentTime"
+    })
+    console.log(x)
+}
+
+testFunction();
 
 async function getAvailability(daysInAdvance) {
     // 1. Get User
