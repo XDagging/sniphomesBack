@@ -51,11 +51,15 @@ async function getEventAvailability(userUri, eventTypeUri, daysAhead) {
     try {
         // 1. Calculate a start and end time (e.g., next 7 days)
         const now = new Date();
-        now.setDate(now.getDate() + daysAhead)
-        const nextWeek = new Date();
+        now.setDate(now.getDate() + daysAhead);
 
+        // Ensure start time isn't in the past if daysAhead is 0 (add 1 minute buffer if needed, or just use now)
+        if (daysAhead === 0 && now < new Date()) {
+            // keep now as is, checking availability from this moment is fine
+        }
 
-        nextWeek.setDate(now.getDate() + 6);
+        const nextWeek = new Date(now); // Clone the start date
+        nextWeek.setDate(nextWeek.getDate() + 6); // Add 6 days to the start date
 
         // 2. Query string parameters
         const params = new URLSearchParams({
