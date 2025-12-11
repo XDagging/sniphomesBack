@@ -215,23 +215,6 @@ AI: Awesome. I'll get you all set for Thursday at 10. Can I get your first and l
 6. Final Rule
 Never give stage cues like [pause] or [sigh]. Just perform the action.
 
-Availability: 
-
-This is the availability for the next month: 
-
-This week:
-${availabilityList[0]}
-
-Next week:
-
-${availabilityList[1]}
-
-Two weeks from now: 
-${availabilityList[2]}
-
-Three weeks from now: 
-
-${availabilityList[3]}
 
 
 
