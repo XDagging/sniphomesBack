@@ -78,7 +78,7 @@ class Call {
                         customerEmail: { type: "STRING" },
                         hangup: { type: "BOOLEAN" },
                         paymentMethod: { type: "STRING", enum: ["insurance", "out-of-pocket", "unknown"] },
-                        action: { type: "STRING", enum: ["respond", "hangup", "transfer"] },
+                        action: { type: "STRING", enum: ["respond", "hangup", "transfer", "check_availability"] },
                         appointmentTime: { type: "STRING" }
                     },
                     required: ["response", "rating", "hangup"],
@@ -127,8 +127,6 @@ class Call {
         const sellBool = `Tell the person about ${personOperating} area and ask them if they are homeowners. If so, ask them for the following info: would they be willing to sell their house, and if so, for how much? How many people do you live with currently (if they ask why we are asking, it is to grasp how large the home)? If they answer at least 1 of those questions, redirect to mananger. DO NOT ASK ANY OTHER QUESTIONS.`;
         const promptBool = personLook.toLowerCase() === "sell" ? sellBool : buyBool;
 
-        const availabilityList = [JSON.stringify(await getAvailability(0)), JSON.stringify(await getAvailability(7)), JSON.stringify(await getAvailability(14)), JSON.stringify(await getAvailability(21))];
-
         const fullPrompt = `Overview: You are a friendly and professional AI receptionist for Quattro AutoBody. Your primary goal is to sound 100% human and natural while helping callers book appointments for estimates and services. You are helpful, conversational, and confident.
 
 1. Business Details
@@ -154,7 +152,13 @@ Interruptions: If a caller interrupts, stop talking immediately and listen, then
 3. Main Task: Booking an Appointment
 This is your primary goal. Follow these steps in order:
 
-Offer Times: When they're ready, "check" the calendar. Pause, then offer 2-3 specific 30-minute slots.
+Step 1: Get Availability
+If the user asks for available times or wants to book an appointment, set the "action" field to "check_availability".
+Do not make up availability. You must wait for the system to provide the slots.
+Say something like: "Let me check our calendar for you..."
+
+Step 2: Offer Times
+Once you receive the availability list (via a system update), offer 2-3 specific 30-minute slots.
 
 Example: "Okay, let me take a look here... for the Hyattsville shop, I have a 10:30 AM or a 2:00 PM available on Thursday. Does either of those work for you?"
 
@@ -700,6 +704,29 @@ ${availabilityList[3]}
             if (fedToTwilio.action === "transfer") {
                 await this.transferCall();
                 return;
+            }
+
+            if (fedToTwilio.action === "check_availability") {
+                console.log(`[${this.callSid}] Action: check_availability triggered`);
+                try {
+                    // Fetch 4 weeks of availability in parallel
+                    const [week0, week1, week2, week3] = await Promise.all([
+                        getAvailability(0),
+                        getAvailability(7),
+                        getAvailability(14),
+                        getAvailability(21)
+                    ]);
+
+                    const availabilityData = [week0, week1, week2, week3];
+                    const systemMessage = `System Update: Here are the available slots for the next month: ${JSON.stringify(availabilityData)}. Please offer 2-3 of these times to the user.`;
+
+                    await this.processLLM(systemMessage);
+                    return;
+                } catch (error) {
+                    console.error(`[${this.callSid}] Error checking availability:`, error);
+                    await this.processLLM(`System Update: Failed to fetch availability. Tell the user there was a technical glitch checking the calendar.`);
+                    return;
+                }
             }
 
             // If we have all appointment details, attempt to schedule
