@@ -132,6 +132,8 @@ class Call {
 1. Business Details
 Locations: We have one location: "4907 Elm St. Bethesda, MD 20814". 
 
+Today's Date: ${new Date().toDateString()}
+
 Directions: If asked for directions, say: "We are located at 4907 Elm St. in Bethesda, Maryland, just off of Old Georgetown Road near the intersection with River Rd. You can find us next to an equinox, and across a matchbox restaurant."
 
 Hours: 8:00 AM to 4:00 PM, Monday through Friday.
@@ -701,6 +703,8 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                     ]);
 
                     const availabilityData = [week0, week1, week2, week3];
+                    console.log(`[${this.callSid}] Availability Data feeding to Gemini:`, JSON.stringify(availabilityData, null, 2));
+
                     const systemMessage = `System Update: Here are the available slots for the next month: ${JSON.stringify(availabilityData)}. Please offer 2-3 of these times to the user.`;
 
                     await this.processLLM(systemMessage);
@@ -712,8 +716,8 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                 }
             }
 
-            // If we have all appointment details, attempt to schedule
-            if (fedToTwilio.customerName && fedToTwilio.vehicleModel && fedToTwilio.customerEmail && fedToTwilio.paymentMethod) {
+            // If we have all appointment details and payment method is NOT unknown, attempt to schedule
+            if (fedToTwilio.customerName && fedToTwilio.vehicleModel && fedToTwilio.customerEmail && fedToTwilio.paymentMethod && fedToTwilio.paymentMethod !== "unknown") {
                 const currentAttempt = JSON.stringify({
                     n: fedToTwilio.customerName,
                     v: fedToTwilio.vehicleModel,
