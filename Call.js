@@ -694,12 +694,26 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
             if (fedToTwilio.action === "check_availability") {
                 console.log(`[${this.callSid}] Action: check_availability triggered`);
                 try {
-                    // Fetch 4 weeks of availability in parallel
-                    const [week0, week1, week2, week3] = await Promise.all([
-                        getAvailability(0),
-                        getAvailability(7),
-                        getAvailability(14),
-                        getAvailability(21)
+                    // Generate 4 sequential weekly dates starting from NOW
+                    const today = new Date();
+
+                    const week0 = new Date(today);
+
+                    const week1 = new Date(today);
+                    week1.setDate(today.getDate() + 7);
+
+                    const week2 = new Date(today);
+                    week2.setDate(today.getDate() + 14);
+
+                    const week3 = new Date(today);
+                    week3.setDate(today.getDate() + 21);
+
+                    // Fetch 4 weeks of availability in parallel using specific start dates
+                    const [res0, res1, res2, res3] = await Promise.all([
+                        getAvailability(week0),
+                        getAvailability(week1),
+                        getAvailability(week2),
+                        getAvailability(week3)
                     ]);
 
                     const availabilityData = [week0, week1, week2, week3];

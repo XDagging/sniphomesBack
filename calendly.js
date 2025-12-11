@@ -47,26 +47,19 @@ async function getX(organizationId) {
 }
 
 
-async function getEventAvailability(userUri, eventTypeUri, daysAhead) {
+async function getEventAvailability(userUri, eventTypeUri, startDate) {
     try {
-        // 1. Calculate a start and end time (e.g., next 7 days)
-        const now = new Date();
-        now.setDate(now.getDate() + daysAhead);
-
-        // Ensure start time isn't in the past if daysAhead is 0 (add 1 minute buffer if needed, or just use now)
-        if (daysAhead === 0 && now < new Date()) {
-            // keep now as is, checking availability from this moment is fine
-        }
-
-        const nextWeek = new Date(now); // Clone the start date
-        nextWeek.setDate(nextWeek.getDate() + 6); // Add 6 days to the start date
+        // 1. Calculate a start and end time (exact 7 day window)
+        const start = new Date(startDate);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 7);
 
         // 2. Query string parameters
         const params = new URLSearchParams({
             user: userUri,
             event_type: eventTypeUri,
-            start_time: now.toISOString(),
-            end_time: nextWeek.toISOString()
+            start_time: start.toISOString(),
+            end_time: end.toISOString()
         });
 
         console.log("Fetching availability for:", eventTypeUri);
@@ -172,7 +165,7 @@ async function scheduleAppointment(eventData) {
 
 // testFunction();
 
-async function getAvailability(daysInAdvance) {
+async function getAvailability(startDate) {
     // 1. Get User
     const user = await getCurrentUser();
     const userUri = user.resource.uri; // We need the full URI (https://api...)
@@ -194,7 +187,7 @@ async function getAvailability(daysInAdvance) {
     eventType = eventTypeUri;
 
     // 4. Get Available Slots (Corrected Logic)
-    const availability = await getEventAvailability(userUri, eventTypeUri, daysInAdvance);
+    const availability = await getEventAvailability(userUri, eventTypeUri, startDate);
     return availability;
     // console.log("Available Slots:", JSON.stringify(availability, null, 2));
 }
