@@ -64,7 +64,7 @@ class Call {
 
         // Initialize model here, but don't start chat yet
         this.model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
+            model: "gemini-2.5-flash-lite",
             generationConfig: {
                 temperature: 0.2,
                 responseMimeType: "application/json",
