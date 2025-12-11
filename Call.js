@@ -757,7 +757,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                 }
             }
 
-            if (fedToTwilio.hangup) {
+            if (fedToTwilio.hangUp) {
                 console.log(`[${this.callSid}] Hangup requested. Waiting for audio to finish.`);
                 this.shouldHangup = true;
             } else {
