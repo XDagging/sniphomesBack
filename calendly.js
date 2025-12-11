@@ -81,7 +81,11 @@ async function getEventAvailability(userUri, eventTypeUri, daysAhead) {
             return;
         }
 
-        return await response.json();
+        const data = await response.json();
+        if (data.collection) {
+            data.collection = data.collection.filter(slot => slot.status === "active");
+        }
+        return data;
     } catch (e) {
         console.log("There was an error in collecting availability", e);
     }
@@ -138,7 +142,7 @@ async function scheduleAppointment(eventData) {
         return responseData;
     } catch (e) {
         console.log("Error creating scheduled event:", e);
-        return null;
+        return { error: e.message || "Unknown error occurred" };
     }
 }
 

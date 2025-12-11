@@ -718,14 +718,8 @@ ${availabilityList[3]}
                 if (this.lastAttemptedDetails === currentAttempt) {
                     console.log(`[${this.callSid}] Skipping scheduling - details unchanged from last failure.`);
                 } else {
-                    // STOP TTS and ensure silence before calling Calendly
-                    if (this.ttsStream) {
-                        this.ttsStream.destroy();
-                        this.ttsStream = null;
-                    }
-                    this.sendingAudio = false;
-                    this.twilioPlaying = false;
-                    this.sendClear();
+                    // Previous aggressive clearing removed to allow "Let me try" message to finish
+                    // if (this.ttsStream) { ... } 
 
                     this.lastAttemptedDetails = currentAttempt;
                     const scheduleMsg = await this.handleAppointment(fedToTwilio);
@@ -809,12 +803,19 @@ ${availabilityList[3]}
             if (result && result.resource && result.resource.uri) {
                 return `STATUS: SUCCESS. URI: ${result.resource.uri}`;
             }
+
+            // Extract specific error if available
+            let errorReason = "Unable to schedule.";
+            if (result && result.error) {
+                errorReason = `Error from Calendly: ${result.error}`;
+            }
+
             this.sendClear();
-            return `STATUS: FAILED. Reason: Unable to schedule. Offer transfer to ${this.transferNumber} or new time.`;
+            return `STATUS: FAILED. Reason: ${errorReason} Offer transfer to ${this.transferNumber} or new time.`;
         } catch (e) {
             console.error(`[${this.callSid}] Scheduling error in handleAppointment:`, e);
             this.sendClear();
-            return `STATUS: FAILED. Reason: Error scheduling. Offer transfer to ${this.transferNumber} or new time.`;
+            return `STATUS: FAILED. Reason: Error scheduling (${e.message}). Offer transfer to ${this.transferNumber} or new time.`;
         }
     }
 
