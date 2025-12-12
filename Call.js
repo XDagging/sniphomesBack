@@ -60,7 +60,15 @@ class Call {
         this.aiDuration = 0;
         this.transferNumber = "301-272-7224";
         this.isTransferring = false;
+        this.isTransferring = false;
         this.initializationPromise = null;
+
+        // State variables for appointment details
+        this.customerName = null;
+        this.vehicleModel = null;
+        this.customerEmail = null;
+        this.paymentMethod = null;
+        this.appointmentTime = null;
 
         // Initialize model here, but don't start chat yet
         this.model = genAI.getGenerativeModel({
@@ -730,14 +738,22 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                 }
             }
 
+            // Update state variables if present in the response
+            if (fedToTwilio.customerName) this.customerName = fedToTwilio.customerName;
+            if (fedToTwilio.vehicleModel) this.vehicleModel = fedToTwilio.vehicleModel;
+            if (fedToTwilio.customerEmail) this.customerEmail = fedToTwilio.customerEmail;
+            if (fedToTwilio.paymentMethod && fedToTwilio.paymentMethod !== "unknown") this.paymentMethod = fedToTwilio.paymentMethod;
+            if (fedToTwilio.appointmentTime) this.appointmentTime = fedToTwilio.appointmentTime;
+
             // If we have all appointment details and payment method is NOT unknown, attempt to schedule
-            if (fedToTwilio.customerName && fedToTwilio.vehicleModel && fedToTwilio.customerEmail && fedToTwilio.paymentMethod && fedToTwilio.paymentMethod !== "unknown") {
+            // Check against instance variables instead of the ephemeral response
+            if (this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod && this.paymentMethod !== "unknown" && this.appointmentTime) {
                 const currentAttempt = JSON.stringify({
-                    n: fedToTwilio.customerName,
-                    v: fedToTwilio.vehicleModel,
-                    e: fedToTwilio.customerEmail,
-                    p: fedToTwilio.paymentMethod,
-                    t: fedToTwilio.appointmentTime
+                    n: this.customerName,
+                    v: this.vehicleModel,
+                    e: this.customerEmail,
+                    p: this.paymentMethod,
+                    t: this.appointmentTime
                 });
 
                 if (this.lastAttemptedDetails === currentAttempt) {
@@ -747,7 +763,19 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                     // if (this.ttsStream) { ... } 
 
                     this.lastAttemptedDetails = currentAttempt;
-                    const scheduleMsg = await this.handleAppointment(fedToTwilio);
+
+                    // Create a details object from our state
+                    const appointmentDetails = {
+                        customerName: this.customerName,
+                        vehicleModel: this.vehicleModel,
+                        customerEmail: this.customerEmail,
+                        paymentMethod: this.paymentMethod,
+                        appointmentTime: this.appointmentTime,
+                        rating: fedToTwilio.rating, // Keep these from current response
+                        hangup: fedToTwilio.hangup
+                    };
+
+                    const scheduleMsg = await this.handleAppointment(appointmentDetails);
                     console.log(`[${this.callSid}] Appointment result: ${scheduleMsg}`);
 
                     // Chain the result back to Gemini so it can speak the confirmation
@@ -757,7 +785,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                 }
             }
 
-            if (fedToTwilio.hangUp) {
+            if (fedToTwilio.hangUp || fedToTwilio.hangup) {
                 console.log(`[${this.callSid}] Hangup requested. Waiting for audio to finish.`);
                 this.shouldHangup = true;
             } else {
