@@ -8,7 +8,7 @@ const fs = require("fs");
 const waveResampler = require('wave-resampler');
 
 
-const { zonedTimeToUtc } = require('date-fns-tz');
+const { fromZonedTime } = require('date-fns-tz');
 const { mulaw } = require('alawmulaw');
 const { get } = require("http");
 
@@ -762,7 +762,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                 const cleanIso = estDateString.replace('Z', '');
 
                 // 2. Tell the library: "This time is in New York. Give me the UTC equivalent."
-                const utcDate = zonedTimeToUtc(cleanIso, 'America/New_York');
+                const utcDate = fromZonedTime(cleanIso, 'America/New_York');
 
                 return utcDate.toISOString();
                 // Output: "2025-12-12T18:00:00.000Z" (Correctly added 5 hours)
