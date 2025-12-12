@@ -724,7 +724,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                         getAvailability(week3)
                     ]);
 
-                    const availabilityData = [week0, week1, week2, week3];
+                    const availabilityData = [res0, res1, res2, res3];
                     console.log(`[${this.callSid}] Availability Data feeding to Gemini:`, JSON.stringify(availabilityData, null, 2));
 
                     const systemMessage = `System Update: Here are the available slots for the next month: ${JSON.stringify(availabilityData)}. Please offer 2-3 of these times to the user. IMPORTANT: DO NOT set 'action' to 'check_availability' again. Offer the times immediately.`;
