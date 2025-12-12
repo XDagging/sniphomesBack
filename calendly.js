@@ -53,10 +53,12 @@ async function getEventAvailability(userUri, eventTypeUri, startDate) {
         const start = new Date(startDate);
         const end = new Date(start);
         end.setDate(end.getDate() + 7);
+        console.log("startTime", start.toISOString());
+        console.log("endTime", end.toISOString());
 
         // 2. Query string parameters
         const params = new URLSearchParams({
-            user: userUri,
+            // user: userUri,
             event_type: eventTypeUri,
             start_time: start.toISOString(),
             end_time: end.toISOString()
@@ -82,6 +84,7 @@ async function getEventAvailability(userUri, eventTypeUri, startDate) {
         if (data.collection) {
             data.collection = data.collection.filter(slot => slot.status === "active");
         }
+        console.log("this is the data that was returned for that time period", data)
         return data;
     } catch (e) {
         console.log("There was an error in collecting availability", e);
@@ -167,6 +170,7 @@ async function scheduleAppointment(eventData) {
 
 async function getAvailability(startDate) {
     // 1. Get User
+    console.log("This is what startDate looks like", startDate)
     const user = await getCurrentUser();
     const userUri = user.resource.uri; // We need the full URI (https://api...)
     const organizationUrl = user.resource.current_organization;
@@ -188,17 +192,21 @@ async function getAvailability(startDate) {
 
     // 4. Get Available Slots (Corrected Logic)
     const availability = await getEventAvailability(userUri, eventTypeUri, startDate);
+    console.log("Available Slots:", JSON.stringify(availability, null, 2));
     return availability;
     // console.log("Available Slots:", JSON.stringify(availability, null, 2));
 }
 
-// testFunction();
-// async function testFunction() {
-//     console.log(await getAvailability(5));
-//     console.log(await getAvailability(12));
-// }
+testFunction();
+async function testFunction() {
+    const today = new Date();
 
-// testFunction();
+    const week0 = new Date(today.getTime() + 30 * 60000); // Add 30 minutes buffer
+    console.log(await getAvailability(week0));
+    // console.log(await getAvailability(12));
+}
+
+testFunction();
 
 
 

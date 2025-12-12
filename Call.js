@@ -718,10 +718,10 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
 
                     // Fetch 4 weeks of availability in parallel using specific start dates
                     const [res0, res1, res2, res3] = await Promise.all([
-                        getAvailability(week0),
-                        getAvailability(week1),
-                        getAvailability(week2),
-                        getAvailability(week3)
+                        await getAvailability(week0),
+                        await getAvailability(week1),
+                        await getAvailability(week2),
+                        await getAvailability(week3)
                     ]);
 
                     const availabilityData = [res0, res1, res2, res3];
