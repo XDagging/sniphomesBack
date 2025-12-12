@@ -175,7 +175,7 @@ Example: "Okay, let me take a look here... for the Hyattsville shop, I have a 10
 Collect Data: Once they pick a time, confirm it and collect the following info one by one. Update the JSON fields as you go.
 
 CRITICAL INSTRUCTION FOR APPOINTMENT TIME:
-When the user agrees to a time slot, you MUST find the corresponding \`start_time\` from the provided availability JSON list. You MUST set the \`appointmentTime\` field in your JSON response to this EXACT ISO string (e.g., "2024-10-25T14:30:00Z"). Do NOT use a human-readable time like "10:30 AM" or "tomorrow" for this field. It MUST be the raw ISO string.
+When the user agrees to a time slot, IMMEDIATELY set the \`appointmentTime\` field in your JSON response to the exact ISO string from the availability list. Do this in the VERY SAME RESPONSE where you confirm the time, BEFORE asking for their name.
 
 "Perfect! I'll get you locked in for that 10:30 slot. What's the best first and last name for the appointment?"
 
@@ -705,7 +705,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                     // Generate 4 sequential weekly dates starting from NOW
                     const today = new Date();
 
-                    const week0 = new Date(today);
+                    const week0 = new Date(today.getTime() + 30 * 60000); // Add 30 minutes buffer
 
                     const week1 = new Date(today);
                     week1.setDate(today.getDate() + 7);
