@@ -6,6 +6,9 @@ const { getAvailability, scheduleAppointment } = require("./calendly");
 const { Readable } = require("stream");
 const fs = require("fs");
 const waveResampler = require('wave-resampler');
+
+
+const { zonedTimeToUtc } = require('date-fns-tz');
 const { mulaw } = require('alawmulaw');
 const { get } = require("http");
 
@@ -738,12 +741,26 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                 }
             }
 
+
+            function convertEstToRealUtc(estDateString) {
+                // estDateString input: "2025-12-12T13:00:00.000Z" (The 'Fake UTC' string)
+
+                // 1. Strip the 'Z' so it is treated as "Floating Local Time" (just "1:00 PM")
+                const cleanIso = estDateString.replace('Z', '');
+
+                // 2. Tell the library: "This time is in New York. Give me the UTC equivalent."
+                const utcDate = zonedTimeToUtc(cleanIso, 'America/New_York');
+
+                return utcDate.toISOString();
+                // Output: "2025-12-12T18:00:00.000Z" (Correctly added 5 hours)
+            }
+
             // Update state variables if present in the response
             if (fedToTwilio.customerName) this.customerName = fedToTwilio.customerName;
             if (fedToTwilio.vehicleModel) this.vehicleModel = fedToTwilio.vehicleModel;
             if (fedToTwilio.customerEmail) this.customerEmail = fedToTwilio.customerEmail;
             if (fedToTwilio.paymentMethod && fedToTwilio.paymentMethod !== "unknown") this.paymentMethod = fedToTwilio.paymentMethod;
-            if (fedToTwilio.appointmentTime) this.appointmentTime = fedToTwilio.appointmentTime;
+            if (fedToTwilio.appointmentTime) this.appointmentTime = convertEstToRealUtc(fedToTwilio.appointmentTime);
 
             // If we have all appointment details and payment method is NOT unknown, attempt to schedule
             // Check against instance variables instead of the ephemeral response
