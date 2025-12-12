@@ -47,10 +47,11 @@ async function getX(organizationId) {
 }
 
 
-async function getEventAvailability(userUri, eventTypeUri, startDate) {
+async function getEventAvailability(_, eventTypeUri, startDate) {
     try {
         // 1. Calculate a start and end time (exact 7 day window)
         const start = new Date(startDate);
+        console.log("start date", start);
         const end = new Date(start);
         end.setDate(end.getDate() + 7);
         console.log("startTime", start.toISOString());
@@ -64,7 +65,7 @@ async function getEventAvailability(userUri, eventTypeUri, startDate) {
             end_time: end.toISOString()
         });
 
-        console.log("Fetching availability for:", eventTypeUri);
+        console.log("Fetching availability for:", params);
 
         const response = await fetch(`https://api.calendly.com/event_type_available_times?${params}`, {
             method: 'GET',
@@ -74,6 +75,7 @@ async function getEventAvailability(userUri, eventTypeUri, startDate) {
             }
         });
 
+        console.log("2. API Status Code:", response.status);
         if (response.status !== 200) {
             console.log("Error status:", response.status);
             console.log(await response.text()); // Print error details
@@ -81,9 +83,17 @@ async function getEventAvailability(userUri, eventTypeUri, startDate) {
         }
 
         const data = await response.json();
+
+        // --- ADD THIS LOG ---
+        console.log("RAW DATA FROM CALENDLY:", JSON.stringify(data, null, 2));
+        // --------------------
         if (data.collection) {
-            data.collection = data.collection.filter(slot => slot.status === "active");
+
+            data.collection = data.collection.filter(slot => slot.status === "available");
         }
+
+
+
         console.log("this is the data that was returned for that time period", data)
         return data;
     } catch (e) {
@@ -191,22 +201,25 @@ async function getAvailability(startDate) {
     eventType = eventTypeUri;
 
     // 4. Get Available Slots (Corrected Logic)
+    console.log("this is userUri", userUri);
+    console.log("eventType URI", eventTypeUri);
+    console.log("startDate", startDate)
     const availability = await getEventAvailability(userUri, eventTypeUri, startDate);
     console.log("Available Slots:", JSON.stringify(availability, null, 2));
     return availability;
     // console.log("Available Slots:", JSON.stringify(availability, null, 2));
 }
 
-testFunction();
-async function testFunction() {
-    const today = new Date();
+// testFunction();
+// async function testFunction() {
+//     const today = new Date();
 
-    const week0 = new Date(today.getTime() + 30 * 60000); // Add 30 minutes buffer
-    console.log(await getAvailability(week0));
-    // console.log(await getAvailability(12));
-}
+//     const week0 = new Date(today.getTime() + 30 * 60000); // Add 30 minutes buffer
+//     console.log(await getAvailability(week0));
+//     // console.log(await getAvailability(12));
+// }
 
-testFunction();
+// testFunction();
 
 
 
