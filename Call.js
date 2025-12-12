@@ -37,6 +37,7 @@ class Call {
         this.agentAction = agentAction;
         this.agentLocation = agentLocation;
         this.agentName = agentName;
+        this.justCheckedAvailability = false;
 
         this.businessName = "Quattro BodyShop";
         this.businessLocation = "Bethesda, Maryland";
@@ -702,9 +703,10 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                 return;
             }
 
-            if (fedToTwilio.action === "check_availability") {
+            if (fedToTwilio.action === "check_availability" && !this.justCheckedAvailability) {
                 console.log(`[${this.callSid}] Action: check_availability triggered`);
                 try {
+                    this.justCheckedAvailability = true;
                     // Generate 4 sequential weekly dates starting from NOW
                     const today = new Date();
 
@@ -739,6 +741,8 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                     await this.processLLM(`System Update: Failed to fetch availability. Tell the user there was a technical glitch checking the calendar.`);
                     return;
                 }
+            } else {
+                this.justCheckedAvailability = false;
             }
 
 
