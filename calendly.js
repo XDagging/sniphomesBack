@@ -109,7 +109,7 @@ async function getEventAvailability(_, eventTypeUri, startDate) {
             data.collection = data.collection.map((slot) => {
                 return {
                     ...slot, // Keep other properties
-                    start_time: convertToEstISO(slot.start_time);
+                    start_time: convertToEstISO(slot.start_time)
                 };
             });
 
