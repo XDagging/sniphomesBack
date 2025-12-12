@@ -39,6 +39,8 @@ class Call {
         this.agentName = agentName;
         this.justCheckedAvailability = false;
 
+        this.currentlyCheckingAvailability = false;
+
         this.businessName = "Quattro BodyShop";
         this.businessLocation = "Bethesda, Maryland";
         this.alreadySending = false;
@@ -554,6 +556,9 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
             this.aiTalking = false;
             this.startGoogleSpeechStream();
             return;
+        } else if (this.currentlyCheckingAvailability) {
+            console.log(`[${this.callSid}] Currently checking availability, skipping STT.`);
+            return;
         }
 
         this.aiTalking = true;
@@ -706,6 +711,7 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
             if (fedToTwilio.action === "check_availability" && !this.justCheckedAvailability) {
                 console.log(`[${this.callSid}] Action: check_availability triggered`);
                 try {
+                    this.currentlyCheckingAvailability = true;
                     this.justCheckedAvailability = true;
                     // Generate 4 sequential weekly dates starting from NOW
                     const today = new Date();
@@ -729,16 +735,19 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                         await getAvailability(week3)
                     ]);
 
+
                     const availabilityData = [res0, res1, res2, res3];
                     console.log(`[${this.callSid}] Availability Data feeding to Gemini:`, JSON.stringify(availabilityData, null, 2));
 
                     const systemMessage = `System Update: Here are the available slots for the next month: ${JSON.stringify(availabilityData)}. Please offer 2-3 of these times to the user. IMPORTANT: DO NOT set 'action' to 'check_availability' again. Offer the times immediately.`;
-
+                    this.currentlyCheckingAvailability = false;
                     await this.processLLM(systemMessage);
+
                     return;
                 } catch (error) {
                     console.error(`[${this.callSid}] Error checking availability:`, error);
                     await this.processLLM(`System Update: Failed to fetch availability. Tell the user there was a technical glitch checking the calendar.`);
+                    this.currentlyCheckingAvailability = false;
                     return;
                 }
             } else {
