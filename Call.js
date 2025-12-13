@@ -80,16 +80,20 @@ class Call {
         this.model = genAI.getGenerativeModel({
             model: "gemini-2.5-flash-lite",
             generationConfig: {
-                temperature: 0.2,
+                temperature: 0.1, // Lower temperature for better extraction
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: "OBJECT",
                     properties: {
                         response: { type: "STRING" },
                         rating: { type: "NUMBER" },
-                        customerName: { type: "STRING" },
-                        vehicleModel: { type: "STRING" },
-                        customerEmail: { type: "STRING" },
+                        customerName: { type: "STRING", description: "The customer's name if stated in the conversation." },
+                        vehicleModel: { type: "STRING", description: "The vehicle year/make/model if stated." },
+                        // CRITICAL FIX: Add a description here
+                        customerEmail: {
+                            type: "STRING",
+                            description: "The customer's email address. Extract carefully from user input. Convert 'at' to '@' and 'dot' to '.' if spoken."
+                        },
                         hangup: { type: "BOOLEAN" },
                         paymentMethod: { type: "STRING", enum: ["insurance", "out-of-pocket", "unknown"] },
                         action: { type: "STRING", enum: ["respond", "hangup", "transfer", "check_availability"] },
@@ -581,21 +585,14 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.`
             if (!this.appointmentTime) missingFields.push("appointmentTime");
 
             const systemContext = `
-            [SYSTEM CONTEXT - INTERNAL STATE]
-            Current Known Details:
-            - Customer Name: ${this.customerName || "MISSING"}
-            - Vehicle Model: ${this.vehicleModel || "MISSING"}
-            - Customer Email: ${this.customerEmail || "MISSING"}
-            - Payment Method: ${this.paymentMethod || "MISSING"}
-            - Appointment Time: ${this.appointmentTime || "MISSING"}
+[INTERNAL STATE]
+The following fields are currently MISSING from our database: ${missingFields.join(", ")}.
 
-            INSTRUCTIONS:
-            1. You MUST collect ALL MISSING fields before you finalize.
-            2. If a field is MISSING, ASK FOR IT.
-            3. Do NOT confirm the appointment or say "all set" if any fields are MISSING.
-            4. If the user provides a value, assume it is correct and update your JSON.
-            [/SYSTEM CONTEXT]
-            `;
+[INSTRUCTION]
+Check the "User says" message below.
+1. If the user provides any of the MISSING information, you MUST include it in the JSON output fields.
+2. If the user spells out an email (e.g., "b as in boy"), reconstruct it accurately.
+`;
 
             const augmentedTranscript = `${systemContext}\n\nUser says: "${transcript}"`;
             console.log(`[${this.callSid}] Augmented Transcript with System Context:\n${augmentedTranscript}`);
