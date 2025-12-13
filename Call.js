@@ -775,6 +775,17 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
             if (fedToTwilio.paymentMethod && fedToTwilio.paymentMethod !== "unknown") this.paymentMethod = fedToTwilio.paymentMethod;
             if (fedToTwilio.appointmentTime) this.appointmentTime = convertEstToRealUtc(fedToTwilio.appointmentTime);
 
+
+            //             this is what we fed to twilio {
+            //   response: 'Great, example@gmail.com. And last thing, will you be using insurance, or will you be paying out of pocket for this service?',
+            //   rating: 5,
+            //   hangup: false,
+            //   appointmentTime: '2025-12-15T14:00:00.000Z',
+            //   customerName: 'Sebastian Hernandez',
+            //   vehicleModel: '2008 Honda Accord',
+            //   customerEmail: 'example@gmail.com',
+            //   action: 'respond'
+            // }
             // If we have all appointment details and payment method is NOT unknown, attempt to schedule
             // Check against instance variables instead of the ephemeral response
             if (this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod && this.paymentMethod !== "unknown" && this.appointmentTime) {
@@ -813,6 +824,13 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                     await this.processLLM(`System Update: The appointment was attempted. Result: "${scheduleMsg}". Please inform the user.`);
                     return; // Return early, processLLM will handle the flow
                 }
+            } else {
+                console.log(`[${this.callSid}] No action taken.`);
+                console.log("CustomerName:", this.customerName);
+                console.log("VehicleModel:", this.vehicleModel);
+                console.log("CustomerEmail:", this.customerEmail);
+                console.log("PaymentMethod:", this.paymentMethod);
+                console.log("AppointmentTime:", this.appointmentTime);
             }
 
             if (fedToTwilio.hangUp || fedToTwilio.hangup) {
