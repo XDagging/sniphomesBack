@@ -583,7 +583,35 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
         this.ttsStream = this.setupGoogleTTSStream();
 
         try {
-            const result = await this.chat.sendMessageStream(transcript);
+            // --- SYSTEM CONTEXT INJECTION ---
+            const missingFields = [];
+            if (!this.customerName) missingFields.push("customerName");
+            if (!this.vehicleModel) missingFields.push("vehicleModel");
+            if (!this.customerEmail) missingFields.push("customerEmail");
+            if (!this.paymentMethod || this.paymentMethod === 'unknown') missingFields.push("paymentMethod (insurance or out-of-pocket)");
+            if (!this.appointmentTime) missingFields.push("appointmentTime");
+
+            const systemContext = `
+            [SYSTEM CONTEXT - INTERNAL STATE]
+            Current Known Details:
+            - Customer Name: ${this.customerName || "MISSING"}
+            - Vehicle Model: ${this.vehicleModel || "MISSING"}
+            - Customer Email: ${this.customerEmail || "MISSING"}
+            - Payment Method: ${this.paymentMethod || "MISSING"}
+            - Appointment Time: ${this.appointmentTime || "MISSING"}
+
+            INSTRUCTIONS:
+            1. You MUST collect ALL MISSING fields before you finalize.
+            2. If a field is MISSING, ASK FOR IT.
+            3. Do NOT confirm the appointment or say "all set" if any fields are MISSING.
+            4. If the user provides a value, assume it is correct and update your JSON.
+            [/SYSTEM CONTEXT]
+            `;
+
+            const augmentedTranscript = `${systemContext}\n\nUser says: "${transcript}"`;
+            console.log(`[${this.callSid}] Augmented Transcript with System Context:\n${augmentedTranscript}`);
+
+            const result = await this.chat.sendMessageStream(augmentedTranscript);
             const stream = result.stream;
 
             let jsonBuffer = "";
@@ -713,6 +741,21 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.
                 try {
                     this.currentlyCheckingAvailability = true;
                     this.justCheckedAvailability = true;
+
+                    // Give immediate audio feedback to fill the silence
+                    if (this.ttsStream && !this.ttsStream.destroyed) {
+                        console.log(`[${this.callSid}] Speaking 'checking schedule' filler.`);
+                        this.ttsStream.write({
+                            input: { text: "  Hold on, let me just check the schedule for you..." }
+                        });
+                    } else {
+                        // In case stream was closed (unlikely but safe)
+                        this.ttsStream = this.setupGoogleTTSStream();
+                        this.ttsStream.write({
+                            input: { text: "  Hold on, let me just check the schedule for you..." }
+                        });
+                    }
+
                     // Generate 4 sequential weekly dates starting from NOW
                     const today = new Date();
 
