@@ -87,15 +87,18 @@ class Call {
                     properties: {
                         response: { type: "STRING" },
                         rating: { type: "NUMBER" },
-                        customerName: { type: "STRING", description: "The customer's name if stated in the conversation." },
-                        vehicleModel: { type: "STRING", description: "The vehicle year/make/model if stated." },
-                        // CRITICAL FIX: Add a description here
+                        customerName: { type: "STRING", description: "The customer's name. MANDATORY. If the user says it, extract it." },
+                        vehicleModel: { type: "STRING", description: "The vehicle year/make/model. MANDATORY. If the user says it, extract it." },
                         customerEmail: {
                             type: "STRING",
-                            description: "The customer's email address. Extract carefully from user input. Convert 'at' to '@' and 'dot' to '.' if spoken."
+                            description: "The customer's email. MANDATORY. RECONSTRUCT spoken emails: 'john dot doe at gmail' -> 'john.doe@gmail.com'."
                         },
                         hangup: { type: "BOOLEAN" },
-                        paymentMethod: { type: "STRING", enum: ["insurance", "out-of-pocket", "unknown"] },
+                        paymentMethod: {
+                            type: "STRING",
+                            enum: ["insurance", "out-of-pocket", "unknown"],
+                            description: "Payment method. STRICT MAPPING: If 'cash', 'credit', 'debit', 'myself', 'private' -> use 'out-of-pocket'. If 'State Farm', 'Geico', 'claim', 'deductible' -> use 'insurance'."
+                        },
                         action: { type: "STRING", enum: ["respond", "hangup", "transfer", "check_availability"] },
                         appointmentTime: { type: "STRING" }
                     },
@@ -585,17 +588,22 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.`
             if (!this.appointmentTime) missingFields.push("appointmentTime");
 
             const systemContext = `
-[INTERNAL STATE]
-The following fields are currently MISSING from our database: ${missingFields.join(", ")}.
+            [INTERNAL STATE - MISSING FIELDS]
+The following fields are currently MISSING: ${missingFields.join(", ")}.
 
-[INSTRUCTION]
-Check the "User says" message below.
-1. If the user provides any of the MISSING information, you MUST include it in the JSON output fields.
-2. If the user spells out an email (e.g., "b as in boy"), reconstruct it accurately.
+            [DATA EXTRACTION PRIORITY - CRITICAL]
+            1. CHECK USER RESPONSE: Does it contain ANY information for the missing fields ?
+                2. UPDATE JSON: If yes, you MUST output the value in the JSON immediately.
+3. CONVERSATION: Acknowledge the info naturally, then move to the next step.
+
+[FIELD MAPPING RULES]
+            - PAYMENT: If user says "cash", "credit card", "paying myself" -> set paymentMethod: "out-of-pocket".
+- PAYMENT: If user says "insurance", "claim", "State Farm" -> set paymentMethod: "insurance".
+- EMAIL: Reconstruct spoken emails. "b as in boy" -> "b". "dot" -> ".". "at" -> "@".Example: "john dot doe at gmail" -> "john.doe@gmail.com".
 `;
 
-            const augmentedTranscript = `${systemContext}\n\nUser says: "${transcript}"`;
-            console.log(`[${this.callSid}] Augmented Transcript with System Context:\n${augmentedTranscript}`);
+            const augmentedTranscript = `${systemContext} \n\nUser says: "${transcript}"`;
+            console.log(`[${this.callSid}] Augmented Transcript with System Context: \n${augmentedTranscript} `);
 
             const result = await this.chat.sendMessageStream(augmentedTranscript);
             const stream = result.stream;
@@ -607,7 +615,7 @@ Check the "User says" message below.
 
             for await (const chunk of stream) {
                 if (firstToken) {
-                    console.log(`[${this.callSid}] [${Date.now()}] Gemini First Token Received`);
+                    console.log(`[${this.callSid}][${Date.now()}] Gemini First Token Received`);
                     firstToken = false;
                 }
 
@@ -660,7 +668,7 @@ Check the "User says" message below.
 
                     if (chunkText.includes('}')) {
                         inJsonBlock = false;
-                        console.log(`[${this.callSid}] Gemini Raw JSON: ${jsonBuffer}`);
+                        console.log(`[${this.callSid}] Gemini Raw JSON: ${jsonBuffer} `);
 
                         if (this.ttsStream && !this.ttsStream.destroyed) {
                             this.ttsStream.end();
@@ -672,7 +680,7 @@ Check the "User says" message below.
                 }
             }
         } catch (error) {
-            console.error(`[${this.callSid}] Error streaming from Gemini:`, error);
+            console.error(`[${this.callSid}] Error streaming from Gemini: `, error);
             if (this.ttsStream) {
                 this.ttsStream.destroy();
                 this.ttsStream = null;
@@ -690,11 +698,11 @@ Check the "User says" message below.
         try {
             let fedToTwilio;
             try {
-                const cleanJson = geminiResponse.replace(/```json\\s*/g, "").replace(/```/g, "").trim();
+                const cleanJson = geminiResponse.replace(/```json\\s * /g, "").replace(/```/g, "").trim();
                 fedToTwilio = JSON.parse(cleanJson);
             } catch (e) {
-                console.error(`[${this.callSid}] Failed to parse Gemini JSON:`, e);
-                console.error(`[${this.callSid}] Raw response: ${geminiResponse}`);
+                console.error(`[${this.callSid}] Failed to parse Gemini JSON: `, e);
+                console.error(`[${this.callSid}] Raw response: ${geminiResponse} `);
                 this.aiTalking = false;
                 this.startGoogleSpeechStream();
                 return;
@@ -714,7 +722,7 @@ Check the "User says" message below.
             });
             this.rating = fedToTwilio.rating;
 
-            console.log(`[${this.callSid}] Metadata: rating=${fedToTwilio.rating}, hangUp=${fedToTwilio.hangup}`);
+            console.log(`[${this.callSid}]Metadata: rating = ${fedToTwilio.rating}, hangUp = ${fedToTwilio.hangup} `);
             console.log("this is what we fed to twilio", fedToTwilio);
 
             if (fedToTwilio.action === "transfer") {
@@ -723,7 +731,7 @@ Check the "User says" message below.
             }
 
             if (fedToTwilio.action === "check_availability" && !this.justCheckedAvailability) {
-                console.log(`[${this.callSid}] Action: check_availability triggered`);
+                console.log(`[${this.callSid}]Action: check_availability triggered`);
                 try {
                     this.currentlyCheckingAvailability = true;
                     this.justCheckedAvailability = true;
@@ -766,16 +774,16 @@ Check the "User says" message below.
 
 
                     const availabilityData = [res0, res1, res2, res3];
-                    console.log(`[${this.callSid}] Availability Data feeding to Gemini:`, JSON.stringify(availabilityData, null, 2));
+                    console.log(`[${this.callSid}] Availability Data feeding to Gemini: `, JSON.stringify(availabilityData, null, 2));
 
-                    const systemMessage = `System Update: Here are the available slots for the next month: ${JSON.stringify(availabilityData)}. Please offer 2-3 of these times to the user. IMPORTANT: DO NOT set 'action' to 'check_availability' again. Offer the times immediately.`;
+                    const systemMessage = `System Update: Here are the available slots for the next month: ${JSON.stringify(availabilityData)}. Please offer 2 - 3 of these times to the user.IMPORTANT: DO NOT set 'action' to 'check_availability' again.Offer the times immediately.`;
                     this.currentlyCheckingAvailability = false;
                     await this.processLLM(systemMessage);
 
                     return;
                 } catch (error) {
-                    console.error(`[${this.callSid}] Error checking availability:`, error);
-                    await this.processLLM(`System Update: Failed to fetch availability. Tell the user there was a technical glitch checking the calendar.`);
+                    console.error(`[${this.callSid}] Error checking availability: `, error);
+                    await this.processLLM(`System Update: Failed to fetch availability.Tell the user there was a technical glitch checking the calendar.`);
                     this.currentlyCheckingAvailability = false;
                     return;
                 }
@@ -846,11 +854,11 @@ Check the "User says" message below.
                     };
 
                     const scheduleMsg = await this.handleAppointment(appointmentDetails);
-                    console.log(`[${this.callSid}] Appointment result: ${scheduleMsg}`);
+                    console.log(`[${this.callSid}] Appointment result: ${scheduleMsg} `);
 
                     // Chain the result back to Gemini so it can speak the confirmation
                     // We pretend this is a system message in the transcript
-                    await this.processLLM(`System Update: The appointment was attempted. Result: "${scheduleMsg}". Please inform the user.`);
+                    await this.processLLM(`System Update: The appointment was attempted.Result: "${scheduleMsg}".Please inform the user.`);
                     return; // Return early, processLLM will handle the flow
                 }
             } else {
@@ -863,7 +871,7 @@ Check the "User says" message below.
             }
 
             if (fedToTwilio.hangUp || fedToTwilio.hangup) {
-                console.log(`[${this.callSid}] Hangup requested. Waiting for audio to finish.`);
+                console.log(`[${this.callSid}] Hangup requested.Waiting for audio to finish.`);
                 this.shouldHangup = true;
             } else {
                 // Only start listening if we didn't hang up and didn't chain a new LLM turn
@@ -871,30 +879,30 @@ Check the "User says" message below.
                 this.startGoogleSpeechStream();
             }
         } catch (e) {
-            console.error(`[${this.callSid}] Error in processResponse:`, e);
+            console.error(`[${this.callSid}]Error in processResponse: `, e);
             this.aiTalking = false;
             this.startGoogleSpeechStream();
         }
     }
     async transferCall() {
-        console.log(`[${this.callSid}] Transferring call to ${this.transferNumber}`);
+        console.log(`[${this.callSid}] Transferring call to ${this.transferNumber} `);
         this.sendClear(); // Stop any current audio
         this.isTransferring = true; // Flag to prevent hangup() from ending the call
 
         try {
             await client.calls(this.callSid).update({
-                twiml: `<Response><Dial>${this.transferNumber}</Dial></Response>`
+                twiml: `< Response > <Dial>${this.transferNumber}</Dial></Response > `
             });
             console.log(`[${this.callSid}] Call transferred successfully.`);
             // this.shouldHangup = true; // Removed this because we don't want to hangup, we want to transfer.
         } catch (error) {
-            console.error(`[${this.callSid}] Error transferring call:`, error);
+            console.error(`[${this.callSid}] Error transferring call: `, error);
             this.isTransferring = false; // Reset flag on error so we can hangup if needed
         }
     }
 
     async handleAppointment(details) {
-        console.log(`[${this.callSid}] handleAppointment called with:`, JSON.stringify(details, null, 2));
+        console.log(`[${this.callSid}] handleAppointment called with: `, JSON.stringify(details, null, 2));
         try {
             // 1. Convert time to UTC ISO string
             let appointmentTime = details.appointmentTime;
@@ -903,15 +911,15 @@ Check the "User says" message below.
                     const date = new Date(appointmentTime);
                     if (!isNaN(date.getTime())) {
                         appointmentTime = date.toISOString();
-                        console.log(`[${this.callSid}] Converted appointmentTime to UTC: ${appointmentTime}`);
+                        console.log(`[${this.callSid}] Converted appointmentTime to UTC: ${appointmentTime} `);
                     } else {
-                        console.error(`[${this.callSid}] Invalid date format received: ${details.appointmentTime}`);
+                        console.error(`[${this.callSid}] Invalid date format received: ${details.appointmentTime} `);
                     }
                 } else {
                     return "STATUS: FAILED: You must send an appointment time before continuing.";
                 }
             } catch (err) {
-                console.error(`[${this.callSid}] Date conversion error:`, err);
+                console.error(`[${this.callSid}] Date conversion error: `, err);
             }
 
             // 2. Construct Payload
@@ -925,27 +933,27 @@ Check the "User says" message below.
                 appointmentTime: appointmentTime
             };
 
-            console.log(`[${this.callSid}] Sending payload to scheduleAppointment:`, JSON.stringify(payload, null, 2));
+            console.log(`[${this.callSid}] Sending payload to scheduleAppointment: `, JSON.stringify(payload, null, 2));
 
             const result = await scheduleAppointment(payload);
-            console.log(`[${this.callSid}] scheduleAppointment result:`, JSON.stringify(result, null, 2));
+            console.log(`[${this.callSid}] scheduleAppointment result: `, JSON.stringify(result, null, 2));
 
             if (result && result.resource && result.resource.uri) {
-                return `STATUS: SUCCESS. URI: ${result.resource.uri}`;
+                return `STATUS: SUCCESS.URI: ${result.resource.uri} `;
             }
 
             // Extract specific error if available
             let errorReason = "Unable to schedule.";
             if (result && result.error) {
-                errorReason = `Error from Calendly: ${result.error}`;
+                errorReason = `Error from Calendly: ${result.error} `;
             }
 
             this.sendClear();
-            return `STATUS: FAILED. Reason: ${errorReason} Offer transfer to ${this.transferNumber} or new time.`;
+            return `STATUS: FAILED.Reason: ${errorReason} Offer transfer to ${this.transferNumber} or new time.`;
         } catch (e) {
-            console.error(`[${this.callSid}] Scheduling error in handleAppointment:`, e);
+            console.error(`[${this.callSid}] Scheduling error in handleAppointment: `, e);
             this.sendClear();
-            return `STATUS: FAILED. Reason: Error scheduling (${e.message}). Offer transfer to ${this.transferNumber} or new time.`;
+            return `STATUS: FAILED.Reason: Error scheduling(${e.message}).Offer transfer to ${this.transferNumber} or new time.`;
         }
     }
 
@@ -962,7 +970,7 @@ Check the "User says" message below.
             if (audioContent) {
                 console.log(`[${this.callSid}] Received audio chunk from Google TTS`, audioContent.length);
                 if (this.interrupted) {
-                    console.log(`[${this.callSid}] Interrupted, skipping TTS audio chunk.`);
+                    console.log(`[${this.callSid}]Interrupted, skipping TTS audio chunk.`);
                     return;
                 }
                 // this.sendClear();
@@ -973,7 +981,7 @@ Check the "User says" message below.
                     inputSamples.push(audioContent.readInt16LE(i));
                 }
 
-                // console.log(`[${this.callSid}] Input samples: ${inputSamples.length} (from ${audioContent.length} bytes)`);
+                // console.log(`[${ this.callSid }] Input samples: ${ inputSamples.length } (from ${ audioContent.length } bytes)`);
 
                 const resampledData = waveResampler.resample(inputSamples, 24000, 8000, {
                     method: "sinc",
@@ -981,7 +989,7 @@ Check the "User says" message below.
                     bitDepth: 16
                 });
 
-                // console.log(`[${this.callSid}] Resampled output length: ${resampledData.length}`);
+                // console.log(`[${ this.callSid }] Resampled output length: ${ resampledData.length } `);
 
                 const pcm8kInt16 = new Int16Array(resampledData.length);
                 for (let i = 0; i < resampledData.length; i++) {
@@ -989,7 +997,7 @@ Check the "User says" message below.
                 }
 
                 const mulawSamples = mulaw.encode(pcm8kInt16);
-                // console.log(`[${this.callSid}] Sizes: PCM 8k=${pcm8kInt16.length} samples -> MULAW=${mulawSamples.length} samples`);
+                // console.log(`[${ this.callSid }]Sizes: PCM 8k = ${ pcm8kInt16.length } samples -> MULAW=${ mulawSamples.length } samples`);
 
                 const mulawBuffer = Buffer.from(mulawSamples);
                 const audioChunk = mulawBuffer.toString("base64");
@@ -1016,7 +1024,7 @@ Check the "User says" message below.
                     }
                     this.twilioPlaying = false;
                     this.sendingAudio = false;
-                    // console.log(`[${this.callSid}] TTS Playback finished (est).`);
+                    // console.log(`[${ this.callSid }] TTS Playback finished(est).`);
 
                     if (this.shouldHangup) {
                         console.log(`[${this.callSid}] Audio finished, executing delayed hangup.`);
@@ -1027,7 +1035,7 @@ Check the "User says" message below.
         });
 
         stream.on('error', (err) => {
-            // console.error(`[${this.callSid}] Google TTS Stream Error:`, err);
+            // console.error(`[${ this.callSid }] Google TTS Stream Error: `, err);
         });
 
         const request = {
@@ -1052,7 +1060,7 @@ Check the "User says" message below.
 
     sendAudioChunk(chunk) {
         if (this.interrupted) {
-            console.log(`[${this.callSid}] Interrupted, skipping audio chunk.`);
+            console.log(`[${this.callSid}]Interrupted, skipping audio chunk.`);
             return;
         }
         if (this.ws) {
@@ -1115,7 +1123,7 @@ Check the "User says" message below.
 
         // If we are transferring, DO NOT end the call via Twilio API.
         if (this.isTransferring) {
-            console.log(`[${this.callSid}] Transfer in progress. Skipping Twilio call termination.`);
+            console.log(`[${this.callSid}]Transfer in progress.Skipping Twilio call termination.`);
             return;
         }
 
@@ -1125,21 +1133,21 @@ Check the "User says" message below.
                 await client.calls(this.callSid).update({ status: "completed" });
             }
         } catch (error) {
-            console.error(`[${this.callSid}] Error updating call status:`, error);
+            console.error(`[${this.callSid}] Error updating call status: `, error);
         }
 
         if (this.uuid !== "demo" && this.rating > 75) {
             this.isLead = true;
             this.generateCallSummary();
         } else {
-            console.log(`[${this.callSid}] Call ended. Not a lead (Rating: ${this.rating}).`);
+            console.log(`[${this.callSid}] Call ended.Not a lead(Rating: ${this.rating}).`);
         }
     }
 
     async generateCallSummary() {
         console.log(`[${this.callSid}] Generating call summary...`);
         let readableTranscript = this.transcript
-            .map(msg => `${msg.sender}: ${msg.message}`)
+            .map(msg => `${msg.sender}: ${msg.message} `)
             .join("\n\n");
 
         const prompt = `I'm providing a transcript of a conversation between a real estate agent and a client.
@@ -1147,7 +1155,7 @@ Check the "User says" message below.
                 Give a 150 character summary of the key points in the conversation that would be useful to a real estate agent.
                 
                 Here is the transcript: ${readableTranscript}
-                `;
+            `;
 
         try {
             const summaryModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
@@ -1155,7 +1163,7 @@ Check the "User says" message below.
             const aiSummary = result.response.text();
 
             this.convoSummary = aiSummary;
-            console.log(`[${this.callSid}] AI summary: ${aiSummary}`);
+            console.log(`[${this.callSid}] AI summary: ${aiSummary} `);
 
             const response = {
                 uuid: this.uuid,
@@ -1164,10 +1172,10 @@ Check the "User says" message below.
                 location: this.agentLocation,
                 message: this.convoSummary,
             };
-            console.log(`[${this.callSid}] Lead details:`, response);
+            console.log(`[${this.callSid}] Lead details: `, response);
 
         } catch (error) {
-            console.error(`[${this.callSid}] Error generating summary:`, error);
+            console.error(`[${this.callSid}] Error generating summary: `, error);
         }
     }
 }
