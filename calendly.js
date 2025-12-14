@@ -235,15 +235,15 @@ async function getAvailability(startDate) {
 }
 
 // testFunction();
-// async function testFunction() {
-//     const today = new Date();
+async function testFunction() {
+    const today = new Date();
 
-//     const week0 = new Date(today.getTime() + 30 * 60000); // Add 30 minutes buffer
-//     console.log(await getAvailability(week0));
-//     // console.log(await getAvailability(12));
-// }
+    const week0 = new Date(today.getTime() + 30 * 60000); // Add 30 minutes buffer
+    console.log(await getAvailability(week0));
+    // console.log(await getAvailability(12));
+}
 
-// testFunction();
+testFunction();
 
 
 

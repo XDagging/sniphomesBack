@@ -38,6 +38,7 @@ class Call {
         this.agentLocation = agentLocation;
         this.agentName = agentName;
         this.justCheckedAvailability = false;
+        this.availableSlots = [];
 
         this.currentlyCheckingAvailability = false;
 
@@ -778,7 +779,13 @@ The following fields are currently MISSING: ${missingFields.join(", ")}.
                     ]);
 
 
-                    const availabilityData = [res0, res1, res2, res3];
+                    const availabilityData = [res0.map((x) => x.status_time), res1.map((x) => x.status_time), res2.map((x) => x.status_time), res3.map((x) => x.status_time)];
+
+
+                    const localData = availabilityData.flat();
+                    this.availableSlots = localData;
+
+
                     console.log(`[${this.callSid}] Availability Data feeding to Gemini: `, JSON.stringify(availabilityData, null, 2));
 
                     const systemMessage = `System Update: Here are the available slots for the next month: ${JSON.stringify(availabilityData)}. Please offer 2 - 3 of these times to the user.IMPORTANT: DO NOT set 'action' to 'check_availability' again.Offer the times immediately.`;
@@ -815,7 +822,23 @@ The following fields are currently MISSING: ${missingFields.join(", ")}.
             if (fedToTwilio.vehicleModel) this.vehicleModel = fedToTwilio.vehicleModel;
             if (fedToTwilio.customerEmail) this.customerEmail = fedToTwilio.customerEmail;
             if (fedToTwilio.paymentMethod && fedToTwilio.paymentMethod !== "unknown") this.paymentMethod = fedToTwilio.paymentMethod;
-            if (fedToTwilio.appointmentTime) this.appointmentTime = convertEstToRealUtc(fedToTwilio.appointmentTime);
+            if (fedToTwilio.appointmentTime) {
+
+                const rawTime = convertEstToRealUtc(fedToTwilio.appointmentTime);
+
+                const isValidSlot = this.availableSlots.some(slot => {
+                    return slot === rawTime;
+                });
+
+                if (isValidSlot) {
+                    this.appointmentTime = rawTime;
+                } else {
+                    console.log(`[${this.callSid}] Invalid appointment time: ${rawTime}`);
+                    await this.processLLM(`System Update: Invalid appointment time. Try another time`);
+                }
+
+
+            }
 
 
             //             this is what we fed to twilio {
