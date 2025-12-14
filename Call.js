@@ -831,6 +831,9 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                     const rawTime = convertEstToRealUtc(fedToTwilio.appointmentTime);
 
                     const isValidSlot = this.availableSlots.some(slot => {
+                        console.log("slot", slot);
+                        console.log("rawTime", rawTime);
+                        console.log("passed", slot == rawTime);
                         return slot == rawTime;
                         // double equals is on purpose, we are comparing strings
                     });
