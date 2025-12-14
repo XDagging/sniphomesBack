@@ -605,8 +605,9 @@ The following fields are currently MISSING: ${missingFields.join(", ")}.
             const augmentedTranscript = `${systemContext} \n\nUser says: "${transcript}"`;
             console.log(`[${this.callSid}] Augmented Transcript with System Context: \n${augmentedTranscript} `);
 
+
             const result = await this.chat.sendMessageStream(augmentedTranscript);
-            console.log("This is the result of gemini", result);
+            // console.log("This is the result of gemini", result);
             const stream = result.stream;
 
             let jsonBuffer = "";
@@ -670,7 +671,10 @@ The following fields are currently MISSING: ${missingFields.join(", ")}.
                     if (chunkText.includes('}')) {
                         inJsonBlock = false;
                         console.log(`[${this.callSid}] Gemini Raw JSON: ${jsonBuffer} `);
-
+                        if (JSON.parse(jsonBuffer).action === "check_availability") {
+                            this.ttsStream.end();
+                            // jsonBuffer.response = "Okay. Let me just check the schedule real quick.";
+                        }
                         if (this.ttsStream && !this.ttsStream.destroyed) {
                             this.ttsStream.end();
                         }
