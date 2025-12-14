@@ -81,7 +81,7 @@ class Call {
         this.model = genAI.getGenerativeModel({
             model: "gemini-2.5-flash-lite",
             generationConfig: {
-                temperature: 0.1, // Lower temperature for better extraction
+                temperature: 0, // Lower temperature for better extraction
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: "OBJECT",
@@ -589,19 +589,21 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.`;
             if (!this.appointmentTime) missingFields.push("appointmentTime");
 
             const systemContext = `
-            [INTERNAL STATE - MISSING FIELDS]
-The following fields are currently MISSING: ${missingFields.join(", ")}.
+            [INTERNAL STATE - REQUIRED DATA]
+MISSING FIELDS: ${missingFields.length > 0 ? missingFields.join(", ") : "NONE - All Clear"}
 
-            [DATA EXTRACTION PRIORITY - CRITICAL]
-            1. CHECK USER RESPONSE: Does it contain ANY information for the missing fields ?
-                2. UPDATE JSON: If yes, you MUST output the value in the JSON immediately.
-3. CONVERSATION: Acknowledge the info naturally, then move to the next step.
+[CRITICAL RULES FOR THIS RESPONSE]
+1. IF there are ANY missing fields listed above:
+   - You are STRICTLY FORBIDDEN from saying "you are all set", "appointment confirmed", or "I have you down".
+   - You MUST ask for the missing item immediately.
+   - Example: If 'paymentMethod' is missing, say: "Great, I have that time. Will you be using insurance or paying out of pocket?"
 
-[FIELD MAPPING RULES]
-            - PAYMENT: If user says "cash", "credit card", "paying myself" -> set paymentMethod: "out-of-pocket".
-- PAYMENT: If user says "insurance", "claim", "State Farm" -> set paymentMethod: "insurance".
-- EMAIL: Reconstruct spoken emails. "b as in boy" -> "b". "dot" -> ".". "at" -> "@".Example: "john dot doe at gmail" -> "john.doe@gmail.com".
-`;
+2. IF 'paymentMethod' is missing:
+   - Do NOT book the appointment yet. 
+   - You MUST ask: "Will this be through insurance or out-of-pocket?"
+
+[DATA EXTRACTION]
+- Check the user's latest response below. If they provided a missing field, extract it to JSON.`;
 
             const augmentedTranscript = `${systemContext} \n\nUser says: "${transcript}"`;
             console.log(`[${this.callSid}] Augmented Transcript with System Context: \n${augmentedTranscript} `);
