@@ -643,7 +643,9 @@ MISSING FIELDS: ${missingFields.length > 0 ? missingFields.join(", ") : "NONE - 
                             // Check if action is check_availability
                             if (parsed.action === "check_availability") {
                                 shouldUseCannedResponse = true;
+
                                 cannedMessage = "Give me one second to check the calendar for you.";
+                                this.sendClear();
                                 console.log(`[${this.callSid}] 🎯 Detected check_availability - using canned response`);
                             }
                             // Check if all appointment details are filled
@@ -651,6 +653,7 @@ MISSING FIELDS: ${missingFields.length > 0 ? missingFields.join(", ") : "NONE - 
                                 this.paymentMethod && this.paymentMethod !== 'unknown' && this.appointmentTime) {
                                 shouldUseCannedResponse = true;
                                 cannedMessage = "Perfect! Let me get that scheduled for you right away.";
+                                this.sendClear();
                                 console.log(`[${this.callSid}] 🎯 All appointment details filled - using canned response`);
                             }
                         } catch (e) {
