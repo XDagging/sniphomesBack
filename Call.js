@@ -829,14 +829,25 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
             if (fedToTwilio.appointmentTime) {
                 try {
                     const rawTime = convertEstToRealUtc(fedToTwilio.appointmentTime);
+                    // Convert the rawTime string to a numeric timestamp for comparison
+                    const targetTimestamp = new Date(rawTime).getTime();
 
                     const isValidSlot = this.availableSlots.some(slot => {
+                        // Convert the slot string to a timestamp as well
+                        const slotTimestamp = new Date(slot).getTime();
+
                         console.log("slot", slot);
                         console.log("rawTime", rawTime);
-                        console.log("passed", slot == rawTime);
-                        return slot == rawTime;
-                        // double equals is on purpose, we are comparing strings
+
+                        // Compare the numbers (milliseconds since epoch)
+                        // accurate within 1000ms to handle potential second-rounding issues if needed,
+                        // but exact match usually works best for slots.
+                        const isMatch = slotTimestamp === targetTimestamp;
+
+                        console.log("passed", isMatch);
+                        return isMatch;
                     });
+
                     if (isValidSlot) {
                         this.appointmentTime = rawTime;
                     } else {
@@ -846,14 +857,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                     }
                 } catch (e) {
                     console.error(`[${this.callSid}] Error converting appointment time:`, e);
-
                 }
-
-
-
-
-
-
             }
 
 
