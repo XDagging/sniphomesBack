@@ -779,7 +779,7 @@ The following fields are currently MISSING: ${missingFields.join(", ")}.
                     ]);
 
                     console.log("this is res 0", res0);
-                    const availabilityData = [res0.map((x) => x.status_time), res1.map((x) => x.status_time), res2.map((x) => x.status_time), res3.map((x) => x.status_time)];
+                    const availabilityData = [res0.collection.map((x) => x.status_time), res1.collection.map((x) => x.status_time), res2.collection.map((x) => x.status_time), res3.collection.map((x) => x.status_time)];
 
 
                     const localData = availabilityData.flat();
