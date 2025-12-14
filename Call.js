@@ -778,7 +778,7 @@ The following fields are currently MISSING: ${missingFields.join(", ")}.
                         await getAvailability(week3)
                     ]);
 
-
+                    console.log("this is res 0", res0);
                     const availabilityData = [res0.map((x) => x.status_time), res1.map((x) => x.status_time), res2.map((x) => x.status_time), res3.map((x) => x.status_time)];
 
 
