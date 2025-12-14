@@ -68,6 +68,11 @@ class Call {
         this.transferNumber = "301-272-7224";
         this.isTransferring = false;
         this.initializationPromise = null;
+        // state variables
+
+        this.hasScheduledAppointment = false;
+
+
 
         // State variables for appointment details
         this.customerName = null;
@@ -80,7 +85,7 @@ class Call {
         this.model = genAI.getGenerativeModel({
             model: "gemini-2.5-flash-lite",
             generationConfig: {
-                temperature: 0, // Lower temperature for better extraction
+                temperature: 0.1, // Lower temperature for better extraction
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: "OBJECT",
@@ -188,7 +193,7 @@ Collect Data: Once they pick a time, confirm it and collect the following info o
 CRITICAL INSTRUCTION FOR APPOINTMENT TIME:
 When the user agrees to a time slot, IMMEDIATELY set the \`appointmentTime\` field in your JSON response to the exact ISO string from the availability list. Do this in the VERY SAME RESPONSE where you confirm the time, BEFORE asking for their name.
 
-"Perfect! I'll get you locked in for that 10:30 slot. What's the best first and last name for the appointment?"
+"Perfect! I'll get you locked in for that [time] slot. What's the best first and last name for the appointment?"
 
 "Thanks. And what's the year and model of the car?"
 
@@ -657,7 +662,7 @@ MISSING FIELDS: ${missingFields.length > 0 ? missingFields.join(", ") : "NONE - 
                             }
                             // Check if all appointment details are filled
                             else if (this.customerName && this.vehicleModel && this.customerEmail &&
-                                this.paymentMethod && this.paymentMethod !== 'unknown' && this.appointmentTime) {
+                                this.paymentMethod && this.paymentMethod !== 'unknown' && this.appointmentTime && !this.hasScheduledAppointment) {
                                 shouldUseCannedResponse = true;
                                 cannedMessage = "Perfect! Let me get that scheduled for you right away.";
                                 this.sendClear();
@@ -921,7 +926,7 @@ MISSING FIELDS: ${missingFields.length > 0 ? missingFields.join(", ") : "NONE - 
                     t: this.appointmentTime
                 });
 
-                if (this.lastAttemptedDetails === currentAttempt) {
+                if (this.lastAttemptedDetails === currentAttempt && !this.hasScheduledAppointment) {
                     console.log(`[${this.callSid}] Skipping scheduling - details unchanged from last failure.`);
                 } else {
                     // Previous aggressive clearing removed to allow "Let me try" message to finish
@@ -942,6 +947,10 @@ MISSING FIELDS: ${missingFields.length > 0 ? missingFields.join(", ") : "NONE - 
 
                     const scheduleMsg = await this.handleAppointment(appointmentDetails);
                     console.log(`[${this.callSid}] Appointment result: ${scheduleMsg} `);
+
+                    if (scheduleMsg.toLowerCase().includes("success")) {
+                        this.hasScheduledAppointment = true;
+                    }
 
                     // Chain the result back to Gemini so it can speak the confirmation
                     // We pretend this is a system message in the transcript
