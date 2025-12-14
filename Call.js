@@ -141,12 +141,12 @@ class Call {
     }
 
     async buildSystemPrompt(personName, personOperating, personLook) {
-        const personNumber = "3011233212";
-        const formattedNumber = "three, zero, one, one, two, three, three, two, one, two";
+        // const personNumber = "3011233212";
+        // const formattedNumber = "three, zero, one, one, two, three, three, two, one, two";
 
-        const buyBool = "Ask the person what budget their budget is and how many people they plan to move in with. Redirect them to the manager if they give one, but push for both answers. DO NOT ASK ANY OTHER QUESTIONS.";
-        const sellBool = `Tell the person about ${personOperating} area and ask them if they are homeowners. If so, ask them for the following info: would they be willing to sell their house, and if so, for how much? How many people do you live with currently (if they ask why we are asking, it is to grasp how large the home)? If they answer at least 1 of those questions, redirect to mananger. DO NOT ASK ANY OTHER QUESTIONS.`;
-        const promptBool = personLook.toLowerCase() === "sell" ? sellBool : buyBool;
+        // const buyBool = "Ask the person what budget their budget is and how many people they plan to move in with. Redirect them to the manager if they give one, but push for both answers. DO NOT ASK ANY OTHER QUESTIONS.";
+        // const sellBool = `Tell the person about ${personOperating} area and ask them if they are homeowners. If so, ask them for the following info: would they be willing to sell their house, and if so, for how much? How many people do you live with currently (if they ask why we are asking, it is to grasp how large the home)? If they answer at least 1 of those questions, redirect to mananger. DO NOT ASK ANY OTHER QUESTIONS.`;
+        // const promptBool = personLook.toLowerCase() === "sell" ? sellBool : buyBool;
 
         const fullPrompt = `Overview: You are a friendly and professional AI receptionist for Quattro AutoBody. Your primary goal is to sound 100% human and natural while helping callers book appointments for estimates and services. You are helpful, conversational, and confident.
 
@@ -181,7 +181,7 @@ Say something like: "Let me check our calendar for you..."
 Step 2: Offer Times
 Once you receive the availability list (via a system update), offer 2-3 specific 30-minute slots.
 
-Example: "Okay, let me take a look here... for the Hyattsville shop, I have a 10:30 AM or a 2:00 PM available on Thursday. Does either of those work for you?"
+Example: "Okay, let me take a look here... for the Bethesda shop, I have a 10:30 AM or a 2:00 PM available on Thursday. Does either of those work for you?"
 
 Collect Data: Once they pick a time, confirm it and collect the following info one by one. Update the JSON fields as you go.
 
@@ -223,9 +223,9 @@ JSON: When you do this, set the "action" field to "transfer".
 5. Example Flow
 Caller: Hi, I was in a small accident and my bumper is cracked. Do I need an appointment?
 
-AI: Oh no, I hope everyone is okay! Yes, we do estimates by appointment just so we can make sure a technician is free to look at it with you. We can definitely get you scheduled for a free estimate. Just to be sure, are you looking to book at our Hyattsville location or our [Other Location] location?
+AI: Oh no, I hope everyone is okay! Yes, we do estimates by appointment just so we can make sure a technician is free to look at it with you. We can definitely get you scheduled for a free estimate. When would you be available?
 
-Caller: Hyattsville. How about Thursday?
+Caller: Bethesda. How about Thursday?
 
 AI: Thursday... okay, let me check that for you... (pause)... Yep! Looks like I have a 10:00 AM or a 3:30 PM open. Which one works better?
 
@@ -234,7 +234,7 @@ Caller: 10 AM is great.
 AI: Awesome. I'll get you all set for Thursday at 10. Can I get your first and last name?
 
 6. Final Rule
-Never give stage cues like [pause] or [sigh]. Just perform the action.`
+Never give stage cues like [pause] or [sigh]. Just perform the action.`;
 
 
 
@@ -606,6 +606,7 @@ The following fields are currently MISSING: ${missingFields.join(", ")}.
             console.log(`[${this.callSid}] Augmented Transcript with System Context: \n${augmentedTranscript} `);
 
             const result = await this.chat.sendMessageStream(augmentedTranscript);
+            console.log("This is the result of gemini", result);
             const stream = result.stream;
 
             let jsonBuffer = "";
@@ -1046,7 +1047,7 @@ The following fields are currently MISSING: ${missingFields.join(", ")}.
                 },
                 voice: {
                     languageCode: 'en-US',
-                    name: 'en-US-Chirp3-HD-Fenrir',
+                    name: 'en-US-Chirp3-HD-Puck',
                 },
             },
         };
