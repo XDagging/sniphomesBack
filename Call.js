@@ -67,7 +67,6 @@ class Call {
         this.aiDuration = 0;
         this.transferNumber = "301-272-7224";
         this.isTransferring = false;
-        this.isTransferring = false;
         this.initializationPromise = null;
 
         // State variables for appointment details
@@ -617,6 +616,8 @@ MISSING FIELDS: ${missingFields.length > 0 ? missingFields.join(", ") : "NONE - 
             let inJsonBlock = false;
             let firstToken = true;
             let lastSpeechText = "";
+            let shouldUseCannedResponse = false;
+            let cannedMessage = "";
 
             for await (const chunk of stream) {
                 if (firstToken) {
@@ -632,7 +633,33 @@ MISSING FIELDS: ${missingFields.length > 0 ? missingFields.join(", ") : "NONE - 
                 if (inJsonBlock) {
                     jsonBuffer += chunkText;
 
-                    if (this.ttsStream && !this.ttsStream.destroyed) {
+                    // Check if we have enough of the JSON to determine the action
+                    if (!shouldUseCannedResponse && jsonBuffer.includes('"action"')) {
+                        try {
+                            // Try to parse what we have so far (might be incomplete)
+                            const partialJson = jsonBuffer + (jsonBuffer.includes('}') ? '' : '}');
+                            const parsed = JSON.parse(partialJson);
+
+                            // Check if action is check_availability
+                            if (parsed.action === "check_availability") {
+                                shouldUseCannedResponse = true;
+                                cannedMessage = "Give me one second to check the calendar for you.";
+                                console.log(`[${this.callSid}] 🎯 Detected check_availability - using canned response`);
+                            }
+                            // Check if all appointment details are filled
+                            else if (this.customerName && this.vehicleModel && this.customerEmail &&
+                                this.paymentMethod && this.paymentMethod !== 'unknown' && this.appointmentTime) {
+                                shouldUseCannedResponse = true;
+                                cannedMessage = "Perfect! Let me get that scheduled for you right away.";
+                                console.log(`[${this.callSid}] 🎯 All appointment details filled - using canned response`);
+                            }
+                        } catch (e) {
+                            // JSON not complete yet, continue streaming
+                        }
+                    }
+
+                    // Only stream to TTS if we're NOT using a canned response
+                    if (!shouldUseCannedResponse && this.ttsStream && !this.ttsStream.destroyed) {
                         const startMarker = '"response"';
                         const startIdx = jsonBuffer.indexOf(startMarker);
                         if (startIdx !== -1) {
@@ -674,10 +701,26 @@ MISSING FIELDS: ${missingFields.length > 0 ? missingFields.join(", ") : "NONE - 
                     if (chunkText.includes('}')) {
                         inJsonBlock = false;
                         console.log(`[${this.callSid}] Gemini Raw JSON: ${jsonBuffer} `);
-                        if (JSON.parse(jsonBuffer).action === "check_availability") {
-                            this.ttsStream.end();
-                            // jsonBuffer.response = "Okay. Let me just check the schedule real quick.";
+
+                        // If we should use a canned response, override the response field
+                        if (shouldUseCannedResponse) {
+                            try {
+                                const parsedJson = JSON.parse(jsonBuffer);
+                                parsedJson.response = cannedMessage;
+                                jsonBuffer = JSON.stringify(parsedJson);
+                                console.log(`[${this.callSid}] Overriding response with: "${cannedMessage}"`);
+
+                                // Now speak the canned message
+                                if (this.ttsStream && !this.ttsStream.destroyed) {
+                                    this.ttsStream.write({
+                                        input: { text: cannedMessage }
+                                    });
+                                }
+                            } catch (e) {
+                                console.error(`[${this.callSid}] Error overriding response: `, e);
+                            }
                         }
+
                         if (this.ttsStream && !this.ttsStream.destroyed) {
                             this.ttsStream.end();
                         }
