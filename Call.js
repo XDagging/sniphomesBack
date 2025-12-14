@@ -651,7 +651,6 @@ MISSING FIELDS: ${missingFields.length > 0 ? missingFields.join(", ") : "NONE - 
                             // Check if action is check_availability
                             if (parsed.action === "check_availability") {
                                 shouldUseCannedResponse = true;
-
                                 cannedMessage = "Give me one second to check the calendar for you.";
                                 this.sendClear();
                                 console.log(`[${this.callSid}] 🎯 Detected check_availability - using canned response`);
@@ -887,10 +886,13 @@ MISSING FIELDS: ${missingFields.length > 0 ? missingFields.join(", ") : "NONE - 
                     // double equals is on purpose, we are comparing strings
                 });
 
+
+
                 if (isValidSlot) {
                     this.appointmentTime = rawTime;
                 } else {
                     console.log(`[${this.callSid}] Invalid appointment time: ${rawTime}`);
+                    this.sendClear();
                     await this.processLLM(`System Update: Invalid appointment time. Try another time`);
                 }
 
