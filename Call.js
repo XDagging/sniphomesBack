@@ -875,8 +875,8 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                     t: this.appointmentTime
                 });
 
-                if (this.lastAttemptedDetails === currentAttempt && !this.hasScheduledAppointment) {
-                    console.log(`[${this.callSid}] Skipping scheduling - details unchanged from last failure.`);
+                if (this.lastAttemptedDetails === currentAttempt && this.hasScheduledAppointment) {
+                    console.log(`[${this.callSid}] Skipping scheduling - details unchanged from last failure or success.`);
                 } else {
                     // Previous aggressive clearing removed to allow "Let me try" message to finish
                     // if (this.ttsStream) { ... } 
