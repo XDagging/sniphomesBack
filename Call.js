@@ -502,7 +502,6 @@ GOAL: Book estimates naturally. Sound 100% human.
     }
 
     async processLLM(transcript) {
-
         if (!transcript) {
             console.log(`[${this.callSid}] Empty transcript, restarting STT.`);
             this.aiTalking = false;
@@ -512,13 +511,10 @@ GOAL: Book estimates naturally. Sound 100% human.
             console.log(`[${this.callSid}] Currently checking availability, skipping STT.`);
             return;
         }
-
         // for system responses
         if (transcript.toLowerCase().includes("system update")) {
             console.log(`[${this.callSid}] System update detected, sending clear`);
             this.sendClear();
-
-
         }
 
         this.aiTalking = true;
@@ -829,23 +825,28 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
             if (fedToTwilio.customerEmail) this.customerEmail = fedToTwilio.customerEmail;
             if (fedToTwilio.paymentMethod && fedToTwilio.paymentMethod !== "unknown") this.paymentMethod = fedToTwilio.paymentMethod;
             if (fedToTwilio.appointmentTime) {
+                try {
+                    const rawTime = convertEstToRealUtc(fedToTwilio.appointmentTime);
 
-                const rawTime = convertEstToRealUtc(fedToTwilio.appointmentTime);
+                    const isValidSlot = this.availableSlots.some(slot => {
+                        return slot == rawTime;
+                        // double equals is on purpose, we are comparing strings
+                    });
+                    if (isValidSlot) {
+                        this.appointmentTime = rawTime;
+                    } else {
+                        console.log(`[${this.callSid}] Invalid appointment time: ${rawTime}`);
+                        this.sendClear();
+                        await this.processLLM(`System Update: Invalid appointment time. Try another time`);
+                    }
+                } catch (e) {
+                    console.error(`[${this.callSid}] Error converting appointment time:`, e);
 
-                const isValidSlot = this.availableSlots.some(slot => {
-                    return slot == rawTime;
-                    // double equals is on purpose, we are comparing strings
-                });
-
-
-
-                if (isValidSlot) {
-                    this.appointmentTime = rawTime;
-                } else {
-                    console.log(`[${this.callSid}] Invalid appointment time: ${rawTime}`);
-                    this.sendClear();
-                    await this.processLLM(`System Update: Invalid appointment time. Try another time`);
                 }
+
+
+
+
 
 
             }
