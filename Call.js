@@ -734,7 +734,8 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
             console.log("this is what we fed to twilio", fedToTwilio);
 
             if (fedToTwilio.action === "transfer") {
-                await this.transferCall();
+                this.isTransferring = true;
+                // await this.transferCall();
                 return;
             }
 
@@ -934,7 +935,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
 
         try {
             await client.calls(this.callSid).update({
-                twiml: `< Response > <Dial>${this.transferNumber}</Dial></Response > `
+                twiml: `<Response><Dial>${this.transferNumber}</Dial></Response>`
             });
             console.log(`[${this.callSid}] Call transferred successfully.`);
             // this.shouldHangup = true; // Removed this because we don't want to hangup, we want to transfer.
@@ -1072,6 +1073,9 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                     if (this.shouldHangup) {
                         console.log(`[${this.callSid}] Audio finished, executing delayed hangup.`);
                         this.hangup();
+                    } else if (this.isTransferring) {
+                        console.log(`[${this.callSid}] Audio finished, executing delayed transfer.`);
+                        this.transferCall();
                     }
                 }, timeUntilEnd + 500);
             }
