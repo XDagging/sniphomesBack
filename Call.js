@@ -917,7 +917,7 @@ MISSING FIELDS: ${missingFields.length > 0 ? missingFields.join(", ") : "NONE - 
             // }
             // If we have all appointment details and payment method is NOT unknown, attempt to schedule
             // Check against instance variables instead of the ephemeral response
-            if (this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod && this.paymentMethod !== "unknown" && this.appointmentTime) {
+            if (this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod && this.customerName !== "unknown" && this.customerEmail !== "unknown" && this.vehicleModel !== "unknown" && this.paymentMethod !== "unknown" && this.appointmentTime) {
                 const currentAttempt = JSON.stringify({
                     n: this.customerName,
                     v: this.vehicleModel,
