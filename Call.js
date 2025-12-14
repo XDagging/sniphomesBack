@@ -559,13 +559,10 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.`;
 
         // for system responses
         if (transcript.toLowerCase().includes("system update")) {
-            console.log(`[${this.callSid}] System update detected, skipping STT.`);
-            this.chat.history.push({
-                sender: "System",
-                message: transcript,
-                // order: this.messageNumber++,
-            });
-            return;
+            console.log(`[${this.callSid}] System update detected, sending clear`);
+            this.sendClear();
+
+
         }
 
         this.aiTalking = true;
@@ -854,7 +851,7 @@ MISSING FIELDS: ${missingFields.length > 0 ? missingFields.join(", ") : "NONE - 
                     return;
                 } catch (error) {
                     console.error(`[${this.callSid}] Error checking availability: `, error);
-                    await this.processLLM(`System Update: Failed to fetch availability.Tell the user there was a technical glitch checking the calendar.`);
+                    await this.processLLM(`System Update: Failed to fetch availability. Tell the user there was a technical glitch checking the calendar.`);
                     this.currentlyCheckingAvailability = false;
                     return;
                 }
