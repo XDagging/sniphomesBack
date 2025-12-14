@@ -557,6 +557,17 @@ Never give stage cues like [pause] or [sigh]. Just perform the action.`;
             return;
         }
 
+        // for system responses
+        if (transcript.toLowerCase().includes("system update")) {
+            console.log(`[${this.callSid}] System update detected, skipping STT.`);
+            this.chat.history.push({
+                sender: "System",
+                message: transcript,
+                // order: this.messageNumber++,
+            });
+            return;
+        }
+
         this.aiTalking = true;
         this.stopGoogleSpeechStream();
 
@@ -785,7 +796,7 @@ MISSING FIELDS: ${missingFields.length > 0 ? missingFields.join(", ") : "NONE - 
             }
 
             if (fedToTwilio.action === "check_availability" && !this.justCheckedAvailability) {
-                console.log(`[${this.callSid}]Action: check_availability triggered`);
+                console.log(`[${this.callSid}] Action: check_availability triggered`);
                 try {
                     this.currentlyCheckingAvailability = true;
                     this.justCheckedAvailability = true;
@@ -875,7 +886,8 @@ MISSING FIELDS: ${missingFields.length > 0 ? missingFields.join(", ") : "NONE - 
                 const rawTime = convertEstToRealUtc(fedToTwilio.appointmentTime);
 
                 const isValidSlot = this.availableSlots.some(slot => {
-                    return slot === rawTime;
+                    return slot == rawTime;
+                    // double equals is on purpose, we are comparing strings
                 });
 
                 if (isValidSlot) {
