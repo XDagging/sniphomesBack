@@ -836,8 +836,8 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                         // Convert the slot string to a timestamp as well
                         const slotTimestamp = new Date(slot).getTime();
 
-                        console.log("slot", slot);
-                        console.log("rawTime", rawTime);
+                        // console.log("slot", slot);
+                        // console.log("rawTime", rawTime);
 
                         // Compare the numbers (milliseconds since epoch)
                         // accurate within 1000ms to handle potential second-rounding issues if needed,
