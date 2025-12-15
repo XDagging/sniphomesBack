@@ -842,7 +842,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                         await getAvailability(week3)
                     ]);
 
-                    console.log("this is res 0", res0);
+                    // console.log("this is res 0", res0);
                     const availabilityData = [res0.collection.map((x) => x.start_time), res1.collection.map((x) => x.start_time), res2.collection.map((x) => x.start_time), res3.collection.map((x) => x.start_time)];
 
 
@@ -850,7 +850,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                     this.availableSlots = localData;
 
 
-                    console.log(`[${this.callSid}] Availability Data feeding to Gemini: `, JSON.stringify(availabilityData, null, 2));
+                    // console.log(`[${this.callSid}] Availability Data feeding to Gemini: `, JSON.stringify(availabilityData, null, 2));
 
                     const systemMessage = `System Update: Here are the available slots for the next month: ${JSON.stringify(availabilityData)}. Please offer 2 - 3 of these times to the user.IMPORTANT: DO NOT set 'action' to 'check_availability' again.Offer the times immediately.`;
                     this.currentlyCheckingAvailability = false;
