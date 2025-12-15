@@ -720,7 +720,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
 
     async checkValid(fedToTwilio) {
            try {
-                const rawTime = convertEstToRealUtc(fedToTwilio.appointmentTime);
+                const rawTime = this.convertEstToRealUtc(fedToTwilio.appointmentTime);
                     // Convert the rawTime string to a numeric timestamp for comparison
                 const targetTimestamp = new Date(rawTime).getTime();
 
@@ -863,7 +863,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                 if (!wasValid) {
                     return "System Prompt: The selected appointment time is invalid. Please ask the user to select another time from the available slots.";
                 } else {
-                    const rawTime = convertEstToRealUtc(fedToTwilio.appointmentTime);
+                    const rawTime = this.convertEstToRealUtc(fedToTwilio.appointmentTime);
                     this.appointmentTime = rawTime;
                     return "System Prompt: The selected appointment time is valid.";
                 }
@@ -885,7 +885,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                 try {
 
                     // in theory, this shouldn't be happening
-                    const rawTime = convertEstToRealUtc(fedToTwilio.appointmentTime);
+                    const rawTime = this.convertEstToRealUtc(fedToTwilio.appointmentTime);
                     // Convert the rawTime string to a numeric timestamp for comparison
                     const targetTimestamp = new Date(rawTime).getTime();
 
