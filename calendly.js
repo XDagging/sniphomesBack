@@ -118,7 +118,7 @@ async function getEventAvailability(_, eventTypeUri, startDate) {
 
 
 
-        console.log("this is the data that was returned for that time period", data)
+        // console.log("this is the data that was returned for that time period", data)
         return data;
     } catch (e) {
         console.log("There was an error in collecting availability", e);
@@ -126,7 +126,7 @@ async function getEventAvailability(_, eventTypeUri, startDate) {
 }
 
 async function scheduleAppointment(eventData) {
-    console.log("scheduleAppointment called with:", JSON.stringify(eventData, null, 2));
+    // console.log("scheduleAppointment called with:", JSON.stringify(eventData, null, 2));
     try {
         const { email, name, phone, model, make, insuranceClaim, appointmentTime } = eventData;
 
@@ -172,7 +172,7 @@ async function scheduleAppointment(eventData) {
         }
 
         const responseData = await response.json();
-        console.log("Calendly API Success:", JSON.stringify(responseData, null, 2));
+        // console.log("Calendly API Success:", JSON.stringify(responseData, null, 2));
         return responseData;
     } catch (e) {
         console.log("Error creating scheduled event:", e);
@@ -229,7 +229,7 @@ async function getAvailability(startDate) {
     console.log("eventType URI", eventTypeUri);
     console.log("startDate", startDate)
     const availability = await getEventAvailability(userUri, eventTypeUri, startDate);
-    console.log("Available Slots:", JSON.stringify(availability, null, 2));
+    // console.log("Available Slots:", JSON.stringify(availability, null, 2));
     return availability;
     // console.log("Available Slots:", JSON.stringify(availability, null, 2));
 }
