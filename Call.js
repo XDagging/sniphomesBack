@@ -105,7 +105,7 @@ class Call {
                             enum: ["insurance", "out-of-pocket", "unknown"],
                             description: "Payment method. STRICT MAPPING: If 'cash', 'credit', 'debit', 'myself', 'private' -> use 'out-of-pocket'. If 'State Farm', 'Geico', 'claim', 'deductible' -> use 'insurance'."
                         },
-                        action: { type: "STRING", enum: ["respond", "hangup", "transfer", "check_availability"] },
+                        action: { type: "STRING", enum: ["respond", "hangup", "transfer", "check_availability", "check_if_time_is_valid"] },
                         appointmentTime: { type: "STRING" }
                     },
                     required: ["thought", "response", "rating", "hangup"],
@@ -610,7 +610,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                                 cannedMessage = "Perfect! Let me get that scheduled for you right away.";
                                 this.sendClear();
                                 console.log(`[${this.callSid}] 🎯 All appointment details filled - using canned response`);
-                            }
+                            } 
                         } catch (e) {
                             // JSON not complete yet, continue streaming
                         }
@@ -702,6 +702,44 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
     calculatePlayback(audioDataLength, sampleRate) {
         return audioDataLength / sampleRate;
     }
+
+    // lets add a function to check if it is even possible
+
+    async checkValid(fedToTwilio) {
+           try {
+                    const rawTime = convertEstToRealUtc(fedToTwilio.appointmentTime);
+                    // Convert the rawTime string to a numeric timestamp for comparison
+                    const targetTimestamp = new Date(rawTime).getTime();
+
+                    const isValidSlot = this.availableSlots.some(slot => {
+                        // Convert the slot string to a timestamp as well
+                        const slotTimestamp = new Date(slot).getTime();
+
+                        // console.log("slot", slot);
+                        // console.log("rawTime", rawTime);
+
+                        // Compare the numbers (milliseconds since epoch)
+                        // accurate within 1000ms to handle potential second-rounding issues if needed,
+                        // but exact match usually works best for slots.
+                        const isMatch = slotTimestamp === targetTimestamp;
+
+                        console.log("passed", isMatch);
+                        return isMatch;
+                    });
+
+                    if (isValidSlot) {
+                        return true;
+                    } else {
+                        return false
+                    }
+                } catch (e) {
+                    console.error(`[${this.callSid}] Error converting appointment time:`, e);
+                    return false;
+                }
+
+
+    }
+
 
     async processResponse(geminiResponse) {
         try {
@@ -803,6 +841,19 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                     this.currentlyCheckingAvailability = false;
                     return;
                 }
+            } else if (fedToTwilio.action === "check_if_time_is_valid") {
+                const wasValid = this.checkValid(fedToTwilio);
+                
+                if (!wasValid) {
+                    return "System Prompt: The selected appointment time is invalid. Please ask the user to select another time from the available slots.";
+                } else {
+                    const rawTime = convertEstToRealUtc(fedToTwilio.appointmentTime);
+                    this.appointmentTime = rawTime;
+                    return "System Prompt: The selected appointment time is valid.";
+                }
+
+
+
             } else {
                 this.justCheckedAvailability = false;
             }
@@ -828,6 +879,8 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
             if (fedToTwilio.paymentMethod && fedToTwilio.paymentMethod !== "unknown") this.paymentMethod = fedToTwilio.paymentMethod;
             if (fedToTwilio.appointmentTime) {
                 try {
+
+                    // in theory, this shouldn't be happening
                     const rawTime = convertEstToRealUtc(fedToTwilio.appointmentTime);
                     // Convert the rawTime string to a numeric timestamp for comparison
                     const targetTimestamp = new Date(rawTime).getTime();
