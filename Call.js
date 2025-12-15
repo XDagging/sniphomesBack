@@ -703,45 +703,6 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
     calculatePlayback(audioDataLength, sampleRate) {
         return audioDataLength / sampleRate;
     }
-
-    // lets add a function to check if it is even possible
-
-    async checkValid(fedToTwilio) {
-           try {
-                    const rawTime = convertEstToRealUtc(fedToTwilio.appointmentTime);
-                    // Convert the rawTime string to a numeric timestamp for comparison
-                    const targetTimestamp = new Date(rawTime).getTime();
-
-                    const isValidSlot = this.availableSlots.some(slot => {
-                        // Convert the slot string to a timestamp as well
-                        const slotTimestamp = new Date(slot).getTime();
-
-                        // console.log("slot", slot);
-                        // console.log("rawTime", rawTime);
-
-                        // Compare the numbers (milliseconds since epoch)
-                        // accurate within 1000ms to handle potential second-rounding issues if needed,
-                        // but exact match usually works best for slots.
-                        const isMatch = slotTimestamp === targetTimestamp;
-
-                        console.log("passed", isMatch);
-                        return isMatch;
-                    });
-
-                    if (isValidSlot) {
-                        return true;
-                    } else {
-                        return false
-                    }
-                } catch (e) {
-                    console.error(`[${this.callSid}] Error converting appointment time:`, e);
-                    return false;
-                }
-
-
-    }
-
-    
     convertEstToRealUtc(estDateString) {
                 // estDateString input: "2025-12-12T13:00:00.000Z" (The 'Fake UTC' string)
 
@@ -754,6 +715,46 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
         return utcDate.toISOString();
                 // Output: "2025-12-12T18:00:00.000Z" (Correctly added 5 hours)
     }
+
+    // lets add a function to check if it is even possible
+
+    async checkValid(fedToTwilio) {
+           try {
+                const rawTime = convertEstToRealUtc(fedToTwilio.appointmentTime);
+                    // Convert the rawTime string to a numeric timestamp for comparison
+                const targetTimestamp = new Date(rawTime).getTime();
+
+                const isValidSlot = this.availableSlots.some(slot => {
+                        // Convert the slot string to a timestamp as well
+                    const slotTimestamp = new Date(slot).getTime();
+
+                        // console.log("slot", slot);
+                        // console.log("rawTime", rawTime);
+
+                        // Compare the numbers (milliseconds since epoch)
+                        // accurate within 1000ms to handle potential second-rounding issues if needed,
+                        // but exact match usually works best for slots.
+                    const isMatch = slotTimestamp === targetTimestamp;
+
+                    console.log("passed", isMatch);
+                    return isMatch;
+                });
+
+                if (isValidSlot) {
+                    return true;
+                } else {
+                    return false
+                }
+            } catch (e) {
+                console.error(`[${this.callSid}] Error converting appointment time:`, e);
+                return false;
+            }
+
+
+    }
+
+    
+    
 
 
     async processResponse(geminiResponse) {
