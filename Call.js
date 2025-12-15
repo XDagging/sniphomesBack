@@ -183,6 +183,10 @@ GOAL: Book estimates naturally. Sound 100% human.
 4. EMAIL -> PAYMENT: "Thanks. And will you be using insurance or paying out of pocket?"
 5. PAYMENT -> FINISH: "Perfect. I'll get that locked in. See you then!" (Logic will trigger schedule)
 
+[ACTIONS]
+- When doing "check_availability", say: "Let me check the schedule...", then WAIT for system update with slots.
+- When doing "check_if_time_is_valid", say: "Let me check if that time is open". WAIT for system update.
+
 [TRANSFERS]
 - TRIGGER: User asks for "manager", "human", "advisor".
 - ACTION: Set "action": "transfer". Say: "Let me get you to a service advisor. One moment."
@@ -861,11 +865,13 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                 const wasValid = this.checkValid(fedToTwilio);
                 
                 if (!wasValid) {
-                    return "System Prompt: The selected appointment time is invalid. Please ask the user to select another time from the available slots.";
+                    this.processLLM("System Prompt: The selected appointment time is invalid. Please ask the user to select another time from the available slots.");
+                    return
                 } else {
                     const rawTime = this.convertEstToRealUtc(fedToTwilio.appointmentTime);
                     this.appointmentTime = rawTime;
-                    return "System Prompt: The selected appointment time is valid.";
+                    this.processLLM("System Prompt: The selected appointment time is valid.");
+                    return;
                 }
 
 
