@@ -204,33 +204,6 @@ GOAL: Book estimates naturally. Sound 100% human.
 
 
         return fullPrompt
-
-        // return `
-        //     You are a real estate agent named Marta. Your task is to engage naturally, asking relevant questions and responding appropriately based on what the person says. Your goal is to see if they are in the market for buying a house by engaging in a conversation. If the person isn't in the market for ${personLook}ing a house, ask them that they could contact you anytime. Be a little bit flirty with the person. 
-
-        //     If the caller talks about voicemail or the call seems to hang, hangup the call and leave the message: Hi. I'm ${personName} and I called your number because I'm a local real estate agent in ${personOperating} wondering with if you are interested in ${personLook}ing a house in the area. If you are, please return a call to ${formattedNumber}. Thanks for your time!
-
-        //     Ensure that each response is contextually appropriate and advances the conversation toward assessing the person's interest. Always keep the conversation concise and avoid repeating yourself unnecessarily. Try to keep your responses short, but be friendly.
-
-        //     If the person seems interested in ${personLook} a house, tell them the following:
-        //     "Let me forward you to my manager ${personName}. He'll call you using the following number, ${formattedNumber}. Have a great day!" and then make the hangup boolean value true 
-
-        //     Heres the manager's personal contact information:
-        //     Phone Number: ${personNumber}
-        //     Name: ${personName}
-
-        //     If they ask for any other mean of communication tell them the following: "Sorry, he only operates via phone number."
-        //     Remember, the real estate agent operates in ${personOperating} meaning that if they ask anything any details about the home, tell them that its located in ${personOperating}
-
-        //     ${promptBool}
-
-        //     Output your response in the specified JSON format.
-        //     1. "response": The next statement or question you will say.
-        //     2. "rating": A number from 1 to 100 indicating the likelihood that this person is a good lead.
-        //     3. "hangUp": A boolean value indicating whether you should hangup.
-
-        //     The conversation history will be provided. Start with your first greeting.
-        // `;
     }
 
     async setWebsocket(ws, streamSid) {
@@ -609,6 +582,12 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                                 cannedMessage = "Give me one second to check the calendar for you.";
                                 this.sendClear();
                                 console.log(`[${this.callSid}] 🎯 Detected check_availability - using canned response`);
+                            } else if (parsed.action === "check_if_time_is_valid") {
+
+                                shouldUseCannedResponse = true;
+                                cannedMessage = "Let me see if that time is open for you.";
+                                this.sendClear();
+                                console.log(`[${this.callSid}] 🎯 Detected check_if_time_is_valid - using canned response`);
                             }
                             // Check if all appointment details are filled
                             else if (this.customerName && this.vehicleModel && this.customerEmail &&
@@ -789,6 +768,10 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                 message: fedToTwilio.response,
                 order: this.messageNumber++,
             });
+
+
+
+
             this.rating = fedToTwilio.rating;
 
             console.log(`[${this.callSid}]Metadata: rating = ${fedToTwilio.rating}, hangUp = ${fedToTwilio.hangup} `);
@@ -809,15 +792,15 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                     // Give immediate audio feedback to fill the silence
                     if (this.ttsStream && !this.ttsStream.destroyed) {
                         console.log(`[${this.callSid}] Speaking 'checking schedule' filler.`);
-                        this.ttsStream.write({
-                            input: { text: "  Hold on, let me just check the schedule for you..." }
-                        });
+                        // this.ttsStream.write({
+                        //     input: { text: "  Hold on, let me just check the schedule for you..." }
+                        // });
                     } else {
                         // In case stream was closed (unlikely but safe)
-                        this.ttsStream = this.setupGoogleTTSStream();
-                        this.ttsStream.write({
-                            input: { text: "  Hold on, let me just check the schedule for you..." }
-                        });
+                        // this.ttsStream = this.setupGoogleTTSStream();
+                        // this.ttsStream.write({
+                        //     input: { text: "  Hold on, let me just check the schedule for you..." }
+                        // });
                     }
 
                     // Generate 4 sequential weekly dates starting from NOW
@@ -842,15 +825,11 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                         await getAvailability(week3)
                     ]);
 
-                    // console.log("this is res 0", res0);
                     const availabilityData = [res0.collection.map((x) => x.start_time), res1.collection.map((x) => x.start_time), res2.collection.map((x) => x.start_time), res3.collection.map((x) => x.start_time)];
-
 
                     const localData = availabilityData.flat();
                     this.availableSlots = localData;
 
-
-                    // console.log(`[${this.callSid}] Availability Data feeding to Gemini: `, JSON.stringify(availabilityData, null, 2));
 
                     const systemMessage = `System Update: Here are the available slots for the next month: ${JSON.stringify(availabilityData)}. Please offer 2 - 3 of these times to the user.IMPORTANT: DO NOT set 'action' to 'check_availability' again.Offer the times immediately.`;
                     this.currentlyCheckingAvailability = false;
