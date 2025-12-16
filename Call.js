@@ -862,18 +862,17 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                 const wasValid = this.checkValid(fedToTwilio);
 
                 if (!wasValid) {
+                    console.log("Tool Call Response: This time is invalid");
                     this.updateAgentWithoutTriggeringResponse("System Prompt: The selected appointment time is invalid. Please ask the user to select another time from the available slots.")
                     // this.processLLM();
                     return
                 } else {
                     const rawTime = this.convertEstToRealUtc(fedToTwilio.appointmentTime);
+                    console.log("Tool Call Response: This time is valid");
                     this.appointmentTime = rawTime;
                     this.updateAgentWithoutTriggeringResponse("System Prompt: The selected appointment time is valid.")
                     return;
                 }
-
-
-
             } else {
                 this.justCheckedAvailability = false;
             }
