@@ -596,11 +596,14 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                                 cannedMessage = "Perfect! Let me get that scheduled for you right away.";
                                 this.sendClear();
                                 console.log(`[${this.callSid}] 🎯 All appointment details filled - using canned response`);
-                            } 
+                            }
                         } catch (e) {
                             // JSON not complete yet, continue streaming
                         }
                     }
+
+                    // clear everything said previously because we never really know when the action will come in.
+                    this.sendClear();
 
                     // Only stream to TTS if we're NOT using a canned response
                     if (!shouldUseCannedResponse && this.ttsStream && !this.ttsStream.destroyed) {
@@ -689,57 +692,70 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
         return audioDataLength / sampleRate;
     }
     convertEstToRealUtc(estDateString) {
-                // estDateString input: "2025-12-12T13:00:00.000Z" (The 'Fake UTC' string)
+        // estDateString input: "2025-12-12T13:00:00.000Z" (The 'Fake UTC' string)
 
-                // 1. Strip the 'Z' so it is treated as "Floating Local Time" (just "1:00 PM")
+        // 1. Strip the 'Z' so it is treated as "Floating Local Time" (just "1:00 PM")
         const cleanIso = estDateString.replace('Z', '');
 
-                // 2. Tell the library: "This time is in New York. Give me the UTC equivalent."
+        // 2. Tell the library: "This time is in New York. Give me the UTC equivalent."
         const utcDate = fromZonedTime(cleanIso, 'America/New_York');
 
         return utcDate.toISOString();
-                // Output: "2025-12-12T18:00:00.000Z" (Correctly added 5 hours)
+        // Output: "2025-12-12T18:00:00.000Z" (Correctly added 5 hours)
     }
 
     // lets add a function to check if it is even possible
 
     async checkValid(fedToTwilio) {
-           try {
-                const rawTime = this.convertEstToRealUtc(fedToTwilio.appointmentTime);
-                    // Convert the rawTime string to a numeric timestamp for comparison
-                const targetTimestamp = new Date(rawTime).getTime();
+        try {
+            const rawTime = this.convertEstToRealUtc(fedToTwilio.appointmentTime);
+            // Convert the rawTime string to a numeric timestamp for comparison
+            const targetTimestamp = new Date(rawTime).getTime();
 
-                const isValidSlot = this.availableSlots.some(slot => {
-                        // Convert the slot string to a timestamp as well
-                    const slotTimestamp = new Date(slot).getTime();
+            const isValidSlot = this.availableSlots.some(slot => {
+                // Convert the slot string to a timestamp as well
+                const slotTimestamp = new Date(slot).getTime();
 
-                        // console.log("slot", slot);
-                        // console.log("rawTime", rawTime);
+                // console.log("slot", slot);
+                // console.log("rawTime", rawTime);
 
-                        // Compare the numbers (milliseconds since epoch)
-                        // accurate within 1000ms to handle potential second-rounding issues if needed,
-                        // but exact match usually works best for slots.
-                    const isMatch = slotTimestamp === targetTimestamp;
+                // Compare the numbers (milliseconds since epoch)
+                // accurate within 1000ms to handle potential second-rounding issues if needed,
+                // but exact match usually works best for slots.
+                const isMatch = slotTimestamp === targetTimestamp;
 
-                    console.log("passed", isMatch);
-                    return isMatch;
-                });
+                console.log("passed", isMatch);
+                return isMatch;
+            });
 
-                if (isValidSlot) {
-                    return true;
-                } else {
-                    return false
-                }
-            } catch (e) {
-                console.error(`[${this.callSid}] Error converting appointment time:`, e);
-                return false;
+            if (isValidSlot) {
+                return true;
+            } else {
+                return false
             }
+        } catch (e) {
+            console.error(`[${this.callSid}] Error converting appointment time:`, e);
+            return false;
+        }
 
 
     }
 
-    
-    
+
+    async updateAgentWithoutTriggeringResponse(newMessage) {
+        try {
+            const history = await this.chat.getHistory();
+            const newHistory = [...history, newMessage];
+            this.chat = this.model.startChat({
+                history: newHistory,
+            });
+            console.log(`[${this.callSid}] History updated silently with new message.`);
+        } catch (e) {
+            console.error(`[${this.callSid}] Failed to update history silently:`, e);
+        }
+    }
+
+
 
 
     async processResponse(geminiResponse) {
@@ -844,14 +860,15 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                 }
             } else if (fedToTwilio.action === "check_if_time_is_valid") {
                 const wasValid = this.checkValid(fedToTwilio);
-                
+
                 if (!wasValid) {
-                    this.processLLM("System Prompt: The selected appointment time is invalid. Please ask the user to select another time from the available slots.");
+                    this.updateAgentWithoutTriggeringResponse("System Prompt: The selected appointment time is invalid. Please ask the user to select another time from the available slots.")
+                    // this.processLLM();
                     return
                 } else {
                     const rawTime = this.convertEstToRealUtc(fedToTwilio.appointmentTime);
                     this.appointmentTime = rawTime;
-                    this.processLLM("System Prompt: The selected appointment time is valid.");
+                    this.updateAgentWithoutTriggeringResponse("System Prompt: The selected appointment time is valid.")
                     return;
                 }
 
@@ -876,7 +893,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                     // Convert the rawTime string to a numeric timestamp for comparison
                     const targetTimestamp = new Date(rawTime).getTime();
 
-                    const isValidSlot = this.availableSlots.some(slot => {
+                    const isValidSlot = this.availableSlots.some((slot) => {
                         // Convert the slot string to a timestamp as well
                         const slotTimestamp = new Date(slot).getTime();
 
@@ -955,7 +972,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
 
                     // Chain the result back to Gemini so it can speak the confirmation
                     // We pretend this is a system message in the transcript
-                    await this.processLLM(`System Update: The appointment was attempted.Result: "${scheduleMsg}".Please inform the user.`);
+                    await this.processLLM(`System Update: The appointment was attempted. Result: "${scheduleMsg}".Please inform the user.`);
                     return; // Return early, processLLM will handle the flow
                 }
             } else {
