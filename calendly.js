@@ -85,7 +85,7 @@ async function getEventAvailability(_, eventTypeUri, startDate) {
         const data = await response.json();
 
         // --- ADD THIS LOG ---
-        console.log("RAW DATA FROM CALENDLY:", JSON.stringify(data, null, 2));
+        // console.log("RAW DATA FROM CALENDLY:", JSON.stringify(data, null, 2));
 
         function convertToEstISO(dateString) {
             const date = new Date(dateString);
