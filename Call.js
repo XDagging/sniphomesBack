@@ -745,7 +745,11 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
     async updateAgentWithoutTriggeringResponse(newMessage) {
         try {
             const history = await this.chat.getHistory();
-            const newHistory = [...history, newMessage];
+            const newHistory = [...history, {
+                // message: newMessage,
+                role: "tool",
+                parts: [{text: newMessage}]
+            }];
             this.chat = this.model.startChat({
                 history: newHistory,
             });
