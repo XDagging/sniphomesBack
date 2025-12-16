@@ -746,14 +746,16 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
         try {
             const history = await this.chat.getHistory();
             const newHistory = [...history, {
-                // message: newMessage,
-                role: "function",
+
+
+                role: "user",
                 parts: [{text: newMessage}]
             }];
             this.chat = this.model.startChat({
                 history: newHistory,
             });
             console.log(`[${this.callSid}] History updated silently with new message.`);
+
         } catch (e) {
             console.error(`[${this.callSid}] Failed to update history silently:`, e);
         }
@@ -868,13 +870,14 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                 if (!wasValid) {
                     console.log("Tool Call Response: This time is invalid");
                     this.updateAgentWithoutTriggeringResponse("System Prompt: The selected appointment time is invalid. Please ask the user to select another time from the available slots.")
-                    // this.processLLM();
+                    this.processLLM("");
                     return
                 } else {
                     const rawTime = this.convertEstToRealUtc(fedToTwilio.appointmentTime);
                     console.log("Tool Call Response: This time is valid");
                     this.appointmentTime = rawTime;
-                    this.updateAgentWithoutTriggeringResponse("System Prompt: The selected appointment time is valid.")
+                    this.updateAgentWithoutTriggeringResponse("System Prompt: The selected appointment time is valid.");
+                    this.processLLM("");
                     return;
                 }
             } else {
