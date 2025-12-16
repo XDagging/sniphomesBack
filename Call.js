@@ -747,7 +747,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
             const history = await this.chat.getHistory();
             const newHistory = [...history, {
                 // message: newMessage,
-                role: "tool",
+                role: "function",
                 parts: [{text: newMessage}]
             }];
             this.chat = this.model.startChat({
