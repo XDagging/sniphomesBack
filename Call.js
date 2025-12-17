@@ -1135,7 +1135,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
             if (fedToTwilio.vehicleModel) this.vehicleModel = fedToTwilio.vehicleModel;
             if (fedToTwilio.customerEmail) this.customerEmail = fedToTwilio.customerEmail;
             if (fedToTwilio.paymentMethod && fedToTwilio.paymentMethod !== "unknown") this.paymentMethod = fedToTwilio.paymentMethod;
-            if (fedToTwilio.appointmentTime) {
+            if (fedToTwilio.appointmentTime && fedToTwilio.appointmentTime !== "NOT_SET") {
                 
                 // REUSE the exact same validation logic
                 const { isValid, formattedTime } = this.validateTimeSlot(fedToTwilio.appointmentTime);
