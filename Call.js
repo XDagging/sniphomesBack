@@ -964,6 +964,25 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
 
     }
 
+    validateTimeSlot(inputTime) {
+        try {
+            // 1. Centralized Time Conversion
+            const formattedTime = this.convertEstToRealUtc(inputTime);
+            const targetTimestamp = new Date(formattedTime).getTime();
+
+            // 2. Centralized Slot Matching
+            const isValid = this.availableSlots.some(slot => {
+                const slotTimestamp = new Date(slot).getTime();
+                // Exact match (add tolerance window here if needed in the future)
+                return slotTimestamp === targetTimestamp;
+            });
+
+            return { isValid, formattedTime };
+        } catch (e) {
+            console.error(`[${this.callSid}] Validation Error:`, e);
+            return { isValid: false, formattedTime: null };
+        }
+    }
 
     async updateAgentWithoutTriggeringResponse(newMessage) {
         try {
@@ -1088,25 +1107,27 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                     return;
                 }
             } else if (fedToTwilio.action === "check_if_time_is_valid") {
-                const wasValid = this.checkValid(fedToTwilio);
+                
+                const { isValid, formattedTime } = this.validateTimeSlot(fedToTwilio.appointmentTime);
 
-                if (!wasValid) {
-                    console.log("Tool Call Response: This time is invalid");
-                    this.updateAgentWithoutTriggeringResponse("System Prompt: The selected appointment time is invalid. Please ask the user to select another time from the available slots.")
-                    this.processLLM("Response: The selected appointment time is invalid. Please ask the user to select another time from the available slots.");
-                    return
-                } else {
-                    const rawTime = this.convertEstToRealUtc(fedToTwilio.appointmentTime);
-                    console.log("Tool Call Response: This time is valid");
-                    this.appointmentTime = rawTime;
+                if (isValid) {
+                    console.log(`[${this.callSid}] Tool Check: Time valid.`);
+                    this.appointmentTime = formattedTime; // Set state
+                    
+                    // Update system prompts to keep LLM in sync
                     this.updateAgentWithoutTriggeringResponse("System Prompt: The selected appointment time is valid.");
                     this.processLLM("Response: The selected appointment time is valid. Continue with Conversation");
-                    return;
+                } else {
+                    console.log(`[${this.callSid}] Tool Check: Time INVALID.`);
+                    
+                    this.updateAgentWithoutTriggeringResponse("System Prompt: The selected appointment time is invalid/taken. Ask user for another time.");
+                    this.processLLM("Response: The selected appointment time is invalid. Please ask the user to select another time from the available slots.");
                 }
-            } else {
+                return; // Stop here, wait for next LLM turn
+            } 
+            else {
                 this.justCheckedAvailability = false;
             }
-
 
 
             // Update state variables if present in the response
@@ -1115,39 +1136,20 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
             if (fedToTwilio.customerEmail) this.customerEmail = fedToTwilio.customerEmail;
             if (fedToTwilio.paymentMethod && fedToTwilio.paymentMethod !== "unknown") this.paymentMethod = fedToTwilio.paymentMethod;
             if (fedToTwilio.appointmentTime) {
-                try {
+                
+                // REUSE the exact same validation logic
+                const { isValid, formattedTime } = this.validateTimeSlot(fedToTwilio.appointmentTime);
 
-                    // in theory, this shouldn't be happening
-                    const rawTime = this.convertEstToRealUtc(fedToTwilio.appointmentTime);
-                    // Convert the rawTime string to a numeric timestamp for comparison
-                    const targetTimestamp = new Date(rawTime).getTime();
-
-                    const isValidSlot = this.availableSlots.some((slot) => {
-                        // Convert the slot string to a timestamp as well
-                        const slotTimestamp = new Date(slot).getTime();
-
-                        // console.log("slot", slot);
-                        // console.log("rawTime", rawTime);
-
-                        // Compare the numbers (milliseconds since epoch)
-                        // accurate within 1000ms to handle potential second-rounding issues if needed,
-                        // but exact match usually works best for slots.
-                        const isMatch = slotTimestamp === targetTimestamp;
-
-                        console.log("passed", isMatch);
-                        return isMatch;
-                    });
-
-                    if (isValidSlot) {
-                        this.appointmentTime = rawTime;
-                    } else {
-                        console.log(`[${this.callSid}] Invalid appointment time: ${rawTime}`);
-                        this.sendClear();
-                        await this.processLLM(`System Update: Invalid appointment time. Try another time`);
-                        return;
-                    }
-                } catch (e) {
-                    console.error(`[${this.callSid}] Error converting appointment time:`, e);
+                if (isValid) {
+                    this.appointmentTime = formattedTime;
+                } else {
+                    console.log(`[${this.callSid}] Implicit Set Failed: Time INVALID (${formattedTime})`);
+                    
+                    // Crucial: If the AI tries to book a bad time, we must reject it immediately
+                    // regardless of what the "response" text says.
+                    this.sendClear();
+                    await this.processLLM(`System Update: The time ${fedToTwilio.appointmentTime} is invalid or no longer available. Tell the user to pick another.`);
+                    return; 
                 }
             }
 
