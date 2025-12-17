@@ -965,19 +965,52 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
     }
 
     validateTimeSlot(inputTime) {
-        try {
-            // 1. Centralized Time Conversion
-            const formattedTime = this.convertEstToRealUtc(inputTime);
-            const targetTimestamp = new Date(formattedTime).getTime();
+        // 1. Check if we even have slots to compare against
+        if (!this.availableSlots || this.availableSlots.length === 0) {
+            console.error(`[${this.callSid}] Validation Failed: NO AVAILABLE SLOTS loaded. Did check_availability run?`);
+            return { isValid: false, formattedTime: null };
+        }
 
-            // 2. Centralized Slot Matching
-            const isValid = this.availableSlots.some(slot => {
-                const slotTimestamp = new Date(slot).getTime();
-                // Exact match (add tolerance window here if needed in the future)
-                return slotTimestamp == targetTimestamp;
+        try {
+            // 2. Convert the AI's time (The "Target")
+            const formattedTime = this.convertEstToRealUtc(inputTime);
+            const targetDate = new Date(formattedTime);
+            const targetTimestamp = targetDate.getTime();
+
+            console.log(`[${this.callSid}] --- VALIDATING TIME ---`);
+            console.log(`[${this.callSid}] AI Input: ${inputTime}`);
+            console.log(`[${this.callSid}] Converted Target (UTC): ${formattedTime} (${targetTimestamp})`);
+
+            // 3. Find a match with "Fuzzy" Logic
+            const match = this.availableSlots.find(slot => {
+                const slotDate = new Date(slot);
+                const slotTimestamp = slotDate.getTime();
+                
+                // Absolute difference in milliseconds
+                const diff = Math.abs(slotTimestamp - targetTimestamp);
+                
+                // Allow a 60-second buffer (60000ms) to handle seconds/milliseconds mismatches
+                // e.g., 14:00:00.000 vs 14:00:00
+                const isMatch = diff < 60000; 
+
+                // DEBUG: Log close calls to see if we are off by hours (timezone issue)
+                // Only log if it's NOT a match but reasonably close (within 6 hours)
+                if (!isMatch && diff < 21600000) { 
+                     console.log(`[${this.callSid}] Mismatch: Slot ${slot} vs Target ${formattedTime} | Diff: ${diff/1000/60} minutes`);
+                }
+
+                return isMatch;
             });
 
-            return { isValid, formattedTime };
+            if (match) {
+                console.log(`[${this.callSid}] ✅ MATCH FOUND: ${match}`);
+                // Return the SLOT time (the official one), not the converted AI time, to ensure consistency
+                return { isValid: true, formattedTime: match }; 
+            } else {
+                console.log(`[${this.callSid}] ❌ NO MATCH FOUND in ${this.availableSlots.length} slots.`);
+                return { isValid: false, formattedTime: formattedTime };
+            }
+
         } catch (e) {
             console.error(`[${this.callSid}] Validation Error:`, e);
             return { isValid: false, formattedTime: null };
