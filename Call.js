@@ -148,12 +148,6 @@ class Call {
     }
 
     async buildSystemPrompt(personName, personOperating, personLook) {
-        // const personNumber = "3011233212";
-        // const formattedNumber = "three, zero, one, one, two, three, three, two, one, two";
-
-        // const buyBool = "Ask the person what budget their budget is and how many people they plan to move in with. Redirect them to the manager if they give one, but push for both answers. DO NOT ASK ANY OTHER QUESTIONS.";
-        // const sellBool = `Tell the person about ${personOperating} area and ask them if they are homeowners. If so, ask them for the following info: would they be willing to sell their house, and if so, for how much? How many people do you live with currently (if they ask why we are asking, it is to grasp how large the home)? If they answer at least 1 of those questions, redirect to mananger. DO NOT ASK ANY OTHER QUESTIONS.`;
-        // const promptBool = personLook.toLowerCase() === "sell" ? sellBool : buyBool;
 
         const fullPrompt = `
 IDENTITY: You are the AI Receptionist for "Quattro Body Shop" in Bethesda, MD.
@@ -185,6 +179,7 @@ GOAL: Book estimates naturally. Sound 100% human.
 3. VEHICLE -> EMAIL: "Okay. What's the best email to send the confirmation to?"
 4. EMAIL -> PAYMENT: "Thanks. And will you be using insurance or paying out of pocket?"
 5. PAYMENT -> FINISH: "Perfect. I'll get that locked in. See you then!" (Logic will trigger schedule)
+6. IF YOU ARE MISSING ANY FIELDS, PUT IT AS "NOT_SET" IN THE JSON.
 
 [ACTIONS]
 - When doing "check_availability", say: "Let me check the schedule...", then WAIT for system update with slots.
@@ -609,9 +604,9 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
 
 
                             // This in theory should prevent the audio from continuously streaming when we should be using canned.
-                            
+
                         } catch (e) {
-                            
+
                             // JSON not complete yet, continue streaming
                         }
                     }
@@ -685,214 +680,6 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
 
                         if (this.ttsStream && !this.ttsStream.destroyed) {
                             this.ttsStream.end();
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
-                            //I am a pussy and stanford doesnt want me
                         }
 
                         this.processResponse(jsonBuffer);
@@ -931,6 +718,24 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
 
     async checkValid(fedToTwilio) {
         try {
+            console.log(`[${this.callSid}] --- checkValid ---`);
+            console.log(`[${this.callSid}] Input: ${fedToTwilio.appointmentTime}`);
+
+            // 1. Direct Match Check (Priority)
+            // The availableSlots are in "Fake UTC" (EST wall time + Z).
+            // If the AI gives us exactly that string, it is VALID.
+            const isDirectMatch = this.availableSlots.some(slot => {
+                return slot === fedToTwilio.appointmentTime ||
+                    new Date(slot).getTime() === new Date(fedToTwilio.appointmentTime).getTime();
+            });
+
+            if (isDirectMatch) {
+                console.log(`[${this.callSid}] ✅ Direct match found (Fake UTC preserved). Valid.`);
+                return true;
+            }
+
+            // 2. Fallback: Try conversion (Legacy check)
+            console.log(`[${this.callSid}] No direct match, trying conversion...`);
             const rawTime = this.convertEstToRealUtc(fedToTwilio.appointmentTime);
             // Convert the rawTime string to a numeric timestamp for comparison
             const targetTimestamp = new Date(rawTime).getTime();
@@ -947,17 +752,19 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                 // but exact match usually works best for slots.
                 const isMatch = slotTimestamp === targetTimestamp;
 
-                console.log("passed", isMatch);
+                // console.log("passed", isMatch);
                 return isMatch;
             });
 
             if (isValidSlot) {
+                console.log(`[${this.callSid}] ✅ Conversion match found.`);
                 return true;
             } else {
+                console.log(`[${this.callSid}] ❌ No match found (Direct or Converted).`);
                 return false
             }
         } catch (e) {
-            console.error(`[${this.callSid}] Error converting appointment time:`, e);
+            console.error(`[${this.callSid}] Error in checkValid:`, e);
             return false;
         }
 
@@ -972,7 +779,22 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
         }
 
         try {
-            // 2. Convert the AI's time (The "Target")
+            // 2. Direct Match Check (Priority)
+            const inputDate = new Date(inputTime);
+            const inputTimestamp = inputDate.getTime();
+
+            // Check if input matches any slot directly (string or timestamp)
+            const directMatch = this.availableSlots.find(slot => {
+                return slot === inputTime || new Date(slot).getTime() === inputTimestamp;
+            });
+
+            if (directMatch) {
+                console.log(`[${this.callSid}] ✅ Direct match found in validateTimeSlot: ${directMatch}`);
+                return { isValid: true, formattedTime: directMatch };
+            }
+
+            // 3. Fallback: Convert the AI's time (The "Target")
+            console.log(`[${this.callSid}] No direct match, validating via conversion...`);
             const formattedTime = !fromAction ? this.convertEstToRealUtc(inputTime) : inputTime;
             const targetDate = new Date(formattedTime);
             const targetTimestamp = targetDate.getTime();
@@ -981,22 +803,22 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
             console.log(`[${this.callSid}] AI Input: ${inputTime}`);
             console.log(`[${this.callSid}] Converted Target (UTC): ${formattedTime} (${targetTimestamp})`);
 
-            // 3. Find a match with "Fuzzy" Logic
+            // 4. Find a match with "Fuzzy" Logic
             const match = this.availableSlots.find(slot => {
                 const slotDate = new Date(slot);
                 const slotTimestamp = slotDate.getTime();
-                
+
                 // Absolute difference in milliseconds
                 const diff = Math.abs(slotTimestamp - targetTimestamp);
-                
+
                 // Allow a 60-second buffer (60000ms) to handle seconds/milliseconds mismatches
                 // e.g., 14:00:00.000 vs 14:00:00
-                const isMatch = diff < 60000; 
+                const isMatch = diff < 60000;
 
                 // DEBUG: Log close calls to see if we are off by hours (timezone issue)
                 // Only log if it's NOT a match but reasonably close (within 6 hours)
-                if (!isMatch && diff < 21600000) { 
-                     console.log(`[${this.callSid}] Mismatch: Slot ${slot} vs Target ${formattedTime} | Diff: ${diff/1000/60} minutes`);
+                if (!isMatch && diff < 21600000) {
+                    console.log(`[${this.callSid}] Mismatch: Slot ${slot} vs Target ${formattedTime} | Diff: ${diff / 1000 / 60} minutes`);
                 }
 
                 return isMatch;
@@ -1005,7 +827,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
             if (match) {
                 console.log(`[${this.callSid}] ✅ MATCH FOUND: ${match}`);
                 // Return the SLOT time (the official one), not the converted AI time, to ensure consistency
-                return { isValid: true, formattedTime: match }; 
+                return { isValid: true, formattedTime: match };
             } else {
                 console.log(`[${this.callSid}] ❌ NO MATCH FOUND in ${this.availableSlots.length} slots.`);
                 return { isValid: false, formattedTime: formattedTime };
@@ -1024,7 +846,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
 
 
                 role: "user",
-                parts: [{text: newMessage}]
+                parts: [{ text: newMessage }]
             }];
             this.chat = this.model.startChat({
                 history: newHistory,
@@ -1140,24 +962,24 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                     return;
                 }
             } else if (fedToTwilio.action === "check_if_time_is_valid") {
-                
-                const { isValid, formattedTime } = this.validateTimeSlot(fedToTwilio.appointmentTime);
+
+                const { isValid, formattedTime } = this.validateTimeSlot(fedToTwilio.appointmentTime, false);
 
                 if (isValid) {
                     console.log(`[${this.callSid}] Tool Check: Time valid.`);
                     this.appointmentTime = formattedTime; // Set state
-                    
+
                     // Update system prompts to keep LLM in sync
                     this.updateAgentWithoutTriggeringResponse("System Prompt: The selected appointment time is valid.");
                     this.processLLM("Response: The selected appointment time is valid. Continue with Conversation");
                 } else {
                     console.log(`[${this.callSid}] Tool Check: Time INVALID.`);
-                    
+
                     this.updateAgentWithoutTriggeringResponse("System Prompt: The selected appointment time is invalid/taken. Ask user for another time.");
                     this.processLLM("Response: The selected appointment time is invalid. Please ask the user to select another time from the available slots.");
                 }
                 return; // Stop here, wait for next LLM turn
-            } 
+            }
             else {
                 this.justCheckedAvailability = false;
             }
@@ -1169,7 +991,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
             if (fedToTwilio.customerEmail) this.customerEmail = fedToTwilio.customerEmail;
             if (fedToTwilio.paymentMethod && fedToTwilio.paymentMethod !== "unknown") this.paymentMethod = fedToTwilio.paymentMethod;
             if (fedToTwilio.appointmentTime && fedToTwilio.appointmentTime !== "NOT_SET") {
-                
+
                 // REUSE the exact same validation logic
                 const { isValid, formattedTime } = this.validateTimeSlot(fedToTwilio.appointmentTime, true);
 
@@ -1177,12 +999,12 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                     this.appointmentTime = formattedTime;
                 } else {
                     console.log(`[${this.callSid}] Implicit Set Failed: Time INVALID (${formattedTime})`);
-                    
+
                     // Crucial: If the AI tries to book a bad time, we must reject it immediately
                     // regardless of what the "response" text says.
                     this.sendClear();
                     await this.processLLM(`System Update: The time ${fedToTwilio.appointmentTime} is invalid or no longer available. Tell the user to pick another.`);
-                    return; 
+                    return;
                 }
             }
 
@@ -1282,17 +1104,19 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
     async handleAppointment(details) {
         console.log(`[${this.callSid}] handleAppointment called with: `, JSON.stringify(details, null, 2));
         try {
-            // 1. Convert time to UTC ISO string
+            // 2. Convert time to UTC ISO string
             let appointmentTime = details.appointmentTime;
             try {
                 if (appointmentTime) {
-                    const date = new Date(appointmentTime);
-                    if (!isNaN(date.getTime())) {
-                        appointmentTime = date.toISOString();
-                        console.log(`[${this.callSid}] Converted appointmentTime to UTC: ${appointmentTime} `);
-                    } else {
-                        console.error(`[${this.callSid}] Invalid date format received: ${details.appointmentTime} `);
-                    }
+                    // WE MUST CONVERT 'FAKE UTC' to 'REAL UTC' HERE for Calendly
+                    // Input: "2025-12-12T13:00:00Z" (1 PM EST, but flagged as Z)
+                    // Output: "2025-12-12T18:00:00Z" (6 PM UTC / 1 PM EST)
+                    console.log(`[${this.callSid}] Converting Appointment Time for Booking: ${appointmentTime}`);
+
+                    // Use our trusted converter
+                    appointmentTime = this.convertEstToRealUtc(appointmentTime);
+                    console.log(`[${this.callSid}] Resulting UTC Time: ${appointmentTime}`);
+
                 } else {
                     return "STATUS: FAILED: You must send an appointment time before continuing.";
                 }

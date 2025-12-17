@@ -5,6 +5,7 @@ npm-shrinkwrap.json
 *.log
 *.gz
 .env
+test_timezone_repro.js
 # Coveralls
 .nyc_output
 coverage
