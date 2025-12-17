@@ -1025,7 +1025,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
             // If we have all appointment details and payment method is NOT unknown, attempt to schedule
             // Check against instance variables instead of the ephemeral response
             console.log(`[${this.callSid}] Attempting to schedule appointment:`);
-            if (this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod && this.customerName !== "NOT_SET" && this.customerEmail !== "NOT_SET" && this.vehicleModel !== "NOT_SET" && this.paymentMethod !== "unknown" && this.appointmentTime && this.appointmentTime !== "NOT_SET") {
+            if (this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod && this.customerName !== "NOT_SET" && this.customerEmail !== "NOT_SET" && this.vehicleModel !== "NOT_SET" && this.paymentMethod !== "unknown" && this.appointmentTime && this.appointmentTime !== "NOT_SET" && this.paymentMethod !== "NOT_SET") {
                 const currentAttempt = JSON.stringify({
                     n: this.customerName,
                     v: this.vehicleModel,
