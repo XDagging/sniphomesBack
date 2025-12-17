@@ -976,11 +976,14 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                     // Update system prompts to keep LLM in sync
                     this.updateAgentWithoutTriggeringResponse("System Prompt: The selected appointment time is valid.");
                     this.processLLM("Response: The selected appointment time is valid. Continue with Conversation");
+                    this.sendClear();
                 } else {
                     console.log(`[${this.callSid}] Tool Check: Time INVALID.`);
 
                     this.updateAgentWithoutTriggeringResponse("System Prompt: The selected appointment time is invalid/taken. Ask user for another time.");
+
                     this.processLLM("Response: The selected appointment time is invalid. Please ask the user to select another time from the available slots.");
+                    this.sendClear();
                 }
                 return; // Stop here, wait for next LLM turn
             }
