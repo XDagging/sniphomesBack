@@ -964,7 +964,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
 
     }
 
-    validateTimeSlot(inputTime) {
+    validateTimeSlot(inputTime, fromAction = false) {
         // 1. Check if we even have slots to compare against
         if (!this.availableSlots || this.availableSlots.length === 0) {
             console.error(`[${this.callSid}] Validation Failed: NO AVAILABLE SLOTS loaded. Did check_availability run?`);
@@ -973,7 +973,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
 
         try {
             // 2. Convert the AI's time (The "Target")
-            const formattedTime = this.convertEstToRealUtc(inputTime);
+            const formattedTime = !fromAction ? this.convertEstToRealUtc(inputTime) : inputTime;
             const targetDate = new Date(formattedTime);
             const targetTimestamp = targetDate.getTime();
 
@@ -1171,7 +1171,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
             if (fedToTwilio.appointmentTime && fedToTwilio.appointmentTime !== "NOT_SET") {
                 
                 // REUSE the exact same validation logic
-                const { isValid, formattedTime } = this.validateTimeSlot(fedToTwilio.appointmentTime);
+                const { isValid, formattedTime } = this.validateTimeSlot(fedToTwilio.appointmentTime, true);
 
                 if (isValid) {
                     this.appointmentTime = formattedTime;
