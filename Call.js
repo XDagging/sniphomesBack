@@ -518,11 +518,11 @@ GOAL: Book estimates naturally. Sound 100% human.
         try {
             // --- SYSTEM CONTEXT INJECTION ---
             const missingFields = [];
-            if (!this.customerName) missingFields.push("customerName");
-            if (!this.vehicleModel) missingFields.push("vehicleModel");
-            if (!this.customerEmail) missingFields.push("customerEmail");
+            if (!this.customerName || this.customerName === "NOT_SET") missingFields.push("customerName");
+            if (!this.vehicleModel || this.vehicleModel === "NOT_SET") missingFields.push("vehicleModel");
+            if (!this.customerEmail || this.customerEmail === "NOT_SET") missingFields.push("customerEmail");
             if (!this.paymentMethod || this.paymentMethod === 'unknown') missingFields.push("paymentMethod (insurance or out-of-pocket)");
-            if (!this.appointmentTime) missingFields.push("appointmentTime");
+            if (!this.appointmentTime || this.appointmentTime === "NOT_SET") missingFields.push("appointmentTime");
 
             const systemContext = `
 [INTERNAL STATE]
