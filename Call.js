@@ -40,6 +40,7 @@ class Call {
         this.agentName = agentName;
         this.justCheckedAvailability = false;
         this.availableSlots = [];
+        this.errorWhenScheduling = false;
 
         this.currentlyCheckingAvailability = false;
 
@@ -596,7 +597,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                             else if (this.customerName && this.vehicleModel && this.customerEmail &&
                                 this.paymentMethod && this.paymentMethod !== 'unknown' && this.appointmentTime && !this.hasScheduledAppointment
                                 && this.customerName !== "NOT_SET" && this.customerEmail !== "NOT_SET" && this.vehicleModel !== "NOT_SET" && this.appointmentTime !== "NOT_SET"
-
+                                && !this.errorWhenScheduling
                             ) {
                                 shouldUseCannedResponse = true;
                                 cannedMessage = "Perfect! Let me get that scheduled for you right away.";
@@ -1062,6 +1063,9 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
 
                     if (scheduleMsg.toLowerCase().includes("success")) {
                         this.hasScheduledAppointment = true;
+                        this.errorWhenScheduling = false;
+                    } else {
+                        this.errorWhenScheduling = true;
                     }
 
                     // Chain the result back to Gemini so it can speak the confirmation
