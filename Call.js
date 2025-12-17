@@ -974,7 +974,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
             const isValid = this.availableSlots.some(slot => {
                 const slotTimestamp = new Date(slot).getTime();
                 // Exact match (add tolerance window here if needed in the future)
-                return slotTimestamp === targetTimestamp;
+                return slotTimestamp == targetTimestamp;
             });
 
             return { isValid, formattedTime };
