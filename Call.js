@@ -611,7 +611,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                     }
 
                     // clear everything said previously because we never really know when the action will come in.
-                    this.sendClear();
+                    // this.sendClear();
 
                     // Only stream to TTS if we're NOT using a canned response
                     if (!shouldUseCannedResponse && this.ttsStream && !this.ttsStream.destroyed) {
