@@ -593,7 +593,10 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                             }
                             // Check if all appointment details are filled
                             else if (this.customerName && this.vehicleModel && this.customerEmail &&
-                                this.paymentMethod && this.paymentMethod !== 'unknown' && this.appointmentTime && !this.hasScheduledAppointment) {
+                                this.paymentMethod && this.paymentMethod !== 'unknown' && this.appointmentTime && !this.hasScheduledAppointment
+                                && this.customerName !== "NOT_SET" && this.customerEmail !== "NOT_SET" && this.vehicleModel !== "NOT_SET" && this.appointmentTime !== "NOT_SET"
+
+                            ) {
                                 shouldUseCannedResponse = true;
                                 cannedMessage = "Perfect! Let me get that scheduled for you right away.";
                                 this.ttsStream.destroy();
