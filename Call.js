@@ -954,7 +954,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
             }
 
             // Trigger transfer if stuck in same state for too long (e.g., 4 turns)
-            if (this.stateRepetitionCount >= 4) {
+            if (this.stateRepetitionCount && this.currentState !== "gathering_data" >= 15) {
                 console.log(`[${this.callSid}] Loop detected (State: ${currentState}). Initiating transfer.`);
                 this.isTransferring = true;
                 // Force a transfer action
