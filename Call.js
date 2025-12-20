@@ -41,6 +41,7 @@ class Call {
         this.justCheckedAvailability = false;
         this.availableSlots = [];
         this.errorWhenScheduling = false;
+        this.hasConfirmedDetails = false;
 
         this.currentlyCheckingAvailability = false;
 
@@ -622,6 +623,18 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 this.ttsStream = null;
                                 this.sendClear();
                                 console.log(`[${this.callSid}] 🎯 Detected check_if_time_is_valid - using canned response`);
+                            } else if (!this.hasConfirmedDetails && this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod && this.appointmentTime) {
+                                shouldUseCannedResponse = true;
+                                cannedMessage = "Just to confirm, you're name is " + this.customerName + ", your vehicle is a " + this.vehicleModel + ", your email is " + this.customerEmail + ", your payment method is " + this.paymentMethod + ", and your appointment time is " + this.appointmentTime + ". Is this correct?";
+
+                                this.ttsStream.destroy();
+                                this.ttsStream = null;
+                                this.sendClear();
+                                console.log(`[${this.callSid}] 🎯 Detected hasConfirmedDetails - using canned response`);
+
+                                this.hasConfirmedDetails = true;
+
+
                             }
                             // Check if all appointment details are filled
                             else if (this.customerName && this.vehicleModel && this.customerEmail &&
@@ -1073,9 +1086,11 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                     t: this.appointmentTime
                 });
 
-                if (this.lastAttemptedDetails === currentAttempt && this.hasScheduledAppointment) {
+                if (this.lastAttemptedDetails === currentAttempt && this.hasScheduledAppointment && !hasConfirmedDetails) {
                     console.log(`[${this.callSid}] Skipping scheduling - details unchanged from last failure or success.`);
                 } else {
+
+
                     this.lastAttemptedDetails = currentAttempt;
 
                     // Create a details object from our state
