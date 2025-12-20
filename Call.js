@@ -44,6 +44,10 @@ class Call {
 
         this.currentlyCheckingAvailability = false;
 
+        // Loop Prevention & State Tracking
+        this.lastConversationState = null;
+        this.stateRepetitionCount = 0;
+
         this.businessName = "Quattro BodyShop";
         this.businessLocation = "Bethesda, Maryland";
         this.alreadySending = false;
@@ -93,24 +97,35 @@ class Call {
                     type: "OBJECT",
                     properties: {
                         thought: { type: "STRING", description: "Internal reasoning. ONE sentence. Decide what to do next based on missing fields or user intent. Do NOT say 'user said...' just reason." },
-                        response: { type: "STRING" },
+                        conversation_state: {
+                            type: "STRING",
+                            enum: ["answering_general_question", "gathering_data", "confirming_details"],
+                            description: "Current state of the conversation."
+                        },
+                        extracted_data: {
+                            type: "OBJECT",
+                            description: "ONLY include fields if you are 100% CERTAIN. Omit if unknown.",
+                            properties: {
+                                customerName: { type: "STRING", description: "The customer's name." },
+                                vehicleModel: { type: "STRING", description: "The vehicle year/make/model." },
+                                customerEmail: {
+                                    type: "STRING",
+                                    description: "The customer's email. RECONSTRUCT spoken emails: 'john dot doe at gmail' -> 'john.doe@gmail.com'."
+                                },
+                                paymentMethod: {
+                                    type: "STRING",
+                                    enum: ["insurance", "out-of-pocket"],
+                                    description: "Payment method. STRICT MAPPING: If 'cash', 'credit', 'debit', 'myself', 'private' -> use 'out-of-pocket'. If 'State Farm', 'Geico', 'claim', 'deductible' -> use 'insurance'."
+                                },
+                                appointmentTime: { type: "STRING" }
+                            },
+                        },
+                        response: { type: "STRING", description: "Text to speak to the user. Do NOT include actions here." },
                         rating: { type: "NUMBER" },
-                        customerName: { type: "STRING", description: "The customer's name. MANDATORY. If the user says it, extract it." },
-                        vehicleModel: { type: "STRING", description: "The vehicle year/make/model. MANDATORY. If the user says it, extract it." },
-                        customerEmail: {
-                            type: "STRING",
-                            description: "The customer's email. MANDATORY. RECONSTRUCT spoken emails: 'john dot doe at gmail' -> 'john.doe@gmail.com'."
-                        },
                         hangup: { type: "BOOLEAN" },
-                        paymentMethod: {
-                            type: "STRING",
-                            enum: ["insurance", "out-of-pocket", "unknown"],
-                            description: "Payment method. STRICT MAPPING: If 'cash', 'credit', 'debit', 'myself', 'private' -> use 'out-of-pocket'. If 'State Farm', 'Geico', 'claim', 'deductible' -> use 'insurance'."
-                        },
                         action: { type: "STRING", enum: ["respond", "hangup", "transfer", "check_availability", "check_if_time_is_valid"] },
-                        appointmentTime: { type: "STRING" }
                     },
-                    required: ["thought", "response", "rating", "hangup"],
+                    required: ["thought", "conversation_state", "response", "rating", "hangup"],
                 },
             },
             safetySettings,
@@ -130,9 +145,12 @@ class Call {
                         role: "model",
                         parts: [{
                             text: JSON.stringify({
+                                thought: "Initial greeting.",
+                                conversation_state: "gathering_data",
                                 response: `Hi this is ${this.businessName} how may we help you today?`,
                                 rating: 5,
-                                hangUp: false
+                                hangup: false,
+                                action: "respond"
                             })
                         }]
                     }
@@ -162,30 +180,41 @@ GOAL: Book estimates naturally. Sound 100% human.
 - PRICING: No phone quotes. "Come in for a free estimate."
 - APPOINTMENTS: 30-min slots. Hour or half-hour only. 
 
-[CRITICAL INSTRUCTIONS - DO NOT BREAK]
+[STATE MACHINE LOGIC]
+1. STATE: "answering_general_question"
+   - TRIGGER: User asks about price, services, location, hours, or "are you a robot?".
+   - BEHAVIOR: Answer the question DIRECTLY. Do NOT ask for booking details (Name, Car, Email) in this turn.
+   - EXIT: Once answered, wait for user to signal they want to proceed.
+
+2. STATE: "gathering_data"
+   - TRIGGER: User wants to book or gives details.
+   - BEHAVIOR: Ask for MISSING_FIELDS one by one.
+   - ORDER: Time -> Name -> Vehicle -> Email -> Payment.
+
+3. STATE: "confirming_details"
+   - TRIGGER: All fields are known (internally tracked).
+   - BEHAVIOR: Read back the details and ask to confirm.
+
+[HARDENED EXTRACTION RULES]
+- **extracted_data**: ONLY include keys if the user explicitly provided them this turn or significantly clarified them.
+- **NO GUESSING**: If user says "My name is John", extract "customerName": "John".
+- **MISSING DATA**: If you don't know the email, OMIT the "customerEmail" key. Do NOT use "NOT_SET", "null", or placeholder strings.
+- **Strictness**: It is better to have a missing key than a wrong one.
+
+[RESPONSE & ACTION SEPARATION]
+- **thought**: Analyze the gap. "I have time, but need name." or "User asked for price, I must answer."
+- **response**: The text to speak. Keep it friendly and concise.
+- **action**:
+  - "check_availability": User asks for times.
+  - "check_if_time_is_valid": User picked a specific time.
+  - "transfer": User is frustrated, asks for human, or loop detected.
+  - "hangup": User says goodbye or conversation ends.
+  - "respond": Normal conversation.
+
+[CRITICAL INSTRUCTIONS]
 1. NO HALLUCINATIONS: Do NOT make up appointment times.
-   - IF user asks for times: Set "action": "check_availability". Say "Let me check the schedule...". STOP.
-   - WAIT for "system update" with slots.
-2. NO REPETITION: Do NOT repeat "Is there anything else?" or "How can I help?". Move the conversation forward.
-3. INTERRUPTIONS: If user interrupts, STOP talking and LISTEN.
-
-[DATA EXTRACTION FLOW]
-1. AGREED TIME: When user picks a time, confirm it AND ask for NAME.
-   - JSON: Set "appointmentTime" IMMEDIATELY.
-   - Response: "Great, I have you down for [time]. What is your first and last name?"
-   - Always use the ISO format for the appointment time.
-   - DO NOT PUT ANY TIMES IN THE APPOINTMENT_TIME FIELD WHEN THE USER HASN'T CONFIRMED THEIR INTEREST IN THAT SLOT.
-   - Before confirming the appointment for them, set "action": "check_if_time_is_valid" to confirm that the time is actually valid.
-   - Only user "check_if_time_is_valid" when they have explicitly agreed to a time. THERE MUST BE A TIME IN THE APPOINTMENTIME SLOT TO DO THIS.
-2. NAME -> VEHICLE: "Got it. What year/make/model is the car?"
-3. VEHICLE -> EMAIL: "Okay. What's the best email to send the confirmation to?"
-4. EMAIL -> PAYMENT: "Thanks. And will you be using insurance or paying out of pocket?"
-5. PAYMENT -> FINISH: "Perfect. I'll get that locked in. See you then!" (Logic will trigger schedule)
-6. IF YOU ARE MISSING ANY FIELDS, PUT IT AS "NOT_SET" IN THE JSON.
-
-[ACTIONS]
-- When doing "check_availability", say: "Let me check the schedule...", then WAIT for system update with slots.
-- When doing "check_if_time_is_valid", say: "Let me check if that time is open". WAIT for system update.
+2. NO REPETITION: Do NOT repeat "Is there anything else?". Move forward.
+3. INTERRUPTIONS: If user interrupts, STOP talking.
 
 [TRANSFERS]
 - TRIGGER: User asks for "manager", "human", "advisor".
@@ -197,9 +226,6 @@ GOAL: Book estimates naturally. Sound 100% human.
 - NO "I am an AI". (Unless asked directly).
 - If asked "Are you real?": "Haha, I'm the new AI assistant, but I can get you scheduled just fine."
 `;
-
-
-
 
         return fullPrompt
     }
@@ -386,9 +412,12 @@ GOAL: Book estimates naturally. Sound 100% human.
         this.aiTalking = true;
         // const initialHistory = await this.chat.getHistory();
         const initialResponseJSON = {
+            thought: "Initial greeting.",
+            conversation_state: "gathering_data",
             response: `Hi this is ${this.businessName} how may we help you today?`,
             rating: 5,
-            hangUp: false
+            hangup: false,
+            action: "respond"
         }
 
         try {
@@ -520,16 +549,17 @@ GOAL: Book estimates naturally. Sound 100% human.
         try {
             // --- SYSTEM CONTEXT INJECTION ---
             const missingFields = [];
-            if (!this.customerName || this.customerName === "NOT_SET") missingFields.push("customerName");
-            if (!this.vehicleModel || this.vehicleModel === "NOT_SET") missingFields.push("vehicleModel");
-            if (!this.customerEmail || this.customerEmail === "NOT_SET") missingFields.push("customerEmail");
-            if (!this.paymentMethod || this.paymentMethod === 'unknown') missingFields.push("paymentMethod (insurance or out-of-pocket)");
-            if (!this.appointmentTime || this.appointmentTime === "NOT_SET") missingFields.push("appointmentTime");
+            if (!this.customerName) missingFields.push("customerName");
+            if (!this.vehicleModel) missingFields.push("vehicleModel");
+            if (!this.customerEmail) missingFields.push("customerEmail");
+            if (!this.paymentMethod) missingFields.push("paymentMethod");
+            if (!this.appointmentTime) missingFields.push("appointmentTime");
 
             const systemContext = `
 [INTERNAL STATE]
 MISSING_FIELDS: ${missingFields.length > 0 ? missingFields.join(", ") : "NONE - Ready to Schedule"}
-CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
+CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "UNKNOWN"}
+KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, Email=${this.customerEmail || "?"}, Pay=${this.paymentMethod || "?"}
 
 [DECISION LOGIC]
 1. Review MISSING_FIELDS.
@@ -595,8 +625,7 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                             }
                             // Check if all appointment details are filled
                             else if (this.customerName && this.vehicleModel && this.customerEmail &&
-                                this.paymentMethod && this.paymentMethod !== 'unknown' && this.appointmentTime && !this.hasScheduledAppointment
-                                && this.customerName !== "NOT_SET" && this.customerEmail !== "NOT_SET" && this.vehicleModel !== "NOT_SET" && this.appointmentTime !== "NOT_SET"
+                                this.paymentMethod && this.appointmentTime && !this.hasScheduledAppointment
                                 && !this.errorWhenScheduling
                             ) {
                                 shouldUseCannedResponse = true;
@@ -901,9 +930,48 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
             console.log(`[${this.callSid}]Metadata: rating = ${fedToTwilio.rating}, hangUp = ${fedToTwilio.hangup} `);
             console.log("this is what we fed to twilio", fedToTwilio);
 
+            // 1. Loop Prevention & State Tracking
+            const currentState = fedToTwilio.conversation_state;
+            if (currentState === this.lastConversationState) {
+                this.stateRepetitionCount++;
+                console.log(`[${this.callSid}] State '${currentState}' repeated ${this.stateRepetitionCount} times.`);
+            } else {
+                this.lastConversationState = currentState;
+                this.stateRepetitionCount = 0;
+            }
+
+            // Trigger transfer if stuck in same state for too long (e.g., 4 turns)
+            if (this.stateRepetitionCount >= 4) {
+                console.log(`[${this.callSid}] Loop detected (State: ${currentState}). Initiating transfer.`);
+                this.isTransferring = true;
+                // Force a transfer action
+                fedToTwilio.action = "transfer";
+            }
+
+
+            // 2. Update Internal State from 'extracted_data'
+            const extracted = fedToTwilio.extracted_data || {};
+
+            if (extracted.customerName) this.customerName = extracted.customerName;
+            if (extracted.vehicleModel) this.vehicleModel = extracted.vehicleModel;
+            if (extracted.customerEmail) this.customerEmail = extracted.customerEmail;
+            if (extracted.paymentMethod) this.paymentMethod = extracted.paymentMethod;
+
+            // Special handling for appointmentTime validation
+            if (extracted.appointmentTime) {
+                // REUSE the exact same validation logic
+                const { isValid, formattedTime } = this.validateTimeSlot(extracted.appointmentTime, true);
+                if (isValid) {
+                    this.appointmentTime = formattedTime;
+                } else {
+                    console.log(`[${this.callSid}] Implicit Set Failed: Time INVALID (${formattedTime})`);
+                }
+            }
+
+
             if (fedToTwilio.action === "transfer") {
                 this.isTransferring = true;
-                // await this.transferCall();
+                this.transferCall(); // Trigger it immediately
                 return;
             }
 
@@ -916,12 +984,6 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                     // Give immediate audio feedback to fill the silence
                     if (this.ttsStream && !this.ttsStream.destroyed) {
                         console.log(`[${this.callSid}] Speaking 'checking schedule' filler.`);
-                        // this.ttsStream.write({
-                        //     input: { text: "  Hold on, let me just check the schedule for you..." }
-                        // });
-                    } else {
-                        // In case stream was closed (unlikely but safe)
-                        // this.ttsStream = this.setupGoogleTTSStream();
                         // this.ttsStream.write({
                         //     input: { text: "  Hold on, let me just check the schedule for you..." }
                         // });
@@ -968,7 +1030,10 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                 }
             } else if (fedToTwilio.action === "check_if_time_is_valid") {
 
-                const { isValid, formattedTime } = this.validateTimeSlot(fedToTwilio.appointmentTime, false);
+                // Use the extracted time if the explicit action parameter is missing (fallback)
+                const timeToCheck = fedToTwilio.appointmentTime || extracted.appointmentTime;
+
+                const { isValid, formattedTime } = this.validateTimeSlot(timeToCheck, false);
 
                 if (isValid) {
                     console.log(`[${this.callSid}] Tool Check: Time valid.`);
@@ -992,45 +1057,14 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                 this.justCheckedAvailability = false;
             }
 
-
-            // Update state variables if present in the response
-            if (fedToTwilio.customerName) this.customerName = fedToTwilio.customerName;
-            if (fedToTwilio.vehicleModel) this.vehicleModel = fedToTwilio.vehicleModel;
-            if (fedToTwilio.customerEmail) this.customerEmail = fedToTwilio.customerEmail;
-            if (fedToTwilio.paymentMethod && fedToTwilio.paymentMethod !== "unknown") this.paymentMethod = fedToTwilio.paymentMethod;
-            if (fedToTwilio.appointmentTime && fedToTwilio.appointmentTime !== "NOT_SET") {
-
-                // REUSE the exact same validation logic
-                const { isValid, formattedTime } = this.validateTimeSlot(fedToTwilio.appointmentTime, true);
-
-                if (isValid) {
-                    this.appointmentTime = formattedTime;
-                } else {
-                    console.log(`[${this.callSid}] Implicit Set Failed: Time INVALID (${formattedTime})`);
-
-                    // Crucial: If the AI tries to book a bad time, we must reject it immediately
-                    // regardless of what the "response" text says.
-                    this.sendClear();
-                    await this.processLLM(`System Update: The time ${fedToTwilio.appointmentTime} is invalid or no longer available. Tell the user to pick another.`);
-                    return;
-                }
-            }
-
-
-            //             this is what we fed to twilio {
-            //   response: 'Great, example@gmail.com. And last thing, will you be using insurance, or will you be paying out of pocket for this service?',
-            //   rating: 5,
-            //   hangup: false,
-            //   appointmentTime: '2025-12-15T14:00:00.000Z',
-            //   customerName: 'Sebastian Hernandez',
-            //   vehicleModel: '2008 Honda Accord',
-            //   customerEmail: 'example@gmail.com',
-            //   action: 'respond'
-            // }
             // If we have all appointment details and payment method is NOT unknown, attempt to schedule
             // Check against instance variables instead of the ephemeral response
             console.log(`[${this.callSid}] Attempting to schedule appointment:`);
-            if (this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod && this.customerName !== "NOT_SET" && this.customerEmail !== "NOT_SET" && this.vehicleModel !== "NOT_SET" && this.paymentMethod !== "unknown" && this.appointmentTime && this.appointmentTime !== "NOT_SET" && this.paymentMethod !== "NOT_SET") {
+            if (this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod &&
+                this.customerName !== "NOT_SET" && this.customerEmail !== "NOT_SET" &&
+                this.vehicleModel !== "NOT_SET" && this.paymentMethod !== "unknown" &&
+                this.appointmentTime && this.appointmentTime !== "NOT_SET" && this.paymentMethod !== "NOT_SET") {
+
                 const currentAttempt = JSON.stringify({
                     n: this.customerName,
                     v: this.vehicleModel,
@@ -1042,9 +1076,6 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                 if (this.lastAttemptedDetails === currentAttempt && this.hasScheduledAppointment) {
                     console.log(`[${this.callSid}] Skipping scheduling - details unchanged from last failure or success.`);
                 } else {
-                    // Previous aggressive clearing removed to allow "Let me try" message to finish
-                    // if (this.ttsStream) { ... } 
-
                     this.lastAttemptedDetails = currentAttempt;
 
                     // Create a details object from our state
@@ -1075,11 +1106,6 @@ CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "NOT_SET"}
                 }
             } else {
                 console.log(`[${this.callSid}] No action taken.`);
-                console.log("CustomerName:", this.customerName);
-                console.log("VehicleModel:", this.vehicleModel);
-                console.log("CustomerEmail:", this.customerEmail);
-                console.log("PaymentMethod:", this.paymentMethod);
-                console.log("AppointmentTime:", this.appointmentTime);
             }
 
             if (fedToTwilio.hangUp || fedToTwilio.hangup) {

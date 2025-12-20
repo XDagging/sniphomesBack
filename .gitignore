@@ -11,7 +11,7 @@ test_timezone_repro.js
 coverage
 
 .vscode
-
+verify_agent_logic.js
 # Benchmarking
 benchmarks/graphs
 
