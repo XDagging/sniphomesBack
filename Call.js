@@ -984,7 +984,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
 
             if (fedToTwilio.action === "transfer") {
                 this.isTransferring = true;
-                this.transferCall(); // Trigger it immediately
+                // this.transferCall(); // Trigger it immediately
                 return;
             }
 
