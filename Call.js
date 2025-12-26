@@ -598,12 +598,47 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                 if (inJsonBlock) {
                     jsonBuffer += chunkText;
 
-                    // Check if we have enough of the JSON to determine the action
-                    if (!shouldUseCannedResponse && jsonBuffer.includes('"action"')) {
+                    // Check if we have enough of the JSON to determine the action or extracted data
+                    if (!shouldUseCannedResponse && (jsonBuffer.includes('"action"') || jsonBuffer.includes('"extracted_data"') || jsonBuffer.includes('"conversation_state"'))) {
                         try {
                             // Try to parse what we have so far (might be incomplete)
-                            const partialJson = jsonBuffer + (jsonBuffer.includes('}') ? '' : '}');
-                            const parsed = JSON.parse(partialJson);
+                            let partialJsonStr = jsonBuffer;
+                            // Attempt to close the JSON if it's incomplete
+                            if (!partialJsonStr.trim().endsWith('}')) {
+                                partialJsonStr += '}';
+                            }
+
+                            // A more robust incomplete parser might be needed, but for now specific field extraction 
+                            // via Regex might be safer for stream chunks if JSON.parse fails frequently on partials.
+                            // But let's try JSON.parse first.
+                            const parsed = JSON.parse(partialJsonStr);
+
+                            // --- REAL-TIME EXTRACTION ---
+                            if (parsed.extracted_data) {
+                                if (parsed.extracted_data.appointmentTime) {
+                                    // Validate immediately
+                                    const { isValid, formattedTime } = this.validateTimeSlot(parsed.extracted_data.appointmentTime, true);
+                                    if (isValid) {
+                                        this.appointmentTime = formattedTime;
+                                        console.log(`[${this.callSid}] 🟢 Real-time Time Extraction: ${formattedTime}`);
+                                    }
+                                }
+                                if (parsed.extracted_data.customerName) this.customerName = parsed.extracted_data.customerName;
+                                // ... (other fields can be updated here if critical, but time is the big one)
+                            }
+
+                            // --- HALLUCINATION GUARD ---
+                            // If state is 'confirming_details' but we don't have the time, blocking the AI
+                            if (parsed.conversation_state === "confirming_details") {
+                                if (!this.appointmentTime) {
+                                    console.log(`[${this.callSid}] 🛑 HALLUCINATION GUARD: AI trying to confirm without appointmentTime!`);
+                                    shouldUseCannedResponse = true;
+                                    cannedMessage = "I apologize, I missed the time you wanted. Could you please repeat the day and time?";
+                                    this.ttsStream.destroy();
+                                    this.ttsStream = null;
+                                    this.sendClear();
+                                }
+                            }
 
                             // Check if action is check_availability
                             if (parsed.action === "check_availability") {
@@ -633,8 +668,6 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 console.log(`[${this.callSid}] 🎯 Detected hasConfirmedDetails - using canned response`);
 
                                 this.hasConfirmedDetails = true;
-
-
                             }
                             // Check if all appointment details are filled
                             else if (this.customerName && this.vehicleModel && this.customerEmail &&
@@ -749,15 +782,21 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
         return audioDataLength / sampleRate;
     }
     convertEstToRealUtc(estDateString) {
+
+        if (estDateString.length > 0) {
+            const cleanIso = estDateString.replace('Z', '');
+
+            // 2. Tell the library: "This time is in New York. Give me the UTC equivalent."
+            const utcDate = fromZonedTime(cleanIso, 'America/New_York');
+
+            return utcDate.toISOString();
+
+        }
+        return "";
         // estDateString input: "2025-12-12T13:00:00.000Z" (The 'Fake UTC' string)
 
         // 1. Strip the 'Z' so it is treated as "Floating Local Time" (just "1:00 PM")
-        const cleanIso = estDateString.replace('Z', '');
 
-        // 2. Tell the library: "This time is in New York. Give me the UTC equivalent."
-        const utcDate = fromZonedTime(cleanIso, 'America/New_York');
-
-        return utcDate.toISOString();
         // Output: "2025-12-12T18:00:00.000Z" (Correctly added 5 hours)
     }
 

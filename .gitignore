@@ -12,6 +12,7 @@ coverage
 
 .vscode
 verify_agent_logic.js
+test_stream_logic.js
 # Benchmarking
 benchmarks/graphs
 
