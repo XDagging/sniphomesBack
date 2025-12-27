@@ -1161,6 +1161,11 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                 }
             } else {
                 console.log(`[${this.callSid}] No action taken.`);
+                console.log("Person name is:", this.customerName);
+                console.log("Vehicle model is:", this.vehicleModel);
+                console.log("Customer email is:", this.customerEmail);
+                console.log("Payment method is:", this.paymentMethod);
+                console.log("Appointment time is:", this.appointmentTime);
             }
 
             if (fedToTwilio.hangUp || fedToTwilio.hangup) {
