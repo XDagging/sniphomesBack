@@ -47,6 +47,7 @@ class Call {
 
         // Loop Prevention & State Tracking
         this.lastConversationState = null;
+        this.shouldConfirmDetails = false;
         this.stateRepetitionCount = 0;
 
         this.businessName = "Quattro BodyShop";
@@ -666,8 +667,8 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 this.ttsStream = null;
                                 this.sendClear();
                                 console.log(`[${this.callSid}] 🎯 Detected hasConfirmedDetails - using canned response`);
-
-                                this.hasConfirmedDetails = true;
+                                this.shouldConfirmDetails = true;
+                                // this.hasConfirmedDetails = true;
                             }
                             // Check if all appointment details are filled
                             else if (this.customerName && this.vehicleModel && this.customerEmail &&
@@ -1320,6 +1321,11 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                     this.sendingAudio = false;
                     // console.log(`[${ this.callSid }] TTS Playback finished(est).`);
 
+                    if (this.shouldConfirmDetails) {
+                        console.log("confirming details");
+                        this.shouldConfirmDetails = false;
+                        this.hasConfirmedDetails = true;
+                    }
                     if (this.shouldHangup) {
                         console.log(`[${this.callSid}] Audio finished, executing delayed hangup.`);
                         this.hangup();
