@@ -1125,7 +1125,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                     t: this.appointmentTime
                 });
 
-                if (this.lastAttemptedDetails === currentAttempt && this.hasScheduledAppointment && !hasConfirmedDetails) {
+                if (this.lastAttemptedDetails === currentAttempt && this.hasScheduledAppointment && !this.hasConfirmedDetails) {
                     console.log(`[${this.callSid}] Skipping scheduling - details unchanged from last failure or success.`);
                 } else {
 
