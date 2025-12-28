@@ -117,7 +117,7 @@ class Call {
                                 paymentMethod: {
                                     type: "STRING",
                                     enum: ["insurance", "out-of-pocket"],
-                                    description: "Payment method. STRICT MAPPING: If 'cash', 'credit', 'debit', 'myself', 'private' -> use 'out-of-pocket'. If 'State Farm', 'Geico', 'claim', 'deductible' -> use 'insurance'."
+                                    description: "Payment method. STRICT MAPPING: If 'cash', 'credit', 'debit', 'myself', 'private' -> use 'out-of-pocket'. If 'State Farm', 'Geico', 'claim', 'deductible', or anything that sounds like insurance -> use 'insurance'. If the user is confused, give them the option of insurance or paying out of pocket"
                                 },
                                 appointmentTime: { type: "STRING" }
                             },
@@ -638,6 +638,39 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                     this.ttsStream.destroy();
                                     this.ttsStream = null;
                                     this.sendClear();
+                                    this.updateAgentWithoutTriggeringResponse(cannedMessage);
+                                } else if (!this.customerName) {
+                                    console.log(`[${this.callSid}] 🛑 HALLUCINATION GUARD: AI trying to confirm without customerName!`);
+                                    shouldUseCannedResponse = true;
+                                    cannedMessage = "I apologize, I missed the name you wanted. Could you please repeat the name?";
+                                    this.ttsStream.destroy();
+                                    this.ttsStream = null;
+                                    this.sendClear();
+                                    this.updateAgentWithoutTriggeringResponse(cannedMessage);
+                                } else if (!this.vehicleModel) {
+                                    console.log(`[${this.callSid}] 🛑 HALLUCINATION GUARD: AI trying to confirm without vehicleModel!`);
+                                    shouldUseCannedResponse = true;
+                                    cannedMessage = "I apologize, I missed the vehicle model you wanted. Could you please repeat the vehicle model?";
+                                    this.ttsStream.destroy();
+                                    this.ttsStream = null;
+                                    this.sendClear();
+                                    this.updateAgentWithoutTriggeringResponse(cannedMessage);
+                                } else if (!this.customerEmail) {
+                                    console.log(`[${this.callSid}] 🛑 HALLUCINATION GUARD: AI trying to confirm without customerEmail!`);
+                                    shouldUseCannedResponse = true;
+                                    cannedMessage = "I apologize, I missed the email you wanted. Could you please repeat the email?";
+                                    this.ttsStream.destroy();
+                                    this.ttsStream = null;
+                                    this.sendClear();
+                                    this.updateAgentWithoutTriggeringResponse(cannedMessage);
+                                } else if (!this.paymentMethod) {
+                                    console.log(`[${this.callSid}] 🛑 HALLUCINATION GUARD: AI trying to confirm without paymentMethod!`);
+                                    shouldUseCannedResponse = true;
+                                    cannedMessage = "I apologize, I missed the payment method you wanted. Could you please repeat the payment method?";
+                                    this.ttsStream.destroy();
+                                    this.ttsStream = null;
+                                    this.sendClear();
+                                    this.updateAgentWithoutTriggeringResponse(cannedMessage);
                                 }
                             }
 
@@ -681,6 +714,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 this.ttsStream = null;
                                 this.sendClear();
                                 console.log(`[${this.callSid}] 🎯 All appointment details filled - using canned response`);
+                                this.updateAgentWithoutTriggeringResponse(cannedMessage);
                             }
 
 
@@ -745,6 +779,8 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                             try {
                                 const parsedJson = JSON.parse(jsonBuffer);
                                 parsedJson.response = cannedMessage;
+
+
                                 jsonBuffer = JSON.stringify(parsedJson);
                                 console.log(`[${this.callSid}] Overriding response with: "${cannedMessage}"`);
 
@@ -1129,6 +1165,8 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                 if (this.lastAttemptedDetails === currentAttempt || (this.hasScheduledAppointment || !this.hasConfirmedDetails)) {
                     console.log(`[${this.callSid}] Skipping scheduling - details unchanged from last failure or success.`);
                 } else {
+
+                    // Remember, we need to add a check to make sure the AI isn't confirming when we really havent scheduled the appointment yet
 
 
                     this.lastAttemptedDetails = currentAttempt;
