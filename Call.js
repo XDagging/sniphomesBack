@@ -1021,7 +1021,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
 
             // 1. Loop Prevention & State Tracking
             const currentState = fedToTwilio.conversation_state;
-            if (currentState === this.lastConversationState) {
+            if (currentState === this.lastConversationState && this.currentState !== "gathering_data") {
                 this.stateRepetitionCount++;
                 console.log(`[${this.callSid}] State '${currentState}' repeated ${this.stateRepetitionCount} times.`);
             } else {
