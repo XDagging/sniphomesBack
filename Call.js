@@ -125,7 +125,7 @@ class Call {
                         response: { type: "STRING", description: "Text to speak to the user. Do NOT include actions here." },
                         rating: { type: "NUMBER" },
                         hangup: { type: "BOOLEAN" },
-                        action: { type: "STRING", enum: ["respond", "hangup", "transfer", "check_availability", "check_if_time_is_valid"] },
+                        action: { type: "STRING", enum: ["respond", "hangup", "transfer", "check_availability", "check_if_time_is_valid", "schedule_appointment"] },
                     },
                     required: ["thought", "conversation_state", "response", "rating", "hangup"],
                 },
@@ -196,6 +196,10 @@ GOAL: Book estimates naturally. Sound 100% human.
 3. STATE: "confirming_details"
    - TRIGGER: All fields are known (internally tracked).
    - BEHAVIOR: Read back the details and ask to confirm.
+
+4. State: "schedule_appointment"
+   - TRIGGER: All the data has been already filled out (nothing more is needed), and, the user has confirmed that the data is correct.
+   - BEHAVIOR: Warm regards and ask if they need help with anything else.
 
 [HARDENED EXTRACTION RULES]
 - **extracted_data**: ONLY include keys if the user explicitly provided them this turn or significantly clarified them.
@@ -511,6 +515,16 @@ GOAL: Book estimates naturally. Sound 100% human.
         }, packetDuration);
     }
 
+    logAllMeaningfulStats() {
+        console.log("This is the customerName", this.customerName);
+        console.log("This is the customerEmail", this.customerEmail);
+        console.log("this is the payment method", this.paymentMethod);
+        console.log("This is the scheduleTime", this.appointmentTime);
+        console.log("This is another thing", this.vehicleModel);
+
+
+    }
+
     async processLLM(transcript) {
         if (!transcript) {
             console.log(`[${this.callSid}] Empty transcript, restarting STT.`);
@@ -671,7 +685,11 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                     this.ttsStream = null;
                                     this.sendClear();
                                     this.updateAgentWithoutTriggeringResponse(cannedMessage);
+                                } else {
+
+                                    this.shouldConfirmDetails = true
                                 }
+
                             }
 
                             // Check if action is check_availability
@@ -715,6 +733,29 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 this.sendClear();
                                 console.log(`[${this.callSid}] 🎯 All appointment details filled - using canned response`);
                                 this.updateAgentWithoutTriggeringResponse(cannedMessage);
+                            } else if (parsed.action === "schedule_appointment") {
+
+                                if (this.shouldConfirmDetails && this.appointmentTime && this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod) {
+                                    this.hasConfirmedDetails = true;
+
+                                    cannedResponse = "Give me one second to try to schedule the appointment for you.";
+                                    shouldUseCannedResponse = true;
+                                    this.ttsStream.destroy();
+                                    this.ttsStream = null;
+                                    this.sendClear();
+                                    console.log(`[${this.callSid}] 🎯 All appointment details filled - using canned response`);
+                                    this.updateAgentWithoutTriggeringResponse(cannedMessage);
+                                } else {
+                                    this.logAllMeaningfulStats();
+                                }
+
+
+
+
+                                // lets first check if everything is a okay!
+
+
+
                             }
 
 
@@ -1364,11 +1405,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                     this.sendingAudio = false;
                     // console.log(`[${ this.callSid }] TTS Playback finished(est).`);
 
-                    if (this.shouldConfirmDetails) {
-                        console.log("confirming details");
-                        this.shouldConfirmDetails = false;
-                        this.hasConfirmedDetails = true;
-                    }
+
                     if (this.shouldHangup) {
                         console.log(`[${this.callSid}] Audio finished, executing delayed hangup.`);
                         this.hangup();
