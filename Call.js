@@ -59,7 +59,7 @@ class Call {
         this.ws = null;
         this.googleSpeechClient = new speech.SpeechClient();
         this.googleSpeechStream = null;
-        this.transcript = [];
+        // this.transcript = [];
         this.messageNumber = 0;
         this.aiTalking = false;
         this.userSpeaking = false;
@@ -367,7 +367,7 @@ GOAL: Book estimates naturally. Sound 100% human.
                             this.speechTimeout = null;
                         }
                         this.userSpeaking = false;
-
+                        this.messageNumber += 1;
                         this.processLLM(transcript);
                     }
                 } else if (result && !result.isFinal && result.alternatives[0].transcript.length > 2) {
@@ -552,11 +552,11 @@ GOAL: Book estimates naturally. Sound 100% human.
             // Fallback logic could go here, but for now we log error
         }
 
-        this.transcript.push({
-            sender: "Person on the phone",
-            message: transcript,
-            order: this.messageNumber++,
-        });
+        // this.transcript.push({
+        //     sender: "Person on the phone",
+        //     message: transcript,
+        //     order: this.messageNumber++,
+        // });
 
         console.log(`[${this.callSid}] [${Date.now()}] Sending to Gemini: "${transcript}"`);
 
@@ -692,6 +692,12 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
 
                             }
 
+
+                            if (this.messageNumber % 2 === 0 && !this.hasConfirmedDetails) {
+                                this.shouldConfirmDetails = false;   
+                            }
+
+
                             // Check if action is check_availability
                             if (parsed.action === "check_availability") {
                                 shouldUseCannedResponse = true;
@@ -710,7 +716,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 this.ttsStream = null;
                                 this.sendClear();
                                 console.log(`[${this.callSid}] 🎯 Detected check_if_time_is_valid - using canned response`);
-                            } else if (!this.hasConfirmedDetails && this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod && this.appointmentTime) {
+                            } else if (( (!this.shouldConfirmDetails && !this.hasConfirmedDetails)  ) && this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod && this.appointmentTime) {
                                 shouldUseCannedResponse = true;
                                 cannedMessage = "Just to confirm, you're name is " + this.customerName + ", your vehicle is a " + this.vehicleModel + ", your email is " + this.customerEmail + ", your payment method is " + this.paymentMethod + ", and your appointment time is " + this.appointmentTime + ". Is this correct?";
 
@@ -719,6 +725,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 this.sendClear();
                                 console.log(`[${this.callSid}] 🎯 Detected hasConfirmedDetails - using canned response`);
                                 this.shouldConfirmDetails = true;
+                                console.log("we have now set confirmed details to the following", this.hasConfirmedDetails);
                                 // this.hasConfirmedDetails = true;
                             }
                             // Check if all appointment details are filled
@@ -799,6 +806,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 if (currentSpeechText.length > lastSpeechText.length) {
                                     const newText = currentSpeechText.substring(lastSpeechText.length);
                                     if (newText.length > 0) {
+                                        this.messageNumber += 1;
                                         console.log("We are writing right now to the TTS stream: ", newText);
                                         this.ttsStream.write({
                                             input: { text: newText }
@@ -827,6 +835,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
 
                                 // Now speak the canned message
                                 if (this.ttsStream && !this.ttsStream.destroyed) {
+                                    this.messageNumber += 1;
                                     this.ttsStream.write({
                                         input: { text: cannedMessage }
                                     });
@@ -1046,11 +1055,11 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                 return;
             }
 
-            this.transcript.push({
-                sender: "You",
-                message: fedToTwilio.response,
-                order: this.messageNumber++,
-            });
+            // this.transcript.push({
+            //     sender: "You",
+            //     message: fedToTwilio.response,
+            //     order: this.messageNumber++,
+            // });
 
 
 
@@ -1519,48 +1528,48 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
             console.error(`[${this.callSid}] Error updating call status: `, error);
         }
 
-        if (this.uuid !== "demo" && this.rating > 75) {
-            this.isLead = true;
-            this.generateCallSummary();
-        } else {
-            console.log(`[${this.callSid}] Call ended.Not a lead(Rating: ${this.rating}).`);
-        }
+        // if (this.uuid !== "demo" && this.rating > 75) {
+        //     this.isLead = true;
+        //     this.generateCallSummary();
+        // } else {
+        //     console.log(`[${this.callSid}] Call ended.Not a lead(Rating: ${this.rating}).`);
+        // }
     }
 
-    async generateCallSummary() {
-        console.log(`[${this.callSid}] Generating call summary...`);
-        let readableTranscript = this.transcript
-            .map(msg => `${msg.sender}: ${msg.message} `)
-            .join("\n\n");
+    // async generateCallSummary() {
+    //     console.log(`[${this.callSid}] Generating call summary...`);
+    //     let readableTranscript = this.transcript
+    //         .map(msg => `${msg.sender}: ${msg.message} `)
+    //         .join("\n\n");
 
-        const prompt = `I'm providing a transcript of a conversation between a real estate agent and a client.
+    //     const prompt = `I'm providing a transcript of a conversation between a real estate agent and a client.
                 
-                Give a 150 character summary of the key points in the conversation that would be useful to a real estate agent.
+    //             Give a 150 character summary of the key points in the conversation that would be useful to a real estate agent.
                 
-                Here is the transcript: ${readableTranscript}
-            `;
+    //             Here is the transcript: ${readableTranscript}
+    //         `;
 
-        try {
-            const summaryModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-            const result = await summaryModel.generateContent(prompt);
-            const aiSummary = result.response.text();
+    //     try {
+    //         const summaryModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+    //         const result = await summaryModel.generateContent(prompt);
+    //         const aiSummary = result.response.text();
 
-            this.convoSummary = aiSummary;
-            console.log(`[${this.callSid}] AI summary: ${aiSummary} `);
+    //         this.convoSummary = aiSummary;
+    //         console.log(`[${this.callSid}] AI summary: ${aiSummary} `);
 
-            const response = {
-                uuid: this.uuid,
-                phoneNumber: this.phoneNumber,
-                agentAction: this.agentAction,
-                location: this.agentLocation,
-                message: this.convoSummary,
-            };
-            console.log(`[${this.callSid}] Lead details: `, response);
+    //         const response = {
+    //             uuid: this.uuid,
+    //             phoneNumber: this.phoneNumber,
+    //             agentAction: this.agentAction,
+    //             location: this.agentLocation,
+    //             message: this.convoSummary,
+    //         };
+    //         console.log(`[${this.callSid}] Lead details: `, response);
 
-        } catch (error) {
-            console.error(`[${this.callSid}] Error generating summary: `, error);
-        }
-    }
+    //     } catch (error) {
+    //         console.error(`[${this.callSid}] Error generating summary: `, error);
+    //     }
+    // }
 }
 
 module.exports = Call;
