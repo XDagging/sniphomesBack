@@ -654,8 +654,14 @@ app.post("/sendVerify", (req, res) => {
 // Call Routes;
 
 
+const idToPhone = new Map();
+
 app.post("/xml", (req, res) => {
-    console.log("xml called", req.body);
+    // console.log("xml called", req.body.From);
+
+    const {From, CallSid} = req.body;
+
+    idToPhone.set(CallSid, From);
 
     res.sendFile(__dirname + "/call.xml");
 })
@@ -775,7 +781,11 @@ wss.on("connection", function (ws) {
                     ws.removeListener("message", startListener);
 
                 } else {
-                    const phoneNum = "+11000000000"; // Dummy number
+                   
+                    const phoneNum = idToPhone.get(callSid);// Dummy number
+
+                    console.log("This is the phone number we are doing here", phoneNumber)
+                    idToPhone.delete(callSid);
                     // This must mean that it is an inbound call;
                     if (!dynamicCalls[callSid]) {
                         const newCallInstance = await Call.create(
