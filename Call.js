@@ -699,9 +699,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                             }
 
 
-                            if (this.messageNumber % 2 === 0 && !this.hasConfirmedDetails) {
-                                this.shouldConfirmDetails = false;   
-                            }
+                           
 
 
                             // Check if action is check_availability
@@ -748,7 +746,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                             //     this.updateAgentWithoutTriggeringResponse(cannedMessage);
                             // }
                             
-                            else if (parsed.action === "schedule_appointment") {
+                            if (parsed.action === "schedule_appointment") {
 
                                 if (this.shouldConfirmDetails && this.appointmentTime && this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod) {
                                     this.hasConfirmedDetails = true;
@@ -771,6 +769,9 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
 
 
 
+                            }
+                            if (this.messageNumber % 2 === 0 && !this.hasConfirmedDetails) {
+                                this.shouldConfirmDetails = false;   
                             }
 
 
