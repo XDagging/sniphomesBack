@@ -781,10 +781,10 @@ wss.on("connection", function (ws) {
                     ws.removeListener("message", startListener);
 
                 } else {
-                   
+                    console.log("this is the callSid", callSid)
                     const phoneNum = idToPhone.get(callSid);// Dummy number
 
-                    console.log("This is the phone number we are doing here", phoneNumber)
+                    console.log("This is the phone number we are doing here", phoneNum)
                     idToPhone.delete(callSid);
                     // This must mean that it is an inbound call;
                     if (!dynamicCalls[callSid]) {
