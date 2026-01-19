@@ -729,18 +729,20 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 // this.hasConfirmedDetails = true;
                             }
                             // Check if all appointment details are filled
-                            else if (this.customerName && this.vehicleModel && this.customerEmail &&
-                                this.paymentMethod && this.appointmentTime && !this.hasScheduledAppointment
-                                && !this.errorWhenScheduling
-                            ) {
-                                shouldUseCannedResponse = true;
-                                cannedMessage = "Perfect! Let me get that scheduled for you right away.";
-                                this.ttsStream.destroy();
-                                this.ttsStream = null;
-                                this.sendClear();
-                                console.log(`[${this.callSid}] 🎯 All appointment details filled - using canned response`);
-                                this.updateAgentWithoutTriggeringResponse(cannedMessage);
-                            } else if (parsed.action === "schedule_appointment") {
+                            // else if (this.customerName && this.vehicleModel && this.customerEmail &&
+                            //     this.paymentMethod && this.appointmentTime && !this.hasScheduledAppointment
+                            //     && !this.errorWhenScheduling && this.hasConfirmedDetails
+                            // ) {
+                            //     shouldUseCannedResponse = true;
+                            //     cannedMessage = "Perfect! Let me get that scheduled for you right away.";
+                            //     this.ttsStream.destroy();
+                            //     this.ttsStream = null;
+                            //     this.sendClear();
+                            //     console.log(`[${this.callSid}] 🎯 All appointment details filled - using canned response`);
+                            //     this.updateAgentWithoutTriggeringResponse(cannedMessage);
+                            // }
+                            
+                            else if (parsed.action === "schedule_appointment") {
 
                                 if (this.shouldConfirmDetails && this.appointmentTime && this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod) {
                                     this.hasConfirmedDetails = true;
