@@ -659,8 +659,8 @@ const idToPhone = new Map();
 app.post("/xml", (req, res) => {
     // console.log("xml called", req.body.From);
 
-    const {From, CallSid} = req.body;
-
+    const {From, CallSid} = req.body;   
+    console.log("this is both the from and callsid", From, CallSid);
     idToPhone.set(CallSid, From);
 
     res.sendFile(__dirname + "/call.xml");
