@@ -491,7 +491,7 @@ app.get("/sitemap", async (req, res) => {
 
 
 
-
+app.use(express.urlencoded({ extended: true }));
 
 app.use(bodyParser.json({ limit: "10mb" }))
 
