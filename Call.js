@@ -57,7 +57,7 @@ class Call {
         this.noStart = false;
         this.streamSid = "";
         this.ws = null;
-        this.googleSpeechClient = new speech.SpeechClient();
+        this.googleSpeechClient = new speech.SpeechClient(process.env.GOOGLE_SPEECH_TO_TEXT_KEY);
         this.googleSpeechStream = null;
         // this.transcript = [];
         this.messageNumber = 0;
@@ -168,7 +168,7 @@ class Call {
         return instance;       // Return the instance immediately
     }
 
-    async buildSystemPrompt(personName, personOperating, personLook) {
+    async buildSystemPrompt(personName, personOperating, personLook) { t
 
         const fullPrompt = `
 IDENTITY: You are the AI Receptionist for "Quattro Body Shop" in Bethesda, MD.

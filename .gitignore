@@ -15,7 +15,7 @@ verify_agent_logic.js
 test_stream_logic.js
 # Benchmarking
 benchmarks/graphs
-
+sniphomes-d1ffdd0bc5fe.json
 *.txt
 
 # ignore additional files using core.excludesFile
