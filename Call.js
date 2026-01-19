@@ -168,7 +168,7 @@ class Call {
         return instance;       // Return the instance immediately
     }
 
-    async buildSystemPrompt(personName, personOperating, personLook) { t
+    async buildSystemPrompt(personName, personOperating, personLook) {
 
         const fullPrompt = `
 IDENTITY: You are the AI Receptionist for "Quattro Body Shop" in Bethesda, MD.
