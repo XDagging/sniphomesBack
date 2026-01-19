@@ -686,7 +686,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                     this.sendClear();
                                     this.updateAgentWithoutTriggeringResponse(cannedMessage);
                                 } else {
-
+                                    this.logAllMeaningfulStats();
                                     this.shouldConfirmDetails = true
                                 }
 
