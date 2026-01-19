@@ -57,7 +57,7 @@ class Call {
         this.noStart = false;
         this.streamSid = "";
         this.ws = null;
-        this.googleSpeechClient = new speech.SpeechClient(process.env.GOOGLE_SPEECH_TO_TEXT_KEY);
+        this.googleSpeechClient = new speech.SpeechClient();
         this.googleSpeechStream = null;
         // this.transcript = [];
         this.messageNumber = 0;
@@ -1213,7 +1213,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                 });
 
                 if (this.lastAttemptedDetails === currentAttempt || (this.hasScheduledAppointment || !this.hasConfirmedDetails)) {
-                    console.log(`[${this.callSid}] Skipping scheduling - details unchanged from last failure or success. First Boolean: ${this.lastAttemptedDetails}, Second Boolean: ${this.hasScheduledAppointment}, Third Boolean: ${this.hasConfirmedDetails}`);
+                    console.log(`[${this.callSid}] Skipping scheduling - details unchanged from last failure or success. First Boolean: ${this.lastAttemptedDetails===currentAttempt}, Second Boolean: ${this.hasScheduledAppointment}, Third Boolean: ${this.hasConfirmedDetails}`);
                 } else {
 
                     // Remember, we need to add a check to make sure the AI isn't confirming when we really havent scheduled the appointment yet
