@@ -1366,7 +1366,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
             if (audioContent) {
                 console.log(`[${this.callSid}] Received audio chunk from Google TTS`, audioContent.length);
                 if (this.interrupted) {
-                    console.log(`[${this.callSid}]Interrupted, skipping TTS audio chunk.`);
+                    // console.log(`[${this.callSid}]Interrupted, skipping TTS audio chunk.`);
                     return;
                 }
                 // this.sendClear();

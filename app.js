@@ -655,7 +655,8 @@ app.post("/sendVerify", (req, res) => {
 
 
 app.post("/xml", (req, res) => {
-    console.log("xml called");
+    console.log("xml called", req.body);
+
     res.sendFile(__dirname + "/call.xml");
 })
 
