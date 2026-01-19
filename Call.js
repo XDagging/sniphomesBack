@@ -94,7 +94,7 @@ class Call {
         // gemini-3-pro-preview
         // gemini-2.5-flash-lite
         this.model = genAI.getGenerativeModel({
-            model: "gemini-3-pro-preview",
+            model: "gemini-3-flash-preview",
             generationConfig: {
                 temperature: 0.1, // Lower temperature for better extraction
                 responseMimeType: "application/json",
