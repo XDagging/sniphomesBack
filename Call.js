@@ -642,12 +642,15 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                     }
                                 }
                                 if (parsed.extracted_data.customerName) this.customerName = parsed.extracted_data.customerName;
+                                if (parsed.extracted_data.customerEmail) this.customerEmail = parsed.extracted_data.customerEmail;
+                                if (parsed.extracted_data.paymentMethod) this.paymentMethod = parsed.extracted_data.paymentMethod;
+                                if (parsed.extracted_data.vehicleModel) this.vehicleModel = parsed.extracted_data.vehicleModel;
                                 // ... (other fields can be updated here if critical, but time is the big one)
                             }
 
                             // --- HALLUCINATION GUARD ---
                             // If state is 'confirming_details' but we don't have the time, blocking the AI
-                            if (parsed.conversation_state === "confirming_details") {
+                            if (parsed.conversation_state === "confirming_details" ) {
                                 if (!this.appointmentTime) {
                                     console.log(`[${this.callSid}] 🛑 HALLUCINATION GUARD: AI trying to confirm without appointmentTime!`);
                                     shouldUseCannedResponse = true;
