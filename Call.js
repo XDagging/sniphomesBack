@@ -1248,7 +1248,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                     t: this.appointmentTime
                 });
                 const allFieldsPresent = this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod && this.appointmentTime;
-                if (allFieldsPresent && (this.confirmationStatus === "NOT_READY" )) {
+                if (!allFieldsPresent || (this.confirmationStatus === "NOT_READY" ) || (this.lastAttemptedDetails === currentAttempt)) {
                     console.log(`[${this.callSid}] Skipping scheduling - details unchanged from last failure or success. First Boolean: ${this.lastAttemptedDetails===currentAttempt}, Second Boolean: ${this.hasScheduledAppointment}`);
                 } else {
 
