@@ -40,14 +40,20 @@ class Call {
         this.agentName = agentName;
         this.justCheckedAvailability = false;
         this.availableSlots = [];
-        this.errorWhenScheduling = false;
-        this.hasConfirmedDetails = false;
+        // this.errorWhenScheduling = false;
+        // this.hasConfirmedDetails = false;
 
         this.currentlyCheckingAvailability = false;
 
+        this.confirmationStatus = "NOT_READY"   
+        // PENDING_USER_APPROVAL vs 
+        // CONFIRMED    
+
+
+
         // Loop Prevention & State Tracking
         this.lastConversationState = null;
-        this.shouldConfirmDetails = false;
+        // this.shouldConfirmDetails = false;
         this.stateRepetitionCount = 0;
 
         this.businessName = "Quattro BodyShop";
@@ -693,7 +699,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                     this.updateAgentWithoutTriggeringResponse(cannedMessage);
                                 } else {
                                     this.logAllMeaningfulStats();
-                                    this.shouldConfirmDetails = true
+                                    // this.shouldConfirmDetails = true
                                 }
 
                             }
@@ -703,6 +709,8 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
 
 
                             // Check if action is check_availability
+                            const allFieldsPresent = this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod && this.appointmentTime;
+
                             if (parsed.action === "check_availability") {
                                 shouldUseCannedResponse = true;
                                 cannedMessage = "Give me one second to check the calendar for you.";
@@ -711,6 +719,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 this.ttsStream = null;
                                 this.sendClear();
                                 console.log(`[${this.callSid}] 🎯 Detected check_availability - using canned response`);
+                                
                             } else if (parsed.action === "check_if_time_is_valid") {
 
                                 shouldUseCannedResponse = true;
@@ -720,7 +729,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 this.ttsStream = null;
                                 this.sendClear();
                                 console.log(`[${this.callSid}] 🎯 Detected check_if_time_is_valid - using canned response`);
-                            } else if (( (!this.shouldConfirmDetails && !this.hasConfirmedDetails)  ) && this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod && this.appointmentTime) {
+                            } else if (this.confirmationStatus === "NOT_READY" && allFieldsPresent ) {
                                 shouldUseCannedResponse = true;
                                 cannedMessage = "Just to confirm, you're name is " + this.customerName + ", your vehicle is a " + this.vehicleModel + ", your email is " + this.customerEmail + ", your payment method is " + this.paymentMethod + ", and your appointment time is " + this.appointmentTime + ". Is this correct?";
 
@@ -728,8 +737,8 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 this.ttsStream = null;
                                 this.sendClear();
                                 console.log(`[${this.callSid}] 🎯 Detected hasConfirmedDetails - using canned response`);
-                                this.shouldConfirmDetails = true;
-                                console.log("we have now set confirmed details to the following", this.hasConfirmedDetails);
+                                this.confirmationStatus = "PENDING_USER_APPROVAL";
+                                // console.log("we have now set confirmed details to the following", this.hasConfirmedDetails);
                                 // this.hasConfirmedDetails = true;
                             }
                             // Check if all appointment details are filled
@@ -748,9 +757,8 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                             
                             if (parsed.action === "schedule_appointment") {
 
-                                if (this.shouldConfirmDetails && this.appointmentTime && this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod) {
-                                    this.hasConfirmedDetails = true;
-
+                                if ((this.confirmationStatus === "CONFIRMED" || this.confirmationStatus === "PENDING_USER_APPROVAL") && this.appointmentTime && this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod) {
+                                    // this.hasConfirmedDetails = true;
                                     cannedResponse = "Give me one second to try to schedule the appointment for you.";
                                     shouldUseCannedResponse = true;
                                     this.ttsStream.destroy();
@@ -770,9 +778,8 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
 
 
                             }
-                            if (this.messageNumber % 2 === 0 && !this.hasConfirmedDetails) {
-                                this.shouldConfirmDetails = false;   
-                            }
+
+
 
 
                             // This in theory should prevent the audio from continuously streaming when we should be using canned.
@@ -1100,14 +1107,28 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
             // 2. Update Internal State from 'extracted_data'
             const extracted = fedToTwilio.extracted_data || {};
 
-            if (extracted.customerName) this.customerName = extracted.customerName;
-            if (extracted.vehicleModel) this.vehicleModel = extracted.vehicleModel;
-            if (extracted.customerEmail) this.customerEmail = extracted.customerEmail;
-            if (extracted.paymentMethod) this.paymentMethod = extracted.paymentMethod;
+            if (extracted.customerName) {
+                this.customerName = extracted.customerName
+                this.confirmationStatus = "NOT_READY";
+            };
+            if (extracted.vehicleModel) {
+                this.confirmationStatus = "NOT_READY";
+                this.vehicleModel = extracted.vehicleModel; 
+            }
+            if (extracted.customerEmail) {
+                this.customerEmail = extracted.customerEmail;
+                this.confirmationStatus = "NOT_READY";
+            };
+
+            if (extracted.paymentMethod) {
+                 this.confirmationStatus = "NOT_READY";
+                this.paymentMethod = extracted.paymentMethod
+            }
 
             // Special handling for appointmentTime validation
             if (extracted.appointmentTime) {
                 // REUSE the exact same validation logic
+                this.confirmationStatus = "NOT_READY";
                 const { isValid, formattedTime } = this.validateTimeSlot(extracted.appointmentTime, true);
                 if (isValid) {
                     this.appointmentTime = formattedTime;
@@ -1128,6 +1149,12 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                 try {
                     this.currentlyCheckingAvailability = true;
                     this.justCheckedAvailability = true;
+                    setTimeout(() => {
+                        if (this.currentlyCheckingAvailability) {
+                            console.log("Forcing availability check release due to timeout");
+                            this.currentlyCheckingAvailability = false;
+                        }
+                    }, 10000);
 
                     // Give immediate audio feedback to fill the silence
                     if (this.ttsStream && !this.ttsStream.destroyed) {
@@ -1191,7 +1218,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                     this.updateAgentWithoutTriggeringResponse("System Prompt: The selected appointment time is valid.");
                     this.processLLM("Response: The selected appointment time is valid. Continue with Conversation");
                     this.sendClear();
-                } else {
+                } else {    
                     console.log(`[${this.callSid}] Tool Check: Time INVALID.`);
 
                     this.updateAgentWithoutTriggeringResponse("System Prompt: The selected appointment time is invalid/taken. Ask user for another time.");
@@ -1220,9 +1247,9 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                     p: this.paymentMethod,
                     t: this.appointmentTime
                 });
-
-                if (this.lastAttemptedDetails === currentAttempt || (this.hasScheduledAppointment || !this.hasConfirmedDetails)) {
-                    console.log(`[${this.callSid}] Skipping scheduling - details unchanged from last failure or success. First Boolean: ${this.lastAttemptedDetails===currentAttempt}, Second Boolean: ${this.hasScheduledAppointment}, Third Boolean: ${this.hasConfirmedDetails}`);
+                const allFieldsPresent = this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod && this.appointmentTime;
+                if (allFieldsPresent && (this.confirmationStatus === "NOT_READY" )) {
+                    console.log(`[${this.callSid}] Skipping scheduling - details unchanged from last failure or success. First Boolean: ${this.lastAttemptedDetails===currentAttempt}, Second Boolean: ${this.hasScheduledAppointment}`);
                 } else {
 
                     // Remember, we need to add a check to make sure the AI isn't confirming when we really havent scheduled the appointment yet
@@ -1246,9 +1273,9 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
 
                     if (scheduleMsg.toLowerCase().includes("success")) {
                         this.hasScheduledAppointment = true;
-                        this.errorWhenScheduling = false;
+                        // this.errorWhenScheduling = false;
                     } else {
-                        this.errorWhenScheduling = true;
+                        // this.errorWhenScheduling = true;
                     }
 
                     // Chain the result back to Gemini so it can speak the confirmation
