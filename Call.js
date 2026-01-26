@@ -100,7 +100,7 @@ class Call {
         // gemini-3-pro-preview
         // gemini-2.5-flash-lite
         this.model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-flash-preview",
             generationConfig: {
                 temperature: 0.1, // Lower temperature for better extraction
                 responseMimeType: "application/json",
@@ -128,7 +128,9 @@ class Call {
                                     enum: ["insurance", "out-of-pocket"],
                                     description: "Payment method. STRICT MAPPING: If 'cash', 'credit', 'debit', 'myself', 'private' -> use 'out-of-pocket'. If 'State Farm', 'Geico', 'claim', 'deductible', or anything that sounds like insurance -> use 'insurance'. If the user is confused, give them the option of insurance or paying out of pocket"
                                 },
-                                appointmentTime: { type: "STRING" }
+                                appointmentTime: { type: "STRING",
+                                    description: "The requested appointment time in 'YYYY-MM-DDTHH:MM:SS.00Z' 24-hour format, in the business's local time (EST). ONLY include if the user explicitly provided it this turn. Do NOT guess or infer."
+                                 }
                             },
                         },
                         response: { type: "STRING", description: "Text to speak to the user. Do NOT include actions here." },

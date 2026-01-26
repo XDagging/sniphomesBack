@@ -188,16 +188,16 @@ async function scheduleAppointment(eventData) {
 //     console.log(x);
 //     console.log("uri is", eventType)
 
-//     const y = await scheduleAppointment({
-//         email: "marac@sniphomes.com",
-//         name: "marac",
-//         phone: "+1 301-123-3212",
-//         model: "model",
-//         make: "make",
-//         insuranceClaim: "insuranceClaim",
-//         appointmentTime: "2025-12-12T18:30:00.000000Z",
-//     })
-//     console.log(y)
+//     // const y = await scheduleAppointment({
+//     //     email: "marac@sniphomes.com",
+//     //     name: "marac",
+//     //     phone: "+1 301-123-3212",
+//     //     model: "model",
+//     //     make: "make",
+//     //     insuranceClaim: "insuranceClaim",
+//     //     appointmentTime: "2025-12-12T18:30:00.000000Z",
+//     // })
+//     // console.log(y)
 // }
 
 // testFunction();
