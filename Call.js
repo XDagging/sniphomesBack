@@ -761,11 +761,11 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                             
                             if (parsed.action === "schedule_appointment") {
 
-                                if ((this.confirmationStatus === "CONFIRMED" || this.confirmationStatus === "PENDING_USER_APPROVAL") && this.appointmentTime && this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod) {
+                                if ((this.confirmationStatus === "CONFIRMED" || this.confirmationStatus === "PENDING_USER_APPROVAL") && !this.hasScheduledAppointment && this.appointmentTime && this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod) {
                                     // this.hasConfirmedDetails = true;
                                     cannedMessage = "Give me one second to try to schedule the appointment for you.";
                                     shouldUseCannedResponse = true;
-
+                                    
                                     this.confirmationStatus = "CONFIRMED";
                                     // we can set it to confirmed here becaus we are scheduling it. it will change if not.
                                     
