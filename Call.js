@@ -100,7 +100,7 @@ class Call {
         // gemini-3-pro-preview
         // gemini-2.5-flash-lite
         this.model = genAI.getGenerativeModel({
-            model: "gemini-3-flash-preview",
+            model: "gemini-2.5-flash-lite",
             generationConfig: {
                 temperature: 0.1, // Lower temperature for better extraction
                 responseMimeType: "application/json",
@@ -600,7 +600,9 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
 
 
             const result = await this.chat.sendMessageStream(augmentedTranscript);
-            // console.log("This is the result of gemini", result);
+            console.log("This is the result of gemini", result);
+
+            // I think the adding of the schedule is making it significantly slower than it should be.
             const stream = result.stream;
 
             let jsonBuffer = "";
