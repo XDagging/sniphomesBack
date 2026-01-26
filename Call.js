@@ -759,8 +759,12 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
 
                                 if ((this.confirmationStatus === "CONFIRMED" || this.confirmationStatus === "PENDING_USER_APPROVAL") && this.appointmentTime && this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod) {
                                     // this.hasConfirmedDetails = true;
-                                    cannedResponse = "Give me one second to try to schedule the appointment for you.";
+                                    cannedMessage = "Give me one second to try to schedule the appointment for you.";
                                     shouldUseCannedResponse = true;
+
+                                    this.confirmationStatus = "CONFIRMED";
+                                    // we can set it to confirmed here becaus we are scheduling it. it will change if not.
+                                    
                                     this.ttsStream.destroy();
                                     this.ttsStream = null;
                                     this.sendClear();
@@ -1266,7 +1270,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                         appointmentTime: this.appointmentTime,
                         rating: fedToTwilio.rating, // Keep these from current response
                         hangup: fedToTwilio.hangup
-                    };
+                    }; 
 
                     const scheduleMsg = await this.handleAppointment(appointmentDetails);
                     console.log(`[${this.callSid}] Appointment result: ${scheduleMsg} `);
