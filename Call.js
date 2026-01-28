@@ -773,6 +773,10 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 this.confirmationStatus = "PENDING_USER_APPROVAL";
                                 // console.log("we have now set confirmed details to the following", this.hasConfirmedDetails);
                                 // this.hasConfirmedDetails = true;
+                            } else {
+                                console.log("We cannot to a confirmationStatus right now because of the following:")
+                                console.log("this.confirmationStatus", this.confirmationStatus);
+                                console.log("allFieldsPresent", allFieldsPresent);
                             }
                             // Check if all appointment details are filled
                             // else if (this.customerName && this.vehicleModel && this.customerEmail &&
