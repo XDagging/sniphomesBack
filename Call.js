@@ -617,11 +617,11 @@ MISSING_FIELDS: ${missingFields.length > 0 ? missingFields.join(", ") : "NONE - 
 CURRENT_APPOINTMENT_TIME: ${this.appointmentTime || "UNKNOWN"}
 KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, Email=${this.customerEmail || "?"}, Pay=${this.paymentMethod || "?"}
 
-[DECISION LOGIC]
-1. Review MISSING_FIELDS.
-2. In 'thought', explicitly state what you need to ask for next.
-3. In 'response', ask for that item naturally.
-4. If action is "check_availability", 'response' should be "Let me check the schedule...".
+[PRIORITY DECISION LOGIC]
+1. **CHECK AVAILABILITY**: If the user asks "what times do you have?", "when are you free?", or "can I see the schedule?", you MUST set 'action': "check_availability". Do NOT ask for the time. Check it first.
+2. **BOOKING**: If MISSING_FIELDS is "NONE - Ready to Schedule" and the user has confirmed the details, set 'action': "schedule_appointment".
+3. **GATHERING**: If fields are missing, ask for the next missing item.
+4. **CONFIRMATION**: If all fields are present (MISSING_FIELDS is NONE), transition to state "confirming_details" and ask the user to confirm the details.
 `;
 
             const augmentedTranscript = `${systemContext} \n\nUser says: "${transcript}"`;
@@ -762,18 +762,42 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 this.ttsStream = null;
                                 this.sendClear();
                                 console.log(`[${this.callSid}] 🎯 Detected check_if_time_is_valid - using canned response`);
-                            } else if (this.confirmationStatus === "NOT_READY" && allFieldsPresent) {
+                            } else if (parsed.action === "schedule_appointment" && this.confirmationStatus === "NOT_READY") {
+                                console.log(`[${this.callSid}] 🛑 Blocked premature booking. Forcing confirmation.`);
                                 shouldUseCannedResponse = true;
-                                cannedMessage = "Just to confirm, you're name is " + this.customerName + ", your vehicle is a " + this.vehicleModel + ", your email is " + this.customerEmail + ", your payment method is " + this.paymentMethod + ", and your appointment time is " + this.parsingAppointmentTimeToReadableFormat(convertUtcToEst(this.appointmentTime)) + ". Is this correct?";
+                                
+                                // Build the confirmation string
+                                const niceTime = this.appointmentTime ? this.parsingAppointmentTimeToReadableFormat(this.appointmentTime) : "the requested time";
+                                cannedMessage = `Just to confirm, your name is ${this.customerName}, your vehicle is a ${this.vehicleModel}, your email is ${this.customerEmail}, paying via ${this.paymentMethod}, for ${niceTime}. Is this correct?`;
+                                
 
-                                this.ttsStream.destroy();
-                                this.ttsStream = null;
+                                if (this.ttsStream) {
+                                    this.ttsStream.destroy();
+                                    this.ttsStream = null;
+                                }
                                 this.sendClear();
-                                console.log(`[${this.callSid}] 🎯 Detected hasConfirmedDetails - using canned response`);
-                                this.confirmationStatus = "PENDING_USER_APPROVAL";
-                                // console.log("we have now set confirmed details to the following", this.hasConfirmedDetails);
-                                // this.hasConfirmedDetails = true;
-                            } else {
+
+                                
+
+                                this.confirmationStatus = "PENDING_USER_APPROVAL"; // Set flag so NEXT time we allow booking
+                                this.sendClear();
+                                this.updateAgentWithoutTriggeringResponse("System: User has NOT confirmed yet. I asked them to confirm details. Wait for 'Yes'.");
+                            }
+                            
+                            // else if (this.confirmationStatus === "NOT_READY" && allFieldsPresent) {
+                            //     shouldUseCannedResponse = true;
+                            //     cannedMessage = "Just to confirm, you're name is " + this.customerName + ", your vehicle is a " + this.vehicleModel + ", your email is " + this.customerEmail + ", your payment method is " + this.paymentMethod + ", and your appointment time is " + this.parsingAppointmentTimeToReadableFormat(convertUtcToEst(this.appointmentTime)) + ". Is this correct?";
+
+                            //     this.ttsStream.destroy();
+                            //     this.ttsStream = null;
+                            //     this.sendClear();
+                            //     console.log(`[${this.callSid}] 🎯 Detected hasConfirmedDetails - using canned response`);
+                            //     this.confirmationStatus = "PENDING_USER_APPROVAL";
+                            //     // console.log("we have now set confirmed details to the following", this.hasConfirmedDetails);
+                            //     // this.hasConfirmedDetails = true;
+                            // } 
+                            
+                            else {
                                 console.log("We cannot to a confirmationStatus right now because of the following:")
                                 console.log("this.confirmationStatus", this.confirmationStatus);
                                 console.log("allFieldsPresent", allFieldsPresent);
@@ -1166,21 +1190,29 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
             // 2. Update Internal State from 'extracted_data'
             const extracted = fedToTwilio.extracted_data || {};
 
+            const shouldResetStatus = this.confirmationStatus !== "PENDING_USER_APPROVAL"
+
             if (extracted.customerName) {
                 this.customerName = extracted.customerName
+                if (shouldResetStatus)
                 this.confirmationStatus = "NOT_READY";
             };
             if (extracted.vehicleModel) {
+                if (shouldResetStatus)
                 this.confirmationStatus = "NOT_READY";
                 this.vehicleModel = extracted.vehicleModel;
             }
             if (extracted.customerEmail) {
                 this.customerEmail = extracted.customerEmail;
+                if (shouldResetStatus)
                 this.confirmationStatus = "NOT_READY";
             };
 
             if (extracted.paymentMethod) {
+                if (shouldResetStatus)
                 this.confirmationStatus = "NOT_READY";
+
+                
                 this.paymentMethod = extracted.paymentMethod
             }
 
@@ -1251,7 +1283,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                     this.availableSlots = localData;
 
 
-                    const systemMessage = `System Update: Here are the available slots for the next month: ${JSON.stringify(availabilityData)}. Please offer 2 - 3 of these times to the user.IMPORTANT: DO NOT set 'action' to 'check_availability' again.Offer the times immediately.`;
+                    const systemMessage = `System Update: Here are the available slots: ${JSON.stringify(availabilityData)}. Offer 2 of them. If the user rejects them, you may check availability again.`;
                     this.currentlyCheckingAvailability = false;
                     await this.processLLM(systemMessage);
 
@@ -1294,10 +1326,16 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
             // If we have all appointment details and payment method is NOT unknown, attempt to schedule
             // Check against instance variables instead of the ephemeral response
             console.log(`[${this.callSid}] Attempting to schedule appointment:`);
-            if (this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod &&
+            if (fedToTwilio.action === "schedule_appointment") {
+
+                if (this.confirmationStatus === "NOT_READY") {
+                    console.log("Action was schedule, but the status said it wasn't ready yet")
+                }
+
+                if (this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod &&
                 this.customerName !== "NOT_SET" && this.customerEmail !== "NOT_SET" &&
                 this.vehicleModel !== "NOT_SET" && this.paymentMethod !== "unknown" &&
-                this.appointmentTime && this.appointmentTime !== "NOT_SET" && this.paymentMethod !== "NOT_SET") {
+                this.appointmentTime && this.appointmentTime !== "NOT_SET" && this.paymentMethod !== "NOT_SET" && this.confirmationStatus !== "NOT_READY") {
 
                 const currentAttempt = JSON.stringify({
                     n: this.customerName,
@@ -1342,6 +1380,8 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                     await this.processLLM(`System Update: The appointment was attempted. Result: "${scheduleMsg}".Please inform the user.`);
                     return; // Return early, processLLM will handle the flow
                 }
+            
+            
             } else {
                 console.log(`[${this.callSid}] No action taken.`);
                 console.log("Person name is:", this.customerName);
@@ -1350,6 +1390,13 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                 console.log("Payment method is:", this.paymentMethod);
                 console.log("Appointment time is:", this.appointmentTime);
             }
+
+
+
+
+            }
+
+          
 
             if (fedToTwilio.hangUp || fedToTwilio.hangup) {
                 console.log(`[${this.callSid}] Hangup requested.Waiting for audio to finish.`);
