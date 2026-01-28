@@ -544,6 +544,25 @@ GOAL: Book estimates naturally. Sound 100% human.
 
     }
 
+    parsingAppointmentTimeToReadableFormat(appointmentTime) {
+        // Appointment time is in UNIX format (seconds since epoch)
+        // 2026-01-29T14:30:00.000Z
+
+        const newDate = new Date(appointmentTime).toLocaleString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "numeric",
+            minute: "numeric",
+            hour12: true,
+            timeZone: "America/New_York",
+        });
+
+        console.log("This is the parsed date", newDate);
+
+        return newDate;
+    }
+
     async processLLM(transcript) {
         if (!transcript) {
             console.log(`[${this.callSid}] Empty transcript, restarting STT.`);
@@ -743,7 +762,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 console.log(`[${this.callSid}] 🎯 Detected check_if_time_is_valid - using canned response`);
                             } else if (this.confirmationStatus === "NOT_READY" && allFieldsPresent) {
                                 shouldUseCannedResponse = true;
-                                cannedMessage = "Just to confirm, you're name is " + this.customerName + ", your vehicle is a " + this.vehicleModel + ", your email is " + this.customerEmail + ", your payment method is " + this.paymentMethod + ", and your appointment time is " + this.appointmentTime + ". Is this correct?";
+                                cannedMessage = "Just to confirm, you're name is " + this.customerName + ", your vehicle is a " + this.vehicleModel + ", your email is " + this.customerEmail + ", your payment method is " + this.paymentMethod + ", and your appointment time is " + this.parsingAppointmentTimeToReadableFormat(this.appointmentTime) + ". Is this correct?";
 
                                 this.ttsStream.destroy();
                                 this.ttsStream = null;
@@ -1407,38 +1426,68 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
             this.sendingAudio = true;
             this.twilioPlaying = true;
             const { audioContent } = response;
-            if (audioContent) {
+            if (audioContent && audioContent.length > 0) {
                 console.log(`[${this.callSid}] Received audio chunk from Google TTS`, audioContent.length);
                 if (this.interrupted) {
                     // console.log(`[${this.callSid}]Interrupted, skipping TTS audio chunk.`);
                     return;
                 }
-                // this.sendClear();
 
 
-                const inputSamples = [];
-                for (let i = 0; i < audioContent.length; i += 2) {
-                    inputSamples.push(audioContent.readInt16LE(i));
+                // New method 
+
+                const originalSampleCount = audioContent.length / 2;
+
+                const downsampleratio = 3;
+
+                const newSampleCount = Math.floor(originalSampleCount / downsampleratio);
+                
+                const pcm8kInt16 = new Int16Array(newSampleCount);
+
+                for (let i=0; i < newSampleCount; i++) {
+                    
+                    const originalIndex = i * downsampleratio * 2;
+
+                    if (originalIndex < audioContent.length) {
+                        pcm8kInt16[i] = audioContent.readInt16LE(originalIndex);
+                    }
+
+
                 }
 
-                // console.log(`[${ this.callSid }] Input samples: ${ inputSamples.length } (from ${ audioContent.length } bytes)`);
 
-                const resampledData = waveResampler.resample(inputSamples, 24000, 8000, {
-                    method: "sinc",
-                    LPF: true,
-                    bitDepth: 16
-                });
+                
 
-                // console.log(`[${ this.callSid }] Resampled output length: ${ resampledData.length } `);
 
-                const pcm8kInt16 = new Int16Array(resampledData.length);
-                for (let i = 0; i < resampledData.length; i++) {
-                    pcm8kInt16[i] = resampledData[i];
-                }
 
-                const mulawSamples = mulaw.encode(pcm8kInt16);
+                
+
+                // Old method: 
+
+
+                // const inputSamples = [];
+                // for (let i = 0; i < audioContent.length; i += 2) {
+                //     inputSamples.push(audioContent.readInt16LE(i));
+                // }
+
+                // // console.log(`[${ this.callSid }] Input samples: ${ inputSamples.length } (from ${ audioContent.length } bytes)`);
+
+                // const resampledData = waveResampler.resample(inputSamples, 24000, 8000, {
+                //     method: "sinc",
+                //     LPF: true,
+                //     bitDepth: 16
+                // });
+
+                // // console.log(`[${ this.callSid }] Resampled output length: ${ resampledData.length } `);
+
+                // const pcm8kInt16 = new Int16Array(resampledData.length);
+                // for (let i = 0; i < resampledData.length; i++) {
+                //     pcm8kInt16[i] = resampledData[i];
+                // }
+
+          
                 // console.log(`[${ this.callSid }]Sizes: PCM 8k = ${ pcm8kInt16.length } samples -> MULAW=${ mulawSamples.length } samples`);
-
+                const mulawSamples = mulaw.encode(pcm8kInt16);
                 const mulawBuffer = Buffer.from(mulawSamples);
                 const audioChunk = mulawBuffer.toString("base64");
                 this.sendAudioChunk(audioChunk);
