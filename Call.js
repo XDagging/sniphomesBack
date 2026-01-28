@@ -144,6 +144,13 @@ class Call {
             },
             safetySettings,
         });
+
+        try {
+            this.backgroundAudio = fs.readFileSync("ulawOfficeAmbience.wav");
+        } catch (e) {
+            console.error("Could not load background audio file.");
+            return;
+        }
     }
 
     // 2. Move async logic to a method
@@ -491,12 +498,7 @@ GOAL: Book estimates naturally. Sound 100% human.
         //     return;
         // }
 
-        try {
-            this.backgroundAudio = fs.readFileSync("ulawOfficeAmbience.wav");
-        } catch (e) {
-            console.error("Could not load background audio file.");
-            return;
-        }
+        
 
         const sampleRate = 8000;
         const packetDuration = 20;
@@ -1524,15 +1526,11 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                 const timeUntilEnd = this.estimatedPlaybackEnd - now;
 
                 this.playbackTimeout = setTimeout(() => {
-
-
                     if (!this.interrupted) {
                         this.sendBackgroundAudio();
                     }
                     this.twilioPlaying = false;
                     this.sendingAudio = false;
-                    // console.log(`[${ this.callSid }] TTS Playback finished(est).`);
-
 
                     if (this.shouldHangup) {
                         console.log(`[${this.callSid}] Audio finished, executing delayed hangup.`);
@@ -1596,6 +1594,13 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
             // this.aiTalking = false;
             // this.sendingAudio = false;
             // this.twilioPlaying = false;
+
+
+            if (this.playbackTimeout) {
+                clearTimeout(this.playbackTimeout);
+                this.playbackTimeout = null;
+            }
+
 
 
 
