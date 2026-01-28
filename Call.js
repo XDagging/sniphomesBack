@@ -762,7 +762,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 console.log(`[${this.callSid}] 🎯 Detected check_if_time_is_valid - using canned response`);
                             } else if (this.confirmationStatus === "NOT_READY" && allFieldsPresent) {
                                 shouldUseCannedResponse = true;
-                                cannedMessage = "Just to confirm, you're name is " + this.customerName + ", your vehicle is a " + this.vehicleModel + ", your email is " + this.customerEmail + ", your payment method is " + this.paymentMethod + ", and your appointment time is " + this.parsingAppointmentTimeToReadableFormat(this.appointmentTime) + ". Is this correct?";
+                                cannedMessage = "Just to confirm, you're name is " + this.customerName + ", your vehicle is a " + this.vehicleModel + ", your email is " + this.customerEmail + ", your payment method is " + this.paymentMethod + ", and your appointment time is " + this.parsingAppointmentTimeToReadableFormat(convertUtcToEst(this.appointmentTime)) + ". Is this correct?";
 
                                 this.ttsStream.destroy();
                                 this.ttsStream = null;
@@ -919,6 +919,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
     calculatePlayback(audioDataLength, sampleRate) {
         return audioDataLength / sampleRate;
     }
+
     convertEstToRealUtc(estDateString) {
 
         if (estDateString.length > 0) {
@@ -936,6 +937,23 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
         // 1. Strip the 'Z' so it is treated as "Floating Local Time" (just "1:00 PM")
 
         // Output: "2025-12-12T18:00:00.000Z" (Correctly added 5 hours)
+    }
+
+
+    convertUtcToEst(utcDateString) {
+        
+        if (utcDateString.length > 0) {
+            const cleanIso = utcDateString.replace('Z', '');
+
+            const utcDate = fromZonedTime(cleanIso, 'UTC');
+            
+            return utcDate.toISOString();
+
+
+        } else {
+            throw new Error("Empty date string provided to convertUtcToEst");
+        }
+
     }
 
     // lets add a function to check if it is even possible
