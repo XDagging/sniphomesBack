@@ -50,6 +50,8 @@ class Call {
         // CONFIRMED    
 
 
+        this.pendingTimeCheck = null;
+
 
         // Loop Prevention & State Tracking
         this.lastConversationState = null;
@@ -780,7 +782,6 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 
 
                                 this.confirmationStatus = "PENDING_USER_APPROVAL"; // Set flag so NEXT time we allow booking
-                                this.sendClear();
                                 this.updateAgentWithoutTriggeringResponse("System: User has NOT confirmed yet. I asked them to confirm details. Wait for 'Yes'.");
                             }
                             
@@ -1212,19 +1213,37 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                 if (shouldResetStatus)
                 this.confirmationStatus = "NOT_READY";
 
-                
+
                 this.paymentMethod = extracted.paymentMethod
             }
 
             // Special handling for appointmentTime validation
             if (extracted.appointmentTime) {
                 // REUSE the exact same validation logic
+
+
+                // this.confirmationStatus = "NOT_READY";
+                // const { isValid, formattedTime } = this.validateTimeSlot(extracted.appointmentTime, true);
+                // if (isValid) {
+                //     this.appointmentTime = formattedTime;
+                // } else {
+                //     console.log(`[${this.callSid}] Implicit Set Failed: Time INVALID (${formattedTime})`);
+                // }
+
                 this.confirmationStatus = "NOT_READY";
-                const { isValid, formattedTime } = this.validateTimeSlot(extracted.appointmentTime, true);
-                if (isValid) {
-                    this.appointmentTime = formattedTime;
+                if (!this.availableSlots || this.availableSlots.length === 0) {
+                    console.error(`[${this.callSid}] Validation Failed: NO AVAILABLE SLOTS loaded. Did check_availability run?`);
+                    this.pendingTimeCheck = extracted.appointmentTime;
+
+                    fedToTwilio.action = "check_availability";
                 } else {
-                    console.log(`[${this.callSid}] Implicit Set Failed: Time INVALID (${formattedTime})`);
+                    this.confirmationStatus = "NOT_READY";
+                    const { isValid, formattedTime } = this.validateTimeSlot(extracted.appointmentTime, true);
+                    if (isValid) {
+                        this.appointmentTime = formattedTime;
+                    } else {
+                        console.log(`[${this.callSid}] Implicit Set Failed: Time INVALID (${formattedTime})`);
+                    }
                 }
             }
 
@@ -1281,10 +1300,26 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
 
                     const localData = availabilityData.flat();
                     this.availableSlots = localData;
+                    let systemMessage = "";
+                    if (this.pendingTimeCheck) {
+                        const {isValid, formattedTime} = this.validateTimeSlot(this.pendingTimeCheck, true);
 
+                        if (isValid) {
+                            this.appointmentTime = formattedTime;
+                            systemMessage = `System Update: The user's requested time (${this.pendingTimeCheck}) IS available. I have set it as the appointment time. Proceed to confirmation.`;
+                        } else {
+                            systemMessage = `System Update: The user's requested time (${this.pendingTimeCheck}) is NOT available. Here are the actual available slots: ${JSON.stringify(availabilityData)}. Apologize and offer the closest alternatives.`;
+                        }
+    // Clear the pending check
+                        this.pendingTimeCheck = null;
 
-                    const systemMessage = `System Update: Here are the available slots: ${JSON.stringify(availabilityData)}. Offer 2 of them. If the user rejects them, you may check availability again.`;
+                    } else {
+                        systemMessage = `System Update: Here are the available slots: ${JSON.stringify(availabilityData)}. Offer 2 of them. If the user rejects them, you may check availability again.`;
+                    
+                    }
                     this.currentlyCheckingAvailability = false;
+
+                    
                     await this.processLLM(systemMessage);
 
                     return;
