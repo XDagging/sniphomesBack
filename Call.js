@@ -10,7 +10,7 @@ const waveResampler = require('wave-resampler');
 
 const { fromZonedTime } = require('date-fns-tz');
 const { mulaw } = require('alawmulaw');
-const { get } = require("http");
+// const { get } = require("http");
 // const { RegulatoryComplianceListInstance } = require("twilio/lib/rest/numbers/v2/regulatoryCompliance");
 
 // --- Google TTS Setup ---
@@ -45,7 +45,7 @@ class Call {
 
         this.currentlyCheckingAvailability = false;
 
-        this.confirmationStatus = "NOT_READY"   
+        this.confirmationStatus = "NOT_READY"
         // PENDING_USER_APPROVAL vs 
         // CONFIRMED    
 
@@ -87,7 +87,7 @@ class Call {
         this.hasScheduledAppointment = false;
 
 
-
+        // public chat;
         // State variables for appointment details
         this.customerName = null;
         this.vehicleModel = null;
@@ -128,9 +128,10 @@ class Call {
                                     enum: ["insurance", "out-of-pocket"],
                                     description: "Payment method. STRICT MAPPING: If 'cash', 'credit', 'debit', 'myself', 'private' -> use 'out-of-pocket'. If 'State Farm', 'Geico', 'claim', 'deductible', or anything that sounds like insurance -> use 'insurance'. If the user is confused, give them the option of insurance or paying out of pocket"
                                 },
-                                appointmentTime: { type: "STRING",
+                                appointmentTime: {
+                                    type: "STRING",
                                     description: "The requested appointment time in 'YYYY-MM-DDTHH:MM:SS.00Z' 24-hour format, in the business's local time (EST). ONLY include if the user explicitly provided it this turn. Do NOT guess or infer."
-                                 }
+                                }
                             },
                         },
                         response: { type: "STRING", description: "Text to speak to the user. Do NOT include actions here." },
@@ -232,6 +233,8 @@ GOAL: Book estimates naturally. Sound 100% human.
 1. NO HALLUCINATIONS: Do NOT make up appointment times.
 2. NO REPETITION: Do NOT repeat "Is there anything else?". Move forward.
 3. INTERRUPTIONS: If user interrupts, STOP talking.
+4. NO PLACEHOLDERS OR FAKE DATA: NEVER invent data, or use placeholders [e.g., "NOT_SET", "Highway exit"].
+
 
 [TRANSFERS]
 - TRIGGER: User asks for "manager", "human", "advisor".
@@ -246,7 +249,7 @@ GOAL: Book estimates naturally. Sound 100% human.
 
         return fullPrompt
     }
-
+  
     async setWebsocket(ws, streamSid) {
         this.ws = ws;
         if (!this.noStart) {
@@ -347,6 +350,10 @@ GOAL: Book estimates naturally. Sound 100% human.
                         }
                         console.log(`[${this.callSid}] User interrupting AI (STT): "${transcript}"`);
                         this.interrupted = true;
+
+
+                        // Let's recent the hangup or transfer flag here if the user interrupts me;
+
                         this.sendingAudio = false;
                         this.twilioPlaying = false;
 
@@ -365,6 +372,7 @@ GOAL: Book estimates naturally. Sound 100% human.
 
                         this.estimatedPlaybackEnd = 0;
                         this.shouldHangup = false;
+                        this.isTransferring = false;
 
                         this.sendClear();
                     }
@@ -660,7 +668,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
 
                             // --- HALLUCINATION GUARD ---
                             // If state is 'confirming_details' but we don't have the time, blocking the AI
-                            if (parsed.conversation_state === "confirming_details" ) {
+                            if (parsed.conversation_state === "confirming_details") {
                                 if (!this.appointmentTime) {
                                     console.log(`[${this.callSid}] 🛑 HALLUCINATION GUARD: AI trying to confirm without appointmentTime!`);
                                     shouldUseCannedResponse = true;
@@ -709,7 +717,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                             }
 
 
-                           
+
 
 
                             // Check if action is check_availability
@@ -723,7 +731,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 this.ttsStream = null;
                                 this.sendClear();
                                 console.log(`[${this.callSid}] 🎯 Detected check_availability - using canned response`);
-                                
+
                             } else if (parsed.action === "check_if_time_is_valid") {
 
                                 shouldUseCannedResponse = true;
@@ -733,7 +741,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 this.ttsStream = null;
                                 this.sendClear();
                                 console.log(`[${this.callSid}] 🎯 Detected check_if_time_is_valid - using canned response`);
-                            } else if (this.confirmationStatus === "NOT_READY" && allFieldsPresent ) {
+                            } else if (this.confirmationStatus === "NOT_READY" && allFieldsPresent) {
                                 shouldUseCannedResponse = true;
                                 cannedMessage = "Just to confirm, you're name is " + this.customerName + ", your vehicle is a " + this.vehicleModel + ", your email is " + this.customerEmail + ", your payment method is " + this.paymentMethod + ", and your appointment time is " + this.appointmentTime + ". Is this correct?";
 
@@ -758,17 +766,17 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                             //     console.log(`[${this.callSid}] 🎯 All appointment details filled - using canned response`);
                             //     this.updateAgentWithoutTriggeringResponse(cannedMessage);
                             // }
-                            
+
                             if (parsed.action === "schedule_appointment") {
 
                                 if ((this.confirmationStatus === "CONFIRMED" || this.confirmationStatus === "PENDING_USER_APPROVAL") && !this.hasScheduledAppointment && this.appointmentTime && this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod) {
                                     // this.hasConfirmedDetails = true;
                                     cannedMessage = "Give me one second to try to schedule the appointment for you.";
                                     shouldUseCannedResponse = true;
-                                    
+
                                     this.confirmationStatus = "CONFIRMED";
                                     // we can set it to confirmed here becaus we are scheduling it. it will change if not.
-                                    
+
                                     this.ttsStream.destroy();
                                     this.ttsStream = null;
                                     this.sendClear();
@@ -1121,7 +1129,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
             };
             if (extracted.vehicleModel) {
                 this.confirmationStatus = "NOT_READY";
-                this.vehicleModel = extracted.vehicleModel; 
+                this.vehicleModel = extracted.vehicleModel;
             }
             if (extracted.customerEmail) {
                 this.customerEmail = extracted.customerEmail;
@@ -1129,7 +1137,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
             };
 
             if (extracted.paymentMethod) {
-                 this.confirmationStatus = "NOT_READY";
+                this.confirmationStatus = "NOT_READY";
                 this.paymentMethod = extracted.paymentMethod
             }
 
@@ -1226,7 +1234,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                     this.updateAgentWithoutTriggeringResponse("System Prompt: The selected appointment time is valid.");
                     this.processLLM("Response: The selected appointment time is valid. Continue with Conversation");
                     this.sendClear();
-                } else {    
+                } else {
                     console.log(`[${this.callSid}] Tool Check: Time INVALID.`);
 
                     this.updateAgentWithoutTriggeringResponse("System Prompt: The selected appointment time is invalid/taken. Ask user for another time.");
@@ -1256,8 +1264,8 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                     t: this.appointmentTime
                 });
                 const allFieldsPresent = this.customerName && this.vehicleModel && this.customerEmail && this.paymentMethod && this.appointmentTime;
-                if (!allFieldsPresent || (this.confirmationStatus === "NOT_READY" ) || (this.lastAttemptedDetails === currentAttempt)) {
-                    console.log(`[${this.callSid}] Skipping scheduling - details unchanged from last failure or success. First Boolean: ${this.lastAttemptedDetails===currentAttempt}, Second Boolean: ${this.hasScheduledAppointment}`);
+                if (!allFieldsPresent || (this.confirmationStatus === "NOT_READY") || (this.lastAttemptedDetails === currentAttempt)) {
+                    console.log(`[${this.callSid}] Skipping scheduling - details unchanged from last failure or success. First Boolean: ${this.lastAttemptedDetails === currentAttempt}, Second Boolean: ${this.hasScheduledAppointment}`);
                 } else {
 
                     // Remember, we need to add a check to make sure the AI isn't confirming when we really havent scheduled the appointment yet
@@ -1274,7 +1282,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                         appointmentTime: this.appointmentTime,
                         rating: fedToTwilio.rating, // Keep these from current response
                         hangup: fedToTwilio.hangup
-                    }; 
+                    };
 
                     const scheduleMsg = await this.handleAppointment(appointmentDetails);
                     console.log(`[${this.callSid}] Appointment result: ${scheduleMsg} `);
@@ -1358,7 +1366,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
             const payload = {
                 email: details.customerEmail,
                 name: details.customerName,
-                phone: this.phoneNumber,
+                phone: this.phoneNumber || "000-000-0000",
                 model: details.vehicleModel || "N/A",
                 make: "N/A",
                 insuranceClaim: details.paymentMethod || "unknown",
@@ -1496,6 +1504,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
 
     sendAudioChunk(chunk) {
         if (this.interrupted) {
+
             console.log(`[${this.callSid}]Interrupted, skipping audio chunk.`);
             return;
         }
@@ -1587,9 +1596,9 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
     //         .join("\n\n");
 
     //     const prompt = `I'm providing a transcript of a conversation between a real estate agent and a client.
-                
+
     //             Give a 150 character summary of the key points in the conversation that would be useful to a real estate agent.
-                
+
     //             Here is the transcript: ${readableTranscript}
     //         `;
 

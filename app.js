@@ -2,10 +2,10 @@ require('dotenv').config()
 const express = require("express");
 const bodyParser = require("body-parser");
 const bcrypt = require('bcrypt');
-const md5 = require("md5")
-const cors = require("cors")
-const nodemailer = require("nodemailer")
-const mongoose = require("mongoose")
+const md5 = require("md5");
+const cors = require("cors");
+const nodemailer = require("nodemailer");
+const mongoose = require("mongoose");
 const { v4: uuidv4 } = require('uuid');
 const Cryptr = require('cryptr');
 const session = require("express-session");
@@ -18,7 +18,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const Call = require("./Call.js");
 const WebSocket = require("ws");
 
-const { CronJob } = require("cron")
+const { CronJob } = require("cron");
 
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
@@ -37,10 +37,10 @@ const client = require("twilio")(accountSid, authToken);
 
 
 var AWS = require("aws-sdk");
-const e = require('express');
+// const e = require('express');
 const JSONTransport = require('nodemailer/lib/json-transport/index.js');
-const { unsubscribe } = require('diagnostics_channel');
-const { ExternalCampaignListInstance } = require('twilio/lib/rest/messaging/v1/externalCampaign.js');
+// const { unsubscribe } = require('diagnostics_channel');
+// const { ExternalCampaignListInstance } = require('twilio/lib/rest/messaging/v1/externalCampaign.js');
 // const { FeedbackInstance } = require('twilio/lib/rest/assistants/v1/assistant/feedback.js');
 // const { send } = require('process');
 

@@ -182,25 +182,6 @@ async function scheduleAppointment(eventData) {
 
 
 
-// async function testFunction() {
-
-//     const x = await getAvailability(7);
-//     console.log(x);
-//     console.log("uri is", eventType)
-
-//     // const y = await scheduleAppointment({
-//     //     email: "marac@sniphomes.com",
-//     //     name: "marac",
-//     //     phone: "+1 301-123-3212",
-//     //     model: "model",
-//     //     make: "make",
-//     //     insuranceClaim: "insuranceClaim",
-//     //     appointmentTime: "2025-12-12T18:30:00.000000Z",
-//     // })
-//     // console.log(y)
-// }
-
-// testFunction();
 
 async function getAvailability(startDate) {
     // 1. Get User
@@ -233,17 +214,6 @@ async function getAvailability(startDate) {
     return availability;
     // console.log("Available Slots:", JSON.stringify(availability, null, 2));
 }
-
-// testFunction();
-// async function testFunction() {
-//     const today = new Date();
-
-//     const week0 = new Date(today.getTime() + 30 * 60000); // Add 30 minutes buffer
-//     console.log(await getAvailability(week0));
-//     // console.log(await getAvailability(12));
-// }
-
-// testFunction();
 
 
 
