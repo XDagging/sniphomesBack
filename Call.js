@@ -939,6 +939,15 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
             }
         } catch (error) {
             console.error(`[${this.callSid}] Error streaming from Gemini: `, error);
+
+            if (Number(error.status) > 500) {
+                // This means that something is terribly wrong here
+
+                this.transferCall();
+                console.log("WE ARE TRANSFERING THE CALL RIGHT NOW")
+            }
+
+
             if (this.ttsStream) {
                 this.ttsStream.destroy();
                 this.ttsStream = null;
