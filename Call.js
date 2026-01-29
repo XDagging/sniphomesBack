@@ -205,7 +205,7 @@ GOAL: Book estimates naturally. Sound 100% human.
 
 [STATE MACHINE LOGIC]
 1. STATE: "answering_general_question"
-   - TRIGGER: User asks about price, services, location, hours, or "are you a robot?".
+   - TRIGGER: User asks about price, services, location, hours, or "are you a robot?". This state can be triggered at any time, regardless of data completeness or incompleteness.
    - BEHAVIOR: Answer the question DIRECTLY. Do NOT ask for booking details (Name, Car, Email) in this turn.
    - EXIT: Once answered, wait for user to signal they want to proceed.
 
@@ -1302,7 +1302,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                     this.availableSlots = localData;
                     let systemMessage = "";
                     if (this.pendingTimeCheck) {
-                        const {isValid, formattedTime} = this.validateTimeSlot(this.pendingTimeCheck, true);
+                        const {isValid, formattedTime} = this.validateTimeSlot(this.pendingTimeCheck, false);
 
                         if (isValid) {
                             this.appointmentTime = formattedTime;
