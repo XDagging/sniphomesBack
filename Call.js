@@ -1124,16 +1124,17 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
 
     async updateAgentWithoutTriggeringResponse(newMessage) {
         try {
-            const history = await this.chat.getHistory();
-            const newHistory = [...history, {
+            // const history = await this.chat.getHistory();
+            // const newHistory = [...history, {
 
 
-                role: "user",
-                parts: [{ text: newMessage }]
-            }];
-            this.chat = this.model.startChat({
-                history: newHistory,
-            });
+            //     role: "user",
+            //     parts: [{ text: newMessage }]
+            // }];
+            await this.chat.sendMessage(newMessage);
+            // this.chat = this.model.startChat({
+            //     history: newHistory,
+            // });
             console.log(`[${this.callSid}] History updated silently with new message.`);
 
         } catch (e) {
