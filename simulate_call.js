@@ -7,7 +7,7 @@ const fs = require("fs");
 
 // --- CONFIGURATION ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
-const VALIDATION_MODEL = "gemini-2.5-flash"; // or "gemini-1.5-flash"
+const VALIDATION_MODEL = "gemini-2.5-flash";
 
 // --- TEST CASES ---
 const testCases = [
