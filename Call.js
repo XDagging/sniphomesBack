@@ -1170,22 +1170,22 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
             console.log("this is what we fed to twilio", fedToTwilio);
 
             // 1. Loop Prevention & State Tracking
-            const currentState = fedToTwilio.conversation_state;
-            if (currentState === this.lastConversationState && this.currentState !== "gathering_data") {
-                this.stateRepetitionCount++;
-                console.log(`[${this.callSid}] State '${currentState}' repeated ${this.stateRepetitionCount} times.`);
-            } else {
-                this.lastConversationState = currentState;
-                this.stateRepetitionCount = 0;
-            }
+            // const currentState = fedToTwilio.conversation_state;
+            // if (currentState === this.lastConversationState && this.currentState !== "gathering_data") {
+            //     this.stateRepetitionCount++;
+            //     console.log(`[${this.callSid}] State '${currentState}' repeated ${this.stateRepetitionCount} times.`);
+            // } else {
+            //     this.lastConversationState = currentState;
+            //     this.stateRepetitionCount = 0;
+            // }
 
             // Trigger transfer if stuck in same state for too long (e.g., 4 turns)
-            if (this.stateRepetitionCount >= 15 && this.currentState !== "gathering_data") {
-                console.log(`[${this.callSid}] Loop detected (State: ${currentState}). Initiating transfer.`);
-                this.isTransferring = true;
-                // Force a transfer action
-                fedToTwilio.action = "transfer";
-            }
+            // if (this.stateRepetitionCount >= 15 && this.currentState !== "gathering_data") {
+            //     console.log(`[${this.callSid}] Loop detected (State: ${currentState}). Initiating transfer.`);
+            //     this.isTransferring = true;
+            //     // Force a transfer action
+            //     fedToTwilio.action = "transfer";
+            // }
 
 
             // 2. Update Internal State from 'extracted_data'
