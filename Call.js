@@ -1223,20 +1223,15 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                 // REUSE the exact same validation logic
 
 
-                // this.confirmationStatus = "NOT_READY";
-                // const { isValid, formattedTime } = this.validateTimeSlot(extracted.appointmentTime, true);
-                // if (isValid) {
-                //     this.appointmentTime = formattedTime;
-                // } else {
-                //     console.log(`[${this.callSid}] Implicit Set Failed: Time INVALID (${formattedTime})`);
-                // }
-
                 this.confirmationStatus = "NOT_READY";
                 if (!this.availableSlots || this.availableSlots.length === 0) {
                     console.error(`[${this.callSid}] Validation Failed: NO AVAILABLE SLOTS loaded. Did check_availability run?`);
                     this.pendingTimeCheck = extracted.appointmentTime;
 
                     fedToTwilio.action = "check_availability";
+                    fedToTwilio.response = "Give me one second to check for that date"
+
+                    // We are overriding the previous action to this.
                 } else {
                     this.confirmationStatus = "NOT_READY";
                     const { isValid, formattedTime } = this.validateTimeSlot(extracted.appointmentTime, true);
@@ -1311,12 +1306,12 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                         } else {
                             systemMessage = `System Update: The user's requested time (${this.pendingTimeCheck}) is NOT available. Here are the actual available slots: ${JSON.stringify(availabilityData)}. Apologize and offer the closest alternatives.`;
                         }
-    // Clear the pending check
+
+
                         this.pendingTimeCheck = null;
 
                     } else {
                         systemMessage = `System Update: Here are the available slots: ${JSON.stringify(availabilityData)}. Offer 2 of them. If the user rejects them, you may check availability again.`;
-                    
                     }
                     this.currentlyCheckingAvailability = false;
 
