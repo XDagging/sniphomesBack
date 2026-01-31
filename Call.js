@@ -190,6 +190,7 @@ class Call {
     }
 
     async buildSystemPrompt(personName, personOperating, personLook) {
+        // 
 
         const fullPrompt = `
 IDENTITY: You are the AI Receptionist for "Quattro Body Shop" in Bethesda, MD.
@@ -1154,6 +1155,8 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
             } catch (e) {
                 console.error(`[${this.callSid}] Failed to parse Gemini JSON: `, e);
                 console.error(`[${this.callSid}] Raw response: ${geminiResponse} `);
+
+                // We can add a breaker that will do an transfer automatically if it fails too many times in a row.
                 this.aiTalking = false;
                 this.startGoogleSpeechStream();
                 return;
