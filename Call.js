@@ -647,7 +647,10 @@ GOAL: Book estimates naturally. Sound 100% human.
             const audioChunk = chunk.toString("base64");
 
             if (this.timeWhenUserHasFinishedSpeaking !== 0) {
-                this.listOfWaitTimes.push(Date.now() - this.timeWhenUserHasFinishedSpeaking);
+                const newWaitTime = Date.now() - this.timeWhenUserHasFinishedSpeaking
+
+                console.log("THE DIFFERENCE IN DATES IS ", newWaitTime)
+                this.listOfWaitTimes.push(newWaitTime);
                 this.timeWhenUserHasFinishedSpeaking = 0;
             }
 
@@ -1758,7 +1761,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
 
         const average = this.listOfWaitTimes.reduce((total, currentNum) => total + currentNum, 0)/this.listOfWaitTimes.length
         console.log("THIS WAS THE AVERAGE:", average);
-        const debugFile = `Wait times list: ${this.listOfWaitTimes}\n\nAverage Weight times: ${this.average}`
+        const debugFile = `Wait times list: ${this.listOfWaitTimes}\n\nAverage Weight times: ${average}`
         fs.writeFile("debugAverage.txt", debugFile, () => console.log("it has been printed"))
        
         if (this.ttsStream) {
@@ -1793,41 +1796,6 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
         //     console.log(`[${this.callSid}] Call ended.Not a lead(Rating: ${this.rating}).`);
         // }
     }
-
-    // async generateCallSummary() {
-    //     console.log(`[${this.callSid}] Generating call summary...`);
-    //     let readableTranscript = this.transcript
-    //         .map(msg => `${msg.sender}: ${msg.message} `)
-    //         .join("\n\n");
-
-    //     const prompt = `I'm providing a transcript of a conversation between a real estate agent and a client.
-
-    //             Give a 150 character summary of the key points in the conversation that would be useful to a real estate agent.
-
-    //             Here is the transcript: ${readableTranscript}
-    //         `;
-
-    //     try {
-    //         const summaryModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-    //         const result = await summaryModel.generateContent(prompt);
-    //         const aiSummary = result.response.text();
-
-    //         this.convoSummary = aiSummary;
-    //         console.log(`[${this.callSid}] AI summary: ${aiSummary} `);
-
-    //         const response = {
-    //             uuid: this.uuid,
-    //             phoneNumber: this.phoneNumber,
-    //             agentAction: this.agentAction,
-    //             location: this.agentLocation,
-    //             message: this.convoSummary,
-    //         };
-    //         console.log(`[${this.callSid}] Lead details: `, response);
-
-    //     } catch (error) {
-    //         console.error(`[${this.callSid}] Error generating summary: `, error);
-    //     }
-    // }
 }
 
 module.exports = Call;
