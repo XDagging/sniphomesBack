@@ -98,6 +98,7 @@ class StreamParser {
             try {
                 completeObject = JSON.parse(this.buffer);
             } catch (e) {
+                console.log("we failed here but it doesn't matter since we have already returned")
                 // If it fails (rare edge cases), we wait for next chunk
             }
         }
@@ -944,7 +945,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                     // This is critical. It calls your other function to actually run the logic (Calendly, DB, etc.)
                         this.processResponse(JSON.stringify(parsed));
                         } catch (e) {
-                            throw Error("New error in parsing", e)
+                            console.log("we got an error here", e)
                             // JSON not complete yet, continue streaming
                         }
                     }
