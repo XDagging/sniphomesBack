@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Response>
+    <Say>Thank you for calling Quattro Auto Body. You are speaking with our automated assistant. This call may be recorded for quality assurance.</Say>
+
     <Connect>
-        <Say>Thank you for calling Quattro Auto Body. You are speaking with our automated assistant. This call may be recorded for quality assurance.</Say>
         <Stream url="wss://api.sniphomes.com/"/>
     </Connect>
 </Response>
