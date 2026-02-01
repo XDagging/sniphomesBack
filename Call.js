@@ -30,6 +30,107 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const client = require("twilio")(accountSid, authToken);
 
+
+class StreamParser {
+    constructor() {
+        this.buffer = "";
+        this.responseCursor = 0; // Tracks where we are in the text stream
+        this.inString = false;
+        this.depth = 0; // Tracks JSON bracket depth
+    }
+
+    /**
+     * Ingests a new chunk and returns:
+     * - newText: Any new speech found in the "response" field
+     * - completeObject: The full JSON object ONLY if it's finished
+     */
+    process(chunk) {
+        this.buffer += chunk;
+        let newAudioText = "";
+        let completeObject = null;
+
+        // --- 1. Smart Text Extraction (For TTS) ---
+        // We look for the specific pattern: "response": "..."
+        // We only read characters that we haven't read yet (using responseCursor).
+        const responseMatch = this.buffer.match(/"response"\s*:\s*"/);
+        
+        if (responseMatch) {
+            const startOfValue = responseMatch.index + responseMatch[0].length;
+            
+            // If we are just starting to read the response field, move cursor there
+            if (this.responseCursor === 0) this.responseCursor = startOfValue;
+
+            // Scan from the cursor to the end of the buffer
+            let endOfValue = -1;
+            let isEscaped = false;
+
+            // We look for the closing quote " 
+            for (let i = this.responseCursor; i < this.buffer.length; i++) {
+                const char = this.buffer[i];
+                
+                if (char === '\\') {
+                    isEscaped = !isEscaped;
+                    continue; // Skip the next char logic
+                }
+                
+                // If we hit an unescaped quote, the string is over
+                if (char === '"' && !isEscaped) {
+                    endOfValue = i;
+                    break;
+                }
+                isEscaped = false;
+            }
+
+            // Determine how much text we can safely grab
+            const extractUntil = endOfValue !== -1 ? endOfValue : this.buffer.length;
+            
+            if (extractUntil > this.responseCursor) {
+                const rawText = this.buffer.substring(this.responseCursor, extractUntil);
+                // Clean up escaped JSON characters (e.g. \" becomes ")
+                newAudioText = rawText.replace(/\\"/g, '"').replace(/\\n/g, '\n');
+                this.responseCursor = extractUntil;
+            }
+        }
+
+        // --- 2. Safe JSON Completion Check (For Actions) ---
+        // We count brackets. If depth returns to 0, the object is likely complete.
+        if (this.isObjectComplete(this.buffer)) {
+            try {
+                completeObject = JSON.parse(this.buffer);
+            } catch (e) {
+                // If it fails (rare edge cases), we wait for next chunk
+            }
+        }
+
+        return { newAudioText, completeObject };
+    }
+
+    isObjectComplete(text) {
+        let depth = 0;
+        let inString = false;
+        let isEscaped = false;
+        
+        // Simple state machine to count brackets, ignoring those inside strings
+        for (const char of text) {
+            if (char === '\\') {
+                isEscaped = !isEscaped;
+                continue;
+            }
+            if (char === '"' && !isEscaped) {
+                inString = !inString;
+            }
+            if (!inString) {
+                if (char === '{') depth++;
+                if (char === '}') depth--;
+            }
+            isEscaped = false;
+        }
+        // If we opened brackets and now have 0, we are closed.
+        return depth === 0 && text.trim().length > 0;
+    }
+}
+
+
 class Call {
     constructor(callSid, phoneNumber, agentAction, agentLocation, agentName, uuid) {
         this.uuid = uuid;
@@ -612,11 +713,6 @@ GOAL: Book estimates naturally. Sound 100% human.
             // Fallback logic could go here, but for now we log error
         }
 
-        // this.transcript.push({
-        //     sender: "Person on the phone",
-        //     message: transcript,
-        //     order: this.messageNumber++,
-        // });
 
         console.log(`[${this.callSid}] [${Date.now()}] Sending to Gemini: "${transcript}"`);
 
@@ -651,15 +747,15 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
             const result = await this.chat.sendMessageStream(augmentedTranscript);
             console.log("This is the result of gemini", result);
 
-            // I think the adding of the schedule is making it significantly slower than it should be.
+
             const stream = result.stream;
 
-            let jsonBuffer = "";
-            let inJsonBlock = false;
             let firstToken = true;
             let lastSpeechText = "";
             let shouldUseCannedResponse = false;
             let cannedMessage = "";
+
+            const parser = new StreamParser();
 
             for await (const chunk of stream) {
                 if (firstToken) {
@@ -668,29 +764,19 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                 }
 
                 const chunkText = chunk.text();
+                const { newAudioText, completeObject } = parser.process(chunkText);
 
-                if (!inJsonBlock && chunkText.includes('{')) {
-                    inJsonBlock = true;
-                }
-                if (inJsonBlock) {
-                    jsonBuffer += chunkText;
-
-                    // Check if we have enough of the JSON to determine the action or extracted data
-                    if (!shouldUseCannedResponse && (jsonBuffer.includes('"action"') || jsonBuffer.includes('"extracted_data"') || jsonBuffer.includes('"conversation_state"'))) {
+                if (newAudioText.length > 0 && !shouldUseCannedResponse) {
+        // Only stream TTS if we aren't using a canned message
+        console.log(`[${this.callSid}] Streaming TTS: "${newAudioText}"`);
+        this.ttsStream.write({
+            input: { text: newAudioText }
+        });
+        this.messageNumber += 1;
+    }
+                    if (completeObject) {
                         try {
-                            // Try to parse what we have so far (might be incomplete)
-                            let partialJsonStr = jsonBuffer;
-                            // Attempt to close the JSON if it's incomplete
-                            if (!partialJsonStr.trim().endsWith('}')) {
-                                partialJsonStr += '}';
-                            }
-
-                            // A more robust incomplete parser might be needed, but for now specific field extraction 
-                            // via Regex might be safer for stream chunks if JSON.parse fails frequently on partials.
-                            // But let's try JSON.parse first.
-                            const parsed = JSON.parse(partialJsonStr);
-
-                            // --- REAL-TIME EXTRACTION ---
+                            const parsed = completeObject
                             if (parsed.extracted_data) {
                                 if (parsed.extracted_data.appointmentTime) {
                                     // Validate immediately
@@ -704,11 +790,8 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 if (parsed.extracted_data.customerEmail) this.customerEmail = parsed.extracted_data.customerEmail;
                                 if (parsed.extracted_data.paymentMethod) this.paymentMethod = parsed.extracted_data.paymentMethod;
                                 if (parsed.extracted_data.vehicleModel) this.vehicleModel = parsed.extracted_data.vehicleModel;
-                                // ... (other fields can be updated here if critical, but time is the big one)
+                    
                             }
-
-                            // --- HALLUCINATION GUARD ---
-                            // If state is 'confirming_details' but we don't have the time, blocking the AI
                             if (parsed.conversation_state === "confirming_details") {
                                 if (!this.appointmentTime) {
                                     console.log(`[${this.callSid}] 🛑 HALLUCINATION GUARD: AI trying to confirm without appointmentTime!`);
@@ -803,37 +886,12 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 this.updateAgentWithoutTriggeringResponse("System: User has NOT confirmed yet. I asked them to confirm details. Wait for 'Yes'.");
                             }
                             
-                            // else if (this.confirmationStatus === "NOT_READY" && allFieldsPresent) {
-                            //     shouldUseCannedResponse = true;
-                            //     cannedMessage = "Just to confirm, you're name is " + this.customerName + ", your vehicle is a " + this.vehicleModel + ", your email is " + this.customerEmail + ", your payment method is " + this.paymentMethod + ", and your appointment time is " + this.parsingAppointmentTimeToReadableFormat(convertUtcToEst(this.appointmentTime)) + ". Is this correct?";
-
-                            //     this.ttsStream.destroy();
-                            //     this.ttsStream = null;
-                            //     this.sendClear();
-                            //     console.log(`[${this.callSid}] 🎯 Detected hasConfirmedDetails - using canned response`);
-                            //     this.confirmationStatus = "PENDING_USER_APPROVAL";
-                            //     // console.log("we have now set confirmed details to the following", this.hasConfirmedDetails);
-                            //     // this.hasConfirmedDetails = true;
-                            // } 
-                            
                             else {
                                 console.log("We cannot to a confirmationStatus right now because of the following:")
                                 console.log("this.confirmationStatus", this.confirmationStatus);
                                 console.log("allFieldsPresent", allFieldsPresent);
                             }
-                            // Check if all appointment details are filled
-                            // else if (this.customerName && this.vehicleModel && this.customerEmail &&
-                            //     this.paymentMethod && this.appointmentTime && !this.hasScheduledAppointment
-                            //     && !this.errorWhenScheduling && this.hasConfirmedDetails
-                            // ) {
-                            //     shouldUseCannedResponse = true;
-                            //     cannedMessage = "Perfect! Let me get that scheduled for you right away.";
-                            //     this.ttsStream.destroy();
-                            //     this.ttsStream = null;
-                            //     this.sendClear();
-                            //     console.log(`[${this.callSid}] 🎯 All appointment details filled - using canned response`);
-                            //     this.updateAgentWithoutTriggeringResponse(cannedMessage);
-                            // }
+                     
 
                             if (parsed.action === "schedule_appointment") {
 
@@ -853,108 +911,47 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 } else {
                                     this.logAllMeaningfulStats();
                                 }
-
-
-
-
-                                // lets first check if everything is a okay!
-
-
-
                             }
 
 
+                            if (shouldUseCannedResponse) {
+                                console.log(`[${this.callSid}] 🎯 Logic Override Triggered: "${cannedMessage}"`);
+                        
+                        // 1. Stop speaking the AI's hallucination immediately
+                            if (this.ttsStream) {
+                            this.ttsStream.destroy();
+                            this.ttsStream = null;
+                        }
+                        this.sendClear();
 
+                        // 2. Play the canned message
+                        this.ttsStream = this.setupGoogleTTSStream();
+                        if (this.ttsStream) {
+                             this.ttsStream.write({ input: { text: cannedMessage } });
+                             this.ttsStream.end();
+                        }
+                        
+                        // 3. Update the object so processResponse knows we intervened
+                        parsed.response = cannedMessage;
+                    } else {
+                        // If no override, let the standard TTS stream finish gracefully
+                        if (this.ttsStream && !this.ttsStream.destroyed) {
+                            this.ttsStream.end();
+                        }
+                    }
 
-                            // This in theory should prevent the audio from continuously streaming when we should be using canned.
-
+                    // --- E. HANDOFF (This was missing!) ---
+                    // This is critical. It calls your other function to actually run the logic (Calendly, DB, etc.)
+                        this.processResponse(JSON.stringify(parsed));
                         } catch (e) {
-
+                            throw Error("New error in parsing", e)
                             // JSON not complete yet, continue streaming
                         }
                     }
 
-                    // clear everything said previously because we never really know when the action will come in.
-                    // this.sendClear();
-
-                    // Only stream to TTS if we're NOT using a canned response
-                    if (!shouldUseCannedResponse && this.ttsStream && !this.ttsStream.destroyed) {
-                        const startMarker = '"response"';
-                        const startIdx = jsonBuffer.indexOf(startMarker);
-                        if (startIdx !== -1) {
-                            const contentStart = jsonBuffer.indexOf('"', startIdx + startMarker.length);
-                            if (contentStart !== -1) {
-                                let contentEnd = -1;
-                                for (let i = contentStart + 1; i < jsonBuffer.length; i++) {
-                                    if (jsonBuffer[i] === '"' && jsonBuffer[i - 1] !== '\\') {
-                                        contentEnd = i;
-                                        break;
-                                    }
-                                }
-
-                                let currentSpeechText;
-                                if (contentEnd !== -1) {
-                                    currentSpeechText = jsonBuffer.substring(contentStart + 1, contentEnd);
-                                } else {
-                                    currentSpeechText = jsonBuffer.substring(contentStart + 1);
-                                }
-
-                                try {
-                                    currentSpeechText = currentSpeechText.replace(/\\"/g, '"').replace(/\\n/g, '\n');
-                                } catch (e) { }
-
-                                if (currentSpeechText.length > lastSpeechText.length) {
-                                    const newText = currentSpeechText.substring(lastSpeechText.length);
-                                    if (newText.length > 0) {
-                                        this.messageNumber += 1;
-                                        console.log("We are writing right now to the TTS stream: ", newText);
-                                        this.ttsStream.write({
-                                            input: { text: newText }
-                                        });
-                                        lastSpeechText = currentSpeechText;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if (chunkText.includes('}')) {
-                        inJsonBlock = false;
-                        console.log(`[${this.callSid}] Gemini Raw JSON: ${jsonBuffer} `);
-
-                        // If we should use a canned response, override the response field
-                        if (shouldUseCannedResponse) {
-                            this.ttsStream = this.setupGoogleTTSStream();
-                            try {
-                                const parsedJson = JSON.parse(jsonBuffer);
-                                parsedJson.response = cannedMessage;
-
-
-                                jsonBuffer = JSON.stringify(parsedJson);
-                                console.log(`[${this.callSid}] Overriding response with: "${cannedMessage}"`);
-
-                                // Now speak the canned message
-                                if (this.ttsStream && !this.ttsStream.destroyed) {
-                                    this.messageNumber += 1;
-                                    this.ttsStream.write({
-                                        input: { text: cannedMessage }
-                                    });
-                                }
-                            } catch (e) {
-                                console.error(`[${this.callSid}] Error overriding response: `, e);
-                            }
-                        }
-
-                        if (this.ttsStream && !this.ttsStream.destroyed) {
-                            this.ttsStream.end();
-                        }
-
-                        this.processResponse(jsonBuffer);
-                        jsonBuffer = "";
-                    }
+                
                 }
-            }
-        } catch (error) {
+            } catch (error) {
             console.error(`[${this.callSid}] Error streaming from Gemini: `, error);
 
             if (Number(error.status) > 500) {
@@ -1741,10 +1738,10 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
 
 
         const average = this.listOfWaitTimes.reduce((total, currentNum) => total + currentNum, 0)/this.listOfWaitTimes.length
-
+        console.log("THIS WAS THE AVERAGE:", average);
         const debugFile = `Wait times list: ${this.listOfWaitTimes}\n\nAverage Weight times: ${this.average}`
         fs.writeFile("debugAverage.txt", debugFile)
-        console.log("THIS WAS THE AVERAGE:", average);
+       
         if (this.ttsStream) {
             this.ttsStream.destroy();
             this.ttsStream = null;
