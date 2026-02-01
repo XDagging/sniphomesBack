@@ -190,7 +190,7 @@ class Call {
     }
 
     async buildSystemPrompt(personName, personOperating, personLook) {
-        // 
+        
 
         const fullPrompt = `
 IDENTITY: You are the AI Receptionist for "Quattro Body Shop" in Bethesda, MD.
