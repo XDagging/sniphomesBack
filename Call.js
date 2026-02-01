@@ -1740,7 +1740,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
         const average = this.listOfWaitTimes.reduce((total, currentNum) => total + currentNum, 0)/this.listOfWaitTimes.length
         console.log("THIS WAS THE AVERAGE:", average);
         const debugFile = `Wait times list: ${this.listOfWaitTimes}\n\nAverage Weight times: ${this.average}`
-        fs.writeFile("debugAverage.txt", debugFile)
+        fs.writeFile("debugAverage.txt", debugFile, () => console.log("it has been printed"))
        
         if (this.ttsStream) {
             this.ttsStream.destroy();
