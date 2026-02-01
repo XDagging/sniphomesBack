@@ -1551,24 +1551,24 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
 
                 // New method 
 
-                const originalSampleCount = audioContent.length / 2;
+                // const originalSampleCount = audioContent.length / 2;
 
-                const downsampleratio = 3;
+                // const downsampleratio = 3;
 
-                const newSampleCount = Math.floor(originalSampleCount / downsampleratio);
+                // const newSampleCount = Math.floor(originalSampleCount / downsampleratio);
                 
-                const pcm8kInt16 = new Int16Array(newSampleCount);
+                // const pcm8kInt16 = new Int16Array(newSampleCount);
 
-                for (let i=0; i < newSampleCount; i++) {
+                // for (let i=0; i < newSampleCount; i++) {
                     
-                    const originalIndex = i * downsampleratio * 2;
+                //     const originalIndex = i * downsampleratio * 2;
 
-                    if (originalIndex < audioContent.length) {
-                        pcm8kInt16[i] = audioContent.readInt16LE(originalIndex);
-                    }
+                //     if (originalIndex < audioContent.length) {
+                //         pcm8kInt16[i] = audioContent.readInt16LE(originalIndex);
+                //     }
 
 
-                }
+                // }
 
 
                 
@@ -1580,25 +1580,25 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                 // Old method: 
 
 
-                // const inputSamples = [];
-                // for (let i = 0; i < audioContent.length; i += 2) {
-                //     inputSamples.push(audioContent.readInt16LE(i));
-                // }
+                const inputSamples = [];
+                for (let i = 0; i < audioContent.length; i += 2) {
+                    inputSamples.push(audioContent.readInt16LE(i));
+                }
 
-                // // console.log(`[${ this.callSid }] Input samples: ${ inputSamples.length } (from ${ audioContent.length } bytes)`);
+                // console.log(`[${ this.callSid }] Input samples: ${ inputSamples.length } (from ${ audioContent.length } bytes)`);
 
-                // const resampledData = waveResampler.resample(inputSamples, 24000, 8000, {
-                //     method: "sinc",
-                //     LPF: true,
-                //     bitDepth: 16
-                // });
+                const resampledData = waveResampler.resample(inputSamples, 24000, 8000, {
+                    method: "sinc",
+                    LPF: true,
+                    bitDepth: 16
+                });
 
-                // // console.log(`[${ this.callSid }] Resampled output length: ${ resampledData.length } `);
+                // console.log(`[${ this.callSid }] Resampled output length: ${ resampledData.length } `);
 
-                // const pcm8kInt16 = new Int16Array(resampledData.length);
-                // for (let i = 0; i < resampledData.length; i++) {
-                //     pcm8kInt16[i] = resampledData[i];
-                // }
+                const pcm8kInt16 = new Int16Array(resampledData.length);
+                for (let i = 0; i < resampledData.length; i++) {
+                    pcm8kInt16[i] = resampledData[i];
+                }
 
           
                 // console.log(`[${ this.callSid }]Sizes: PCM 8k = ${ pcm8kInt16.length } samples -> MULAW=${ mulawSamples.length } samples`);
