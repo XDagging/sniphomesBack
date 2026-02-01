@@ -798,7 +798,9 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                     console.log(`[${this.callSid}] 🛑 HALLUCINATION GUARD: AI trying to confirm without appointmentTime!`);
                                     shouldUseCannedResponse = true;
                                     cannedMessage = "I apologize, I missed the time you wanted. Could you please repeat the day and time?";
-                                    this.ttsStream.destroy();
+                                    if (this.ttsStream && !this.ttsStream.destroyed) {
+                                        this.ttsStream.destroy();
+                                    }
                                     this.ttsStream = null;
                                     this.sendClear();
                                     this.updateAgentWithoutTriggeringResponse(cannedMessage);
@@ -806,7 +808,9 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                     console.log(`[${this.callSid}] 🛑 HALLUCINATION GUARD: AI trying to confirm without customerName!`);
                                     shouldUseCannedResponse = true;
                                     cannedMessage = "I apologize, I missed the name you wanted. Could you please repeat the name?";
+                                    if (this.ttsStream && !this.ttsStream.destroyed) {
                                     this.ttsStream.destroy();
+                                }
                                     this.ttsStream = null;
                                     this.sendClear();
                                     this.updateAgentWithoutTriggeringResponse(cannedMessage);
@@ -814,7 +818,9 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                     console.log(`[${this.callSid}] 🛑 HALLUCINATION GUARD: AI trying to confirm without vehicleModel!`);
                                     shouldUseCannedResponse = true;
                                     cannedMessage = "I apologize, I missed the vehicle model you wanted. Could you please repeat the vehicle model?";
+                                    if (this.ttsStream && !this.ttsStream.destroyed) {
                                     this.ttsStream.destroy();
+                                }
                                     this.ttsStream = null;
                                     this.sendClear();
                                     this.updateAgentWithoutTriggeringResponse(cannedMessage);
@@ -822,7 +828,9 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                     console.log(`[${this.callSid}] 🛑 HALLUCINATION GUARD: AI trying to confirm without customerEmail!`);
                                     shouldUseCannedResponse = true;
                                     cannedMessage = "I apologize, I missed the email you wanted. Could you please repeat the email?";
+                                    if (this.ttsStream && !this.ttsStream.destroyed) {
                                     this.ttsStream.destroy();
+                                }
                                     this.ttsStream = null;
                                     this.sendClear();
                                     this.updateAgentWithoutTriggeringResponse(cannedMessage);
@@ -830,7 +838,9 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                     console.log(`[${this.callSid}] 🛑 HALLUCINATION GUARD: AI trying to confirm without paymentMethod!`);
                                     shouldUseCannedResponse = true;
                                     cannedMessage = "I apologize, I missed the payment method you wanted. Could you please repeat the payment method?";
+                                    if (this.ttsStream && !this.ttsStream.destroyed) {
                                     this.ttsStream.destroy();
+                                }
                                     this.ttsStream = null;
                                     this.sendClear();
                                     this.updateAgentWithoutTriggeringResponse(cannedMessage);
@@ -852,6 +862,10 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 shouldUseCannedResponse = true;
                                 cannedMessage = "Give me one second to check the calendar for you.";
                                 // this.sendClear();
+
+                                if (this.ttsStream && !this.ttsStream.destroyed) {
+                                    this.ttsStream.destroy();
+                                }
                                 this.ttsStream.destroy();
                                 this.ttsStream = null;
                                 this.sendClear();
@@ -862,7 +876,9 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 shouldUseCannedResponse = true;
                                 cannedMessage = "Let me see if that time is open for you.";
                                 // this.sendClear();
-                                this.ttsStream.destroy();
+                                if (this.ttsStream && !this.ttsStream.destroyed) {
+                                    this.ttsStream.destroy();
+                                }
                                 this.ttsStream = null;
                                 this.sendClear();
                                 console.log(`[${this.callSid}] 🎯 Detected check_if_time_is_valid - using canned response`);
@@ -875,10 +891,10 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 cannedMessage = `Just to confirm, your name is ${this.customerName}, your vehicle is a ${this.vehicleModel}, your email is ${this.customerEmail}, paying via ${this.paymentMethod}, for ${niceTime}. Is this correct?`;
                                 
 
-                                if (this.ttsStream) {
+                                if (this.ttsStream && !this.ttsStream.destroyed) {
                                     this.ttsStream.destroy();
-                                    this.ttsStream = null;
                                 }
+                                this.ttsStream = null
                                 this.sendClear();
 
                                 
@@ -904,7 +920,9 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                     this.confirmationStatus = "CONFIRMED";
                                     // we can set it to confirmed here becaus we are scheduling it. it will change if not.
 
-                                    this.ttsStream.destroy();
+                                    if (this.ttsStream && !this.ttsStream.destroyed) {
+                                        this.ttsStream.destroy();
+                                    }
                                     this.ttsStream = null;
                                     this.sendClear();
                                     console.log(`[${this.callSid}] 🎯 All appointment details filled - using canned response`);
