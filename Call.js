@@ -40,6 +40,15 @@ class Call {
         this.agentName = agentName;
         this.justCheckedAvailability = false;
         this.availableSlots = [];
+
+
+        // These variables only for when the user has finished speaking
+        this.timeWhenUserHasFinishedSpeaking = 0
+
+        this.listOfWaitTimes = [];
+
+
+
         // this.errorWhenScheduling = false;
         // this.hasConfirmedDetails = false;
 
@@ -391,6 +400,7 @@ GOAL: Book estimates naturally. Sound 100% human.
                     if (result.isFinal) {
                         const transcript = result.alternatives[0].transcript.trim();
                         console.log(`[${this.callSid}] [${Date.now()}] STT Final: "${transcript}"`);
+                        this.timeWhenUserHasFinishedSpeaking = Date.now();
 
                         if (this.speechTimeout) {
                             clearTimeout(this.speechTimeout);
@@ -533,6 +543,12 @@ GOAL: Book estimates naturally. Sound 100% human.
             const end = Math.min(offset + chunkSize, this.backgroundAudio.length);
             const chunk = this.backgroundAudio.slice(offset, end);
             const audioChunk = chunk.toString("base64");
+
+            if (this.timeWhenUserHasFinishedSpeaking !== 0) {
+                this.listOfWaitTimes.push(Date.now() - this.timeWhenUserHasFinishedSpeaking);
+                this.timeWhenUserHasFinishedSpeaking = 0;
+            }
+
 
             this.sendAudioChunk(audioChunk);
             offset += chunkSize;
@@ -1723,6 +1739,12 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
 
         this.stopGoogleSpeechStream();
 
+
+        const average = this.listOfWaitTimes.reduce((total, currentNum) => total + currentNum, 0)/this.listOfWaitTimes.length
+
+        const debugFile = `Wait times list: ${this.listOfWaitTimes}\n\nAverage Weight times: ${this.average}`
+        fs.writeFile("debugAverage.txt", debugFile)
+        console.log("THIS WAS THE AVERAGE:", average);
         if (this.ttsStream) {
             this.ttsStream.destroy();
             this.ttsStream = null;
