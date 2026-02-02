@@ -5,11 +5,13 @@ const { TextToSpeechClient } = require("@google-cloud/text-to-speech");
 const { getAvailability, scheduleAppointment } = require("./calendly");
 const { Readable } = require("stream");
 const fs = require("fs");
+const StreamParser = require("./stream_parser")
 const waveResampler = require('wave-resampler');
 
 
 const { fromZonedTime } = require('date-fns-tz');
 const { mulaw } = require('alawmulaw');
+const { BrandVettingListInstance } = require("twilio/lib/rest/messaging/v1/brandRegistration/brandVetting");
 // const { get } = require("http");
 // const { RegulatoryComplianceListInstance } = require("twilio/lib/rest/numbers/v2/regulatoryCompliance");
 
@@ -31,105 +33,7 @@ const authToken = process.env.TWILIO_AUTH_TOKEN;
 const client = require("twilio")(accountSid, authToken);
 
 
-class StreamParser {
-    constructor() {
-        this.buffer = "";
-        this.responseCursor = 0; // Tracks where we are in the text stream
-        this.inString = false;
-        this.depth = 0; // Tracks JSON bracket depth
-    }
 
-    /**
-     * Ingests a new chunk and returns:
-     * - newText: Any new speech found in the "response" field
-     * - completeObject: The full JSON object ONLY if it's finished
-     */
-    process(chunk) {
-        this.buffer += chunk;
-        let newAudioText = "";
-        let completeObject = null;
-
-        // --- 1. Smart Text Extraction (For TTS) ---
-        // We look for the specific pattern: "response": "..."
-        // We only read characters that we haven't read yet (using responseCursor).
-        const responseMatch = this.buffer.match(/"response"\s*:\s*"/);
-        
-        if (responseMatch) {
-            const startOfValue = responseMatch.index + responseMatch[0].length;
-            
-            // If we are just starting to read the response field, move cursor there
-            if (this.responseCursor === 0) this.responseCursor = startOfValue;
-
-            // Scan from the cursor to the end of the buffer
-            let endOfValue = -1;
-            let isEscaped = false;
-
-            // We look for the closing quote " 
-            for (let i = this.responseCursor; i < this.buffer.length; i++) {
-                const char = this.buffer[i];
-                
-                if (char === '\\') {
-                    isEscaped = !isEscaped;
-                    continue; // Skip the next char logic
-                }
-                
-                // If we hit an unescaped quote, the string is over
-                if (char === '"' && !isEscaped) {
-                    endOfValue = i;
-                    break;
-                }
-                isEscaped = false;
-            }
-
-            // Determine how much text we can safely grab
-            const extractUntil = endOfValue !== -1 ? endOfValue : this.buffer.length;
-            
-            if (extractUntil > this.responseCursor) {
-                const rawText = this.buffer.substring(this.responseCursor, extractUntil);
-                // Clean up escaped JSON characters (e.g. \" becomes ")
-                newAudioText = rawText.replace(/\\"/g, '"').replace(/\\n/g, '\n');
-                this.responseCursor = extractUntil;
-            }
-        }
-
-        // --- 2. Safe JSON Completion Check (For Actions) ---
-        // We count brackets. If depth returns to 0, the object is likely complete.
-        if (this.isObjectComplete(this.buffer)) {
-            try {
-                completeObject = JSON.parse(this.buffer);
-            } catch (e) {
-                console.log("we failed here but it doesn't matter since we have already returned")
-                // If it fails (rare edge cases), we wait for next chunk
-            }
-        }
-
-        return { newAudioText, completeObject };
-    }
-
-    isObjectComplete(text) {
-        let depth = 0;
-        let inString = false;
-        let isEscaped = false;
-        
-        // Simple state machine to count brackets, ignoring those inside strings
-        for (const char of text) {
-            if (char === '\\') {
-                isEscaped = !isEscaped;
-                continue;
-            }
-            if (char === '"' && !isEscaped) {
-                inString = !inString;
-            }
-            if (!inString) {
-                if (char === '{') depth++;
-                if (char === '}') depth--;
-            }
-            isEscaped = false;
-        }
-        // If we opened brackets and now have 0, we are closed.
-        return depth === 0 && text.trim().length > 0;
-    }
-}
 
 
 class Call {
@@ -690,6 +594,9 @@ GOAL: Book estimates naturally. Sound 100% human.
         return newDate;
     }
 
+
+    
+
     async processLLM(transcript) {
         if (!transcript) {
             console.log(`[${this.callSid}] Empty transcript, restarting STT.`);
@@ -891,7 +798,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                                 
                                 // Build the confirmation string
                                 const niceTime = this.appointmentTime ? this.parsingAppointmentTimeToReadableFormat(this.appointmentTime) : "the requested time";
-                                cannedMessage = `Just to confirm, your name is ${this.customerName}, your vehicle is a ${this.vehicleModel}, your email is ${this.customerEmail}, paying via ${this.paymentMethod}, for ${niceTime}. Is this correct?`;
+                                cannedMessage = `Just to confirm, your name is ${this.customerName}, your vehicle is a ${this.vehicleModel}, your email is ${this.customerEmail} and is spelled ${this.emailPronunciation(this.customerEmail)}, paying via ${this.paymentMethod}, for ${niceTime}. Is this correct?`;
                                 
 
                                 if (this.ttsStream && !this.ttsStream.destroyed) {
@@ -992,6 +899,45 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
             this.startGoogleSpeechStream();
         }
     }
+    
+    emailPronunciation(email) {
+
+
+        // first part of email
+        try {
+            let parsedEmail = "";
+            const firstPartOfEmail = email.split("@")[0];
+
+            for (let i=0; i<firstPartOfEmail.length; i++) {
+
+                if (i==firstPartOfEmail.length) {
+                    break;
+                }
+
+                parsedEmail += firstPartOfEmail[i] + "-"
+            }
+            
+            parsedEmail += " at " + email.split("@")[1];
+
+            return parsedEmail;
+
+
+
+
+
+
+        } catch(e) {
+            console.log(e);
+            return email;
+        }
+    
+        
+
+
+
+    }
+
+
 
     calculatePlayback(audioDataLength, sampleRate) {
         return audioDataLength / sampleRate;
@@ -1240,27 +1186,32 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
             // 2. Update Internal State from 'extracted_data'
             const extracted = fedToTwilio.extracted_data || {};
 
+            const resetStatus = (resetStatus) => {
+                 if (resetStatus) {
+                     this.confirmationStatus = "PENDING_USER_APPROVAL";
+                }
+            }
+               
+               
+            
+
             const shouldResetStatus = this.confirmationStatus !== "PENDING_USER_APPROVAL"
 
             if (extracted.customerName) {
                 this.customerName = extracted.customerName
-                if (shouldResetStatus)
-                this.confirmationStatus = "NOT_READY";
+                resetStatus(shouldResetStatus)
             };
             if (extracted.vehicleModel) {
-                if (shouldResetStatus)
-                this.confirmationStatus = "NOT_READY";
+                resetStatus(shouldResetStatus)
                 this.vehicleModel = extracted.vehicleModel;
             }
             if (extracted.customerEmail) {
                 this.customerEmail = extracted.customerEmail;
-                if (shouldResetStatus)
-                this.confirmationStatus = "NOT_READY";
+                resetStatus(shouldResetStatus)
             };
 
             if (extracted.paymentMethod) {
-                if (shouldResetStatus)
-                this.confirmationStatus = "NOT_READY";
+                resetStatus(shouldResetStatus)
 
 
                 this.paymentMethod = extracted.paymentMethod
@@ -1281,7 +1232,7 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
 
                     // We are overriding the previous action to this.
                 } else {
-                    this.confirmationStatus = "NOT_READY";
+                    // this.confirmationStatus = "NOT_READY";
                     const { isValid, formattedTime } = this.validateTimeSlot(extracted.appointmentTime, true);
                     if (isValid) {
                         this.appointmentTime = formattedTime;

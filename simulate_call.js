@@ -247,7 +247,8 @@ async function runASingleTest(test) {
 
         // Initial delay for greeting
         await new Promise(r => setTimeout(r, 1000));
-
+        console.log("Full test object",test);
+        console.log("These are the steps right now:", test.steps);
         for (const userStep of test.steps) {
             // console.log(`\x1b[33mYou: ${userStep}\x1b[0m`);
             while (localTranscript.length > 0 && (localTranscript[localTranscript.length - 1].startsWith("User:") || (localTranscript[localTranscript.length - 1].startsWith("AI:") && 
@@ -298,7 +299,21 @@ async function runTests() {
     console.log("\x1b[33m--- Starting Parallel Automated Tests ---\x1b[0m\n");
 
     try {
-        const results = await Promise.all(testCases.map(test => runASingleTest(test)));
+        const results = []
+        for (let i=0; i<testCases.length; i++) {
+            try {
+                console.log("This is the initial test we are passing in", testCases[i])
+                const result = await runASingleTest(testCases[i]);
+                results.push(result);
+
+                await new Promise(r => setTimeout(r, 1000));
+            } catch(e) {
+                console.log("There was an error for some reason", e);
+
+            }
+
+        }
+        // const results = await Promise.all(testCases.map(test => runASingleTest(test)));
 
         console.log("\n\x1b[33m--- All Tests Completed ---\x1b[0m");
         writeTest(results);
