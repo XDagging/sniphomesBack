@@ -883,6 +883,9 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
             } catch (error) {
             console.error(`[${this.callSid}] Error streaming from Gemini: `, error);
 
+            // if it's an error here we could 
+
+            let recovered = false;
             if (Number(error.status) > 500) {
                 // This means that something is terribly wrong here
 
@@ -890,12 +893,33 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                 console.log("WE ARE TRANSFERING THE CALL RIGHT NOW")
             }
 
+            if (error.message && error.message.toLowerCase().includes("failed to parse stream")) {
+                
+                if (this.ttsStream) {
+                    this.ttsStream.write({
+                        input: "Sorry you just cut out. Could you please repeat that?"
+                    });
 
-            if (this.ttsStream) {
+                    this.ttsStream.end();
+                    
+                    recovered = true;
+                }
+                
+            }
+
+
+            if (this.ttsStream && !recovered) {
                 this.ttsStream.destroy();
                 this.ttsStream = null;
             }
-            this.aiTalking = false;
+
+            if (!recovered) {
+                this.aiTalking = false;
+                this.sendingAudio = false;
+                this.twilioPlaying = false;
+                // We can do this because we need to make sure about these edge cases
+            
+            }
             this.startGoogleSpeechStream();
         }
     }
