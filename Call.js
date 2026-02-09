@@ -406,7 +406,7 @@ GOAL: Book estimates naturally. Sound 100% human.
                     if (result.isFinal) {
                         const transcript = result.alternatives[0].transcript.trim();
                         console.log(`[${this.callSid}] [${Date.now()}] STT Final: "${transcript}"`);
-                        this.timeWhenUserHasFinishedSpeaking = Date.now();
+                        this.timeWhenUserHasFinishedSpeaking = process.hrtime.bigint();
 
                         if (this.speechTimeout) {
                             clearTimeout(this.speechTimeout);
@@ -549,16 +549,6 @@ GOAL: Book estimates naturally. Sound 100% human.
             const end = Math.min(offset + chunkSize, this.backgroundAudio.length);
             const chunk = this.backgroundAudio.slice(offset, end);
             const audioChunk = chunk.toString("base64");
-
-            if (this.timeWhenUserHasFinishedSpeaking !== 0) {
-                const newWaitTime = Date.now() - this.timeWhenUserHasFinishedSpeaking
-
-                console.log("THE DIFFERENCE IN DATES IS ", newWaitTime)
-                this.listOfWaitTimes.push(newWaitTime);
-                this.timeWhenUserHasFinishedSpeaking = 0;
-            }
-
-
             this.sendAudioChunk(audioChunk);
             offset += chunkSize;
 
@@ -672,7 +662,19 @@ KNOWN_DATA: Name=${this.customerName || "?"}, Car=${this.vehicleModel || "?"}, E
                 if (firstToken) {
                     console.log(`[${this.callSid}][${Date.now()}] Gemini First Token Received`);
                     firstToken = false;
+
+           
+                    const newWaitTime = process.hrtime.bigint() - this.timeWhenUserHasFinishedSpeaking
+
+                    console.log("THE DIFFERENCE IN DATES IS ", newWaitTime)
+                    this.listOfWaitTimes.push(newWaitTime);
+                    this.timeWhenUserHasFinishedSpeaking = 0;
+            
+
+
                 }
+
+                
 
                 const chunkText = chunk.text();
                 const { newAudioText, completeObject } = parser.process(chunkText);
