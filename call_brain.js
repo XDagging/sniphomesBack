@@ -395,12 +395,15 @@ KNOWN_DATA: Name=${this.call.customerName || "?"}, Car=${this.call.vehicleModel 
 
             newEmail += customerEmail[i]
 
-            if (i == customerEmail.length - 1) {
+            if (i !== customerEmail.length - 1) {
                 newEmail += " ";
             }
 
         }
+
+        console.log("This is the formatted email", newEmail)
         return newEmail;
+
 
 
     }
