@@ -286,18 +286,13 @@ KNOWN_DATA: Name=${this.call.customerName || "?"}, Car=${this.call.vehicleModel 
                 this.resetStatus();
             }
             if (parsed.extracted_data.customerEmail && parsed.extracted_data.customerEmail !== this.call.customerEmail) {
-                const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
-                // We need to validate this email:
-                if (parsed.extracted_data.customerEmail.test(emailRegex)) {
+                const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                if (emailRegex.test(parsed.extracted_data.customerEmail)) {
                     this.call.customerEmail = parsed.extracted_data.customerEmail;
+                    this.resetStatus();
                 } else {
-                    console.log("Something went wrong here");
+                    console.log(`[${this.callSid}] Invalid email rejected: ${parsed.extracted_data.customerEmail}`);
                 }
-
-
-
-
-                this.resetStatus();
             }
             if (parsed.extracted_data.paymentMethod && parsed.extracted_data.paymentMethod !== this.call.paymentMethod) {
                 this.call.paymentMethod = parsed.extracted_data.paymentMethod;

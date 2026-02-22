@@ -169,13 +169,26 @@ class Call {
                 // const today = new Date();
                 const availability = await this.tools.getAvailability();
 
-
+                this.availableSlots = availability;
                 // console.log("This is week one", weekOne)
                 // console.log("This is week two", weekTwo)
                 // console.log("This is week three", weekThree)
                 // console.log("This is week four", weekFour)
                 // const totalAvailability = weekOne.concat(weekTwo).concat(weekThree).concat(weekFour)
-                const systemMessage = `System Update: Available slots: ${JSON.stringify(availability)}. Offer options.`;
+                // Convert fake-UTC ISO strings to readable EST labels for the LLM.
+                // Slots are stored with EST wall-clock hours in a Z-suffix string,
+                // so reading UTC hours/minutes directly gives the correct EST display time.
+                const readableSlots = availability.map(slot => {
+                    const d = new Date(slot);
+                    const h = d.getUTCHours();
+                    const m = d.getUTCMinutes();
+                    const ampm = h >= 12 ? "PM" : "AM";
+                    const display = `${h > 12 ? h - 12 : h === 0 ? 12 : h}:${String(m).padStart(2, "0")} ${ampm}`;
+                    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    return `${days[d.getUTCDay()]} ${months[d.getUTCMonth()]} ${d.getUTCDate()} at ${display} EST`;
+                });
+                const systemMessage = `System Update: Available appointment slots (EST). You MUST ONLY offer times from this exact list — do NOT invent, approximate, or suggest any time not shown here:\n${readableSlots.join("\n")}\nOffer these options to the user.`;
                 this.currentlyCheckingAvailability = false;
                 await this.processLLM(systemMessage);
                 return;
