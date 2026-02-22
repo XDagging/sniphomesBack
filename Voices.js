@@ -48,13 +48,14 @@ class Voices {
                     const transcript = result.alternatives[0].transcript.trim();
 
                     if ((this.call.sendingAudio || this.call.twilioPlaying) && transcript.length > 0) {
-                        if (this.call.shouldHangup) {
-                            console.log(`[${this.callSid}] Hangup pending. Ignoring interruption: "${transcript}"`);
-                            return;
-                        }
+                        // if (this.call.shouldHangup) {
+                        //     console.log(`[${this.callSid}] Hangup pending. Ignoring interruption: "${transcript}"`);
+                        //     return;
+                        // }
 
                         console.log(`[${this.callSid}] User interrupting AI (STT): "${transcript}"`);
                         this.call.interrupted = true;
+                        this.call.shouldHangup = false;
                         this.call.sendingAudio = false;
                         this.call.twilioPlaying = false;
 
