@@ -266,30 +266,32 @@ KNOWN_DATA: Name=${this.call.customerName || "?"}, Car=${this.call.vehicleModel 
             if (parsed.extracted_data.appointmentTime) {
                 const { isValid, formattedTime } = this.call.tools.validateTimeSlot(parsed.extracted_data.appointmentTime, true);
                 if (isValid) {
-                    this.call.appointmentTime = formattedTime;
-                    console.log(`[${this.callSid}] 🟢 Real-time Time Extraction: ${formattedTime}`);
+                    if (formattedTime !== this.call.appointmentTime) {
+                        // Time genuinely changed — reset validation and confirmation
+                        this.call.appointmentTime = formattedTime;
+                        this.call.appointmentTimeValidated = false;
+                        this.resetStatus();
+                        console.log(`[${this.callSid}] 🟢 Real-time Time Extraction (new): ${formattedTime}`);
+                    }
+                    // Same time re-extracted from AI speech — ignore, no reset
                 } else if (this.call.availableSlots.length === 0) {
-                    parsed.action = "check_availability"
+                    parsed.action = "check_availability";
                 }
-                // New time extracted — must be explicitly re-validated via check_if_time_is_valid
-                this.call.appointmentTimeValidated = false;
             }
 
-            if (parsed.extracted_data.customerName) {
+            if (parsed.extracted_data.customerName && parsed.extracted_data.customerName !== this.call.customerName) {
                 this.call.customerName = parsed.extracted_data.customerName;
                 this.resetStatus();
             }
-            if (parsed.extracted_data.customerEmail) {
+            if (parsed.extracted_data.customerEmail && parsed.extracted_data.customerEmail !== this.call.customerEmail) {
                 this.call.customerEmail = parsed.extracted_data.customerEmail;
                 this.resetStatus();
             }
-
-            if (parsed.extracted_data.paymentMethod) {
+            if (parsed.extracted_data.paymentMethod && parsed.extracted_data.paymentMethod !== this.call.paymentMethod) {
                 this.call.paymentMethod = parsed.extracted_data.paymentMethod;
                 this.resetStatus();
             }
-
-            if (parsed.extracted_data.vehicleModel) {
+            if (parsed.extracted_data.vehicleModel && parsed.extracted_data.vehicleModel !== this.call.vehicleModel) {
                 this.call.vehicleModel = parsed.extracted_data.vehicleModel;
                 this.resetStatus();
             }
