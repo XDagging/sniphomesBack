@@ -168,6 +168,11 @@ class Call {
                 const weekThree = await this.tools.getAvailability(Math.floor((today.getTime() + 14 * 24 * 60 * 60 * 1000) / 1000));
                 const weekFour = await this.tools.getAvailability(Math.floor((today.getTime() + 21 * 24 * 60 * 60 * 1000) / 1000));
 
+
+                console.log("This is week one", weekOne)
+                console.log("This is week two", weekTwo)
+                console.log("This is week three", weekThree)
+                console.log("This is week four", weekFour)
                 const totalAvailability = weekOne.concat(weekTwo).concat(weekThree).concat(weekFour)
                 const systemMessage = `System Update: Available slots: ${JSON.stringify(totalAvailability)}. Offer options.`;
                 this.currentlyCheckingAvailability = false;
