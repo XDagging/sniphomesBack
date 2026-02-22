@@ -20,7 +20,7 @@ class Call {
         this.agentAction = agentAction;
         this.agentLocation = agentLocation;
         this.agentName = agentName;
-        this.businessName = "Quattro BodyShop";
+        this.businessName = "Sniphomes Mechanic Shop";
 
         // State
         this.availableSlots = [];

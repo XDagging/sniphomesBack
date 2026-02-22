@@ -115,7 +115,7 @@ class BrainService {
 
     async buildSystemPrompt() {
         return `
-IDENTITY: You are the AI Receptionist for "Quattro Body Shop" in Bethesda, MD.
+IDENTITY: You are the AI Receptionist for "Sniphomes Mechanic Shop" in Bethesda, MD.
 GOAL: Book estimates naturally. Sound 100% human.
 
 [BUSINESS RULES]
