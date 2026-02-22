@@ -162,19 +162,15 @@ class Call {
                 stream.end();
 
                 const today = new Date();
-
-                const weekOne = await this.tools.getAvailability(Math.floor(today.getTime() / 1000));
-                const weekTwo = await this.tools.getAvailability(Math.floor((today.getTime() + 7 * 24 * 60 * 60 * 1000) / 1000));
-                const weekThree = await this.tools.getAvailability(Math.floor((today.getTime() + 14 * 24 * 60 * 60 * 1000) / 1000));
-                const weekFour = await this.tools.getAvailability(Math.floor((today.getTime() + 21 * 24 * 60 * 60 * 1000) / 1000));
+                const availability = await this.tools.getAvailability();
 
 
-                console.log("This is week one", weekOne)
-                console.log("This is week two", weekTwo)
-                console.log("This is week three", weekThree)
-                console.log("This is week four", weekFour)
-                const totalAvailability = weekOne.concat(weekTwo).concat(weekThree).concat(weekFour)
-                const systemMessage = `System Update: Available slots: ${JSON.stringify(totalAvailability)}. Offer options.`;
+                // console.log("This is week one", weekOne)
+                // console.log("This is week two", weekTwo)
+                // console.log("This is week three", weekThree)
+                // console.log("This is week four", weekFour)
+                // const totalAvailability = weekOne.concat(weekTwo).concat(weekThree).concat(weekFour)
+                const systemMessage = `System Update: Available slots: ${JSON.stringify(availability)}. Offer options.`;
                 this.currentlyCheckingAvailability = false;
                 await this.processLLM(systemMessage);
                 return;

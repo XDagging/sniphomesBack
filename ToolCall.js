@@ -161,15 +161,18 @@ class ToolCall {
         }
     }
 
-    async getAvailability(isCheckIfPossible = false) {
+    async getAvailability() {
         try {
 
 
-            const slots = await getAvailability();
+            const weekOne = await getAvailability(Math.floor(today.getTime() / 1000));
+            const weekTwo = await getAvailability(Math.floor((today.getTime() + 7 * 24 * 60 * 60 * 1000) / 1000));
+            const weekThree = await getAvailability(Math.floor((today.getTime() + 14 * 24 * 60 * 60 * 1000) / 1000));
+            const weekFour = await getAvailability(Math.floor((today.getTime() + 21 * 24 * 60 * 60 * 1000) / 1000));
+
+
+            const slots = weekOne.concat(weekTwo, weekThree, weekFour);
             this.call.availableSlots = slots;
-            if (isCheckIfPossible) {
-                return slots.length > 0;
-            }
             return slots;
         } catch (e) {
             console.error(`[${this.callSid}] Error getting availability:`, e);
