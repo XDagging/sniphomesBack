@@ -254,6 +254,8 @@ KNOWN_DATA: Name=${this.call.customerName || "?"}, Car=${this.call.vehicleModel 
                 if (isValid) {
                     this.call.appointmentTime = formattedTime;
                     console.log(`[${this.callSid}] 🟢 Real-time Time Extraction: ${formattedTime}`);
+                } else if (this.call.availableSlots.length === 0) {
+                    parsed.action = "check_availability"
                 }
                 // New time extracted — must be explicitly re-validated via check_if_time_is_valid
                 this.call.appointmentTimeValidated = false;

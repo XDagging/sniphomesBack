@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { getAvailability } = require("./calendly");
+// const { getAvailability } = require("./calendly");
 const fs = require("fs");
 
 // Import Services
