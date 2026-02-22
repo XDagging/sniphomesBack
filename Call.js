@@ -162,6 +162,7 @@ class Call {
                 stream.end();
 
                 const availability = await this.tools.getAvailability();
+                console.log("This is how availability is returned", availability);
                 const systemMessage = `System Update: Available slots: ${JSON.stringify(availability.slice(0, 5))}. Offer options.`;
                 this.currentlyCheckingAvailability = false;
                 await this.processLLM(systemMessage);

@@ -118,7 +118,7 @@ async function getEventAvailability(_, eventTypeUri, startDate) {
 
 
 
-        // console.log("this is the data that was returned for that time period", data)
+        console.log("this is the data that was returned for that time period", data)
         return data;
     } catch (e) {
         console.log("There was an error in collecting availability", e);
