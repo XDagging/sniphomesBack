@@ -1,6 +1,6 @@
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
 const StreamParser = require("./stream_parser");
-const { getAvailability } = require("./calendly");
+// const { getAvailability } = require("./calendly");
 
 class BrainService {
     constructor(parentCall) {
@@ -91,7 +91,7 @@ class BrainService {
         });
     }
 
-    async buildSystemPrompt(personName, personOperating, personLook) {
+    async buildSystemPrompt() {
         return `
 IDENTITY: You are the AI Receptionist for "Quattro Body Shop" in Bethesda, MD.
 GOAL: Book estimates naturally. Sound 100% human.
@@ -111,8 +111,10 @@ GOAL: Book estimates naturally. Sound 100% human.
 2. STATE: "gathering_data"
    - TRIGGER: User wants to book or gives details.
    - ORDER: Time -> Name -> Vehicle -> Email -> Payment.
+   - **RULE**: Ask for only ONE piece of information at a time. Do not overwhelm the user.
 3. STATE: "confirming_details"
    - TRIGGER: All fields are known.
+   - **CRITICAL RULE**: You MUST have checked availability (action: "check_availability" or "check_if_time_is_valid") before you can confirm a time. Never confirm a time you haven't recently verified.
 4. State: "schedule_appointment"
    - TRIGGER: All data filled out and user confirmed.
 
@@ -126,6 +128,7 @@ GOAL: Book estimates naturally. Sound 100% human.
 2. NO REPETITION.
 3. INTERRUPTIONS: STOP talking.
 4. NO PLACEHOLDERS.
+5. **ONE QUESTION PER TURN**: Never ask for Name and Email in the same turn. Break it up.
 
 [STYLE]
 - Concise. Friendly. Professional.
@@ -209,10 +212,23 @@ KNOWN_DATA: Name=${this.call.customerName || "?"}, Car=${this.call.vehicleModel 
                     await this.processBrainResponse(completeObject);
                 }
             }
+
+            // --- TTS CLOSURE FIX ---
+            if (this.call.voices.ttsStream) {
+                console.log(`[${this.callSid}] Response finished, ending TTS stream.`);
+                this.call.voices.ttsStream.end();
+                this.call.voices.ttsStream = null;
+            }
+
         } catch (e) {
             console.error(`[${this.callSid}] Error in processLLM:`, e);
             this.call.aiTalking = false;
             this.call.voices.startGoogleSpeechStream();
+
+            if (this.call.voices.ttsStream) {
+                this.call.voices.ttsStream.destroy();
+                this.call.voices.ttsStream = null;
+            }
         }
     }
 

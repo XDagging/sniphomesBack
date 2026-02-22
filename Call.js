@@ -147,6 +147,14 @@ class Call {
 
             if (fedToTwilio.action === "check_availability") {
                 this.currentlyCheckingAvailability = true;
+
+                // --- CANNED RESPONSE ---
+                const cannedResponse = "Give me one second to check the calendar for you.";
+                const stream = this.voices.setupGoogleTTSStream();
+                stream.write({ input: { text: cannedResponse } });
+                stream.end();
+                this.sendClear();
+
                 const availability = await this.tools.getAvailability();
                 const systemMessage = `System Update: Available slots: ${JSON.stringify(availability.slice(0, 5))}. Offer options.`;
                 this.currentlyCheckingAvailability = false;
@@ -156,12 +164,20 @@ class Call {
 
             if (fedToTwilio.action === "check_if_time_is_valid") {
                 const timeToCheck = fedToTwilio.appointmentTime || this.appointmentTime;
+
+                // --- CANNED RESPONSE ---
+                const cannedResponse = "Let me see if that time is open for you.";
+                const stream = this.voices.setupGoogleTTSStream();
+                stream.write({ input: { text: cannedResponse } });
+                stream.end();
+                this.sendClear();
+
                 const { isValid, formattedTime } = this.tools.validateTimeSlot(timeToCheck, false);
                 if (isValid) {
                     this.appointmentTime = formattedTime;
-                    await this.processLLM("System: Time is valid. Continue.");
+                    await this.processLLM("System: The requested time IS available. Proceed to confirmation.");
                 } else {
-                    await this.processLLM("System: Time is invalid. Ask for another.");
+                    await this.processLLM("System: The requested time is NOT available. Offer alternatives.");
                 }
                 return;
             }
@@ -216,6 +232,21 @@ class Call {
 
     async transferCall() {
         console.log(`[${this.callSid}] Transferring call to ${this.transferNumber}`);
+
+        this.sendClear();
+
+        this.isTransferring = true;
+
+        try {
+            await client.calls(this.callSid).update({
+                twiml: `<Response><Dial>${this.transferNumber}</Dial></Response>`
+            });
+            console.log(`[${this.callSid}] Call transferred successfully.`);
+        } catch (e) {
+            console.error(`[${this.callSid}] Error transferring call: `, error);
+            this.isTransferring = false; // Reset flag on error so we can hangup if needed
+
+        }
         // Twilio transfer logic here...
     }
 
@@ -233,7 +264,9 @@ class Call {
         if (this.isTransferring) return;
         try {
             await client.calls(this.callSid).update({ status: "completed" });
-        } catch (e) { }
+        } catch (e) {
+            console.log("There was an error when attemtping to hangup:", e)
+        }
     }
 }
 
