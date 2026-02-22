@@ -280,11 +280,23 @@ KNOWN_DATA: Name=${this.call.customerName || "?"}, Car=${this.call.vehicleModel 
             }
 
             if (parsed.extracted_data.customerName && parsed.extracted_data.customerName !== this.call.customerName) {
+
+
                 this.call.customerName = parsed.extracted_data.customerName;
                 this.resetStatus();
             }
             if (parsed.extracted_data.customerEmail && parsed.extracted_data.customerEmail !== this.call.customerEmail) {
-                this.call.customerEmail = parsed.extracted_data.customerEmail;
+                const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+                // We need to validate this email:
+                if (parsed.extracted_data.customerEmail.test(emailRegex)) {
+                    this.call.customerEmail = parsed.extracted_data.customerEmail;
+                } else {
+                    console.log("Something went wrong here");
+                }
+
+
+
+
                 this.resetStatus();
             }
             if (parsed.extracted_data.paymentMethod && parsed.extracted_data.paymentMethod !== this.call.paymentMethod) {
