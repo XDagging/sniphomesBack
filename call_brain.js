@@ -11,6 +11,7 @@ class BrainService {
         this.genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
         this.model = null;
         this.chat = null;
+        this.isProcessingLLM = false;
 
         this.safetySettings = [
             { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -150,6 +151,15 @@ GOAL: Book estimates naturally. Sound 100% human.
             return;
         }
 
+        // Reentrance guard: block concurrent external STT calls while LLM is processing.
+        // Internal/recursive system calls (e.g. "System Update: ...") are always allowed through.
+        const isSystemCall = transcript.toLowerCase().includes("system");
+        if (this.isProcessingLLM && !isSystemCall) {
+            console.log(`[${this.callSid}] LLM already processing, ignoring concurrent STT call: "${transcript.substring(0, 60)}"`);
+            return;
+        }
+        if (!isSystemCall) this.isProcessingLLM = true;
+
         if (transcript.toLowerCase().includes("system update")) {
             console.log(`[${this.callSid}] System update detected, sending clear`);
             this.call.sendClear();
@@ -233,13 +243,17 @@ KNOWN_DATA: Name=${this.call.customerName || "?"}, Car=${this.call.vehicleModel 
                 this.call.voices.ttsStream.destroy();
                 this.call.voices.ttsStream = null;
             }
+        } finally {
+            if (!isSystemCall) this.isProcessingLLM = false;
         }
     }
 
 
-    resetStatus = (resetStatus) => {
-        if (resetStatus) {
-            this.call.confirmationStatus = "PENDING_USER_APPROVAL";
+    resetStatus = () => {
+        // If a field changes while waiting for user confirmation, invalidate the confirmation
+        if (this.call.confirmationStatus === "PENDING_USER_APPROVAL") {
+            this.call.confirmationStatus = "NOT_READY";
+            console.log(`[${this.callSid}] Data changed during confirmation — resetting status to NOT_READY.`);
         }
     }
 
@@ -261,24 +275,23 @@ KNOWN_DATA: Name=${this.call.customerName || "?"}, Car=${this.call.vehicleModel 
                 this.call.appointmentTimeValidated = false;
             }
 
-            const shouldResetStatus = this.confirmationStatus !== "PENDING_USER_APPROVAL"
             if (parsed.extracted_data.customerName) {
                 this.call.customerName = parsed.extracted_data.customerName;
-                this.resetStatus(shouldResetStatus)
+                this.resetStatus();
             }
             if (parsed.extracted_data.customerEmail) {
-                this.call.customerEmail = parsed.extracted_data.customerEmail
-                this.resetStatus(shouldResetStatus);
+                this.call.customerEmail = parsed.extracted_data.customerEmail;
+                this.resetStatus();
             }
 
             if (parsed.extracted_data.paymentMethod) {
-                this.call.paymentMethod = parsed.extracted_data.paymentMethod
-                this.resetStatus(shouldResetStatus)
+                this.call.paymentMethod = parsed.extracted_data.paymentMethod;
+                this.resetStatus();
             }
 
             if (parsed.extracted_data.vehicleModel) {
-                this.call.vehicleModel = parsed.extracted_data.vehicleModel
-                this.resetStatus(shouldResetStatus)
+                this.call.vehicleModel = parsed.extracted_data.vehicleModel;
+                this.resetStatus();
             }
         }
 
