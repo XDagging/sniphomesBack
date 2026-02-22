@@ -255,6 +255,8 @@ KNOWN_DATA: Name=${this.call.customerName || "?"}, Car=${this.call.vehicleModel 
                     this.call.appointmentTime = formattedTime;
                     console.log(`[${this.callSid}] 🟢 Real-time Time Extraction: ${formattedTime}`);
                 }
+                // New time extracted — must be explicitly re-validated via check_if_time_is_valid
+                this.call.appointmentTimeValidated = false;
             }
 
             const shouldResetStatus = this.confirmationStatus !== "PENDING_USER_APPROVAL"
@@ -302,16 +304,24 @@ KNOWN_DATA: Name=${this.call.customerName || "?"}, Car=${this.call.vehicleModel 
         }
 
         if (missing.length == 0 && this.call.confirmationStatus !== "PENDING_USER_APPROVAL") {
-            // We should start confirming details anyway here:
+            if (this.call.availableSlots.length === 0) {
+                // No availability fetched yet — force check_availability before confirming
+                console.log(`[${this.callSid}] All fields present but no slots loaded. Forcing check_availability.`);
+                parsed.action = "check_availability";
+            } else if (!this.call.appointmentTimeValidated) {
+                // Slots loaded but time not validated against them — force check_if_time_is_valid
+                console.log(`[${this.callSid}] All fields present but time not validated. Forcing check_if_time_is_valid.`);
+                parsed.action = "check_if_time_is_valid";
+                parsed.appointmentTime = this.call.appointmentTime;
+            } else {
+                // Time is validated — show confirmation
+                cannedMessage = `Okay, just to confirm, I have you set for an appointment on ${this.convertUtcToEst(this.call.appointmentTime)} for your ${this.call.vehicleModel}. ${this.call.customerName}'s email is ${this.formatEmail(this.call.customerEmail)} and I have you for ${this.call.paymentMethod}. Is this all correct?`
 
-            cannedMessage = `Okay, just to confirm, I have you set for an appointment on ${this.convertUtcToEst(this.call.appointmentTime)} for your ${this.call.vehicleModel}. ${this.call.customerName}'s email is ${this.formatEmail(this.call.customerEmail)} and I have you for ${this.call.paymentMethod}. Is this all correct?`
+                shouldUseCannedResponse = true;
+                this.call.confirmationStatus = "PENDING_USER_APPROVAL";
 
-            shouldUseCannedResponse = true;
-            this.call.confirmationStatus = "PENDING_USER_APPROVAL";
-
-            await this.updateAgentWithoutTriggeringResponse(`System: User has NOT confirmed yet. I asked them to confirm details. Wait for 'Yes'.`)
-
-
+                await this.updateAgentWithoutTriggeringResponse(`System: User has NOT confirmed yet. I asked them to confirm details. Wait for 'Yes'.`)
+            }
         }
 
         if (shouldUseCannedResponse) {

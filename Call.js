@@ -28,6 +28,7 @@ class Call {
         this.listOfWaitTimes = [];
         this.currentlyCheckingAvailability = false;
         this.confirmationStatus = "NOT_READY";
+        this.appointmentTimeValidated = false;
         this.pendingTimeCheck = null;
         this.alreadySending = false;
         this.streamSid = "";
@@ -199,6 +200,7 @@ class Call {
                 const { isValid, formattedTime } = this.tools.validateTimeSlot(timeToCheck, false);
                 if (isValid) {
                     this.appointmentTime = formattedTime;
+                    this.appointmentTimeValidated = true;
                     await this.processLLM("System: The requested time IS available. Proceed to confirmation.");
                 } else {
                     await this.processLLM("System: The requested time is NOT available. Offer alternatives.");
