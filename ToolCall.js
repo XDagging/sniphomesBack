@@ -163,7 +163,7 @@ class ToolCall {
 
     async getAvailability() {
         try {
-            const today = new Date();
+            const today = new Date(Date.now() + 10000);
 
             const weekOne = await getAvailability(Math.floor(today.getTime() / 1000));
             const weekTwo = await getAvailability(Math.floor((today.getTime() + 7 * 24 * 60 * 60 * 1000) / 1000));
