@@ -2,10 +2,11 @@
   "name": "house-back",
   "version": "1.0.0",
   "description": "",
-  "main": "app.js",
+  "main": "app.ts",
   "scripts": {
-    "test": "node simulate_call.js",
-    "dev": "node calendly.js"
+    "start": "ts-node app.ts",
+    "dev": "ts-node app.ts",
+    "test": "ts-node simulate_call.ts"
   },
   "author": "",
   "license": "ISC",
@@ -35,5 +36,18 @@
     "wave-resampler": "^1.0.0",
     "ws": "^8.18.0"
   },
-  "type": "commonjs"
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/md5": "^2.3.6",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^25.3.0",
+    "@types/nodemailer": "^7.0.11",
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.18.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
 }
