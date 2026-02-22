@@ -194,9 +194,11 @@ KNOWN_DATA: Name=${this.call.customerName || "?"}, Car=${this.call.vehicleModel 
                 if (firstToken) {
                     console.log(`[${this.callSid}][${Date.now()}] Gemini First Token Received`);
                     firstToken = false;
-                    const newWaitTime = process.hrtime.bigint() - this.call.timeWhenUserHasFinishedSpeaking;
-                    this.call.listOfWaitTimes.push(newWaitTime);
-                    this.call.timeWhenUserHasFinishedSpeaking = 0;
+                    if (this.call.timeWhenUserHasFinishedSpeaking !== 0n) {
+                        const newWaitTime = process.hrtime.bigint() - this.call.timeWhenUserHasFinishedSpeaking;
+                        this.call.listOfWaitTimes.push(newWaitTime);
+                        this.call.timeWhenUserHasFinishedSpeaking = 0n;
+                    }
                 }
 
                 const chunkText = chunk.text();

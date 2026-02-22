@@ -24,7 +24,7 @@ class Call {
 
         // State
         this.availableSlots = [];
-        this.timeWhenUserHasFinishedSpeaking = 0;
+        this.timeWhenUserHasFinishedSpeaking = 0n;
         this.listOfWaitTimes = [];
         this.currentlyCheckingAvailability = false;
         this.confirmationStatus = "NOT_READY";
@@ -161,7 +161,7 @@ class Call {
                 stream.write({ input: { text: cannedResponse } });
                 stream.end();
 
-                const today = new Date();
+                // const today = new Date();
                 const availability = await this.tools.getAvailability();
 
 
