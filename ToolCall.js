@@ -102,37 +102,30 @@ class ToolCall {
         }
 
         try {
-            const inputTimestamp = new Date(inputTime).getTime();
-
-            // Step 1: Direct match — handles case where inputTime is already real UTC
-            // (e.g. re-validating this.call.appointmentTime which was set from a previous validation)
-            const directMatch = this.call.availableSlots.find(slot => {
-                return slot === inputTime || Math.abs(new Date(slot).getTime() - inputTimestamp) < 60000;
-            });
-
-            if (directMatch) {
-                console.log(`[${this.callSid}] ✅ Direct match found in validateTimeSlot: ${directMatch}`);
-                return { isValid: true, formattedTime: directMatch };
+            // Primary: exact string match. The AI copies the UTC ISO string verbatim from the
+            // slot list, so this should always be the path that succeeds.
+            const exactMatch = this.call.availableSlots.find(slot => slot === inputTime);
+            if (exactMatch) {
+                console.log(`[${this.callSid}] ✅ Exact match: ${exactMatch}`);
+                return { isValid: true, formattedTime: exactMatch };
             }
 
-            // Step 2: Convert from EST (AI sends EST wall-clock with Z) to real UTC, then match.
-            // The AI expresses times as EST local hours with a Z suffix (or no suffix).
-            // convertEstToRealUtc strips Z and treats the remainder as America/New_York time.
-            console.log(`[${this.callSid}] No direct match, converting EST→UTC and retrying...`);
-            const realUtc = this.convertEstToRealUtc(inputTime);
-            const realTimestamp = new Date(realUtc).getTime();
-
-            const match = this.call.availableSlots.find(slot => {
-                return Math.abs(new Date(slot).getTime() - realTimestamp) < 60000;
-            });
-
-            if (match) {
-                console.log(`[${this.callSid}] ✅ MATCH FOUND after EST→UTC conversion: ${match}`);
-                return { isValid: true, formattedTime: match };
-            } else {
-                console.log(`[${this.callSid}] ❌ NO MATCH FOUND in ${this.call.availableSlots.length} slots.`);
-                return { isValid: false, formattedTime: realUtc };
+            // Fuzzy fallback: only for Z-suffix strings (real UTC), handles minor formatting
+            // differences like ".000Z" vs "Z". Does NOT accept non-Z (local/EST) strings here
+            // because new Date("...T14:00:00") parses as local time, not UTC, causing false matches.
+            if (inputTime && inputTime.endsWith('Z')) {
+                const inputTs = new Date(inputTime).getTime();
+                const fuzzyMatch = this.call.availableSlots.find(slot =>
+                    Math.abs(new Date(slot).getTime() - inputTs) < 60000
+                );
+                if (fuzzyMatch) {
+                    console.log(`[${this.callSid}] ✅ Fuzzy UTC match: ${fuzzyMatch}`);
+                    return { isValid: true, formattedTime: fuzzyMatch };
+                }
             }
+
+            console.log(`[${this.callSid}] ❌ No match for "${inputTime}" in ${this.call.availableSlots.length} slots.`);
+            return { isValid: false, formattedTime: null };
         } catch (e) {
             console.error(`[${this.callSid}] Validation Error:`, e);
             return { isValid: false, formattedTime: null };
@@ -193,7 +186,10 @@ class ToolCall {
 
 
 
-            const slots = weekOne.concat(weekTwo, weekThree, weekFour);
+            const slots = weekOne.concat(weekTwo, weekThree, weekFour).map((val) => {
+                return this.convertUtcToEst(val);
+            })
+
             this.call.availableSlots = slots;
             return slots;
         } catch (e) {

@@ -61,7 +61,7 @@ class BrainService {
                             type: "OBJECT",
                             description: "ONLY include fields if you are 100% CERTAIN. Omit if unknown.",
                             properties: {
-                                customerName: { type: "STRING", description: "The customer's name." },
+                                customerName: { type: "STRING", description: "The customer's proper name (first, last, or both). NEVER extract pronouns, generic words, or phrases like 'myself', 'me', 'I', 'us', 'the customer'. If the user has not clearly stated their name, omit this field and ask." },
                                 vehicleModel: { type: "STRING", description: "The vehicle year/make/model." },
                                 customerEmail: {
                                     type: "STRING",
@@ -74,7 +74,7 @@ class BrainService {
                                 },
                                 appointmentTime: {
                                     type: "STRING",
-                                    description: "The requested appointment time in EST local time, formatted as 'YYYY-MM-DDTHH:MM:SS' (24-hour, no timezone suffix). Example: 1:00 PM EST on Dec 12 2025 = '2025-12-12T13:00:00'. Use the date and time the user stated, expressed in EST. ONLY include if the user explicitly provided a time this turn. Do NOT guess or infer."
+                                    description: "The exact UTC ISO string from the bracketed portion of the available slots list — copy it character-for-character (e.g. '2026-02-22T18:00:00.000Z'). ONLY include when the user has explicitly chosen a specific slot from the list this turn. Do NOT generate, retype, or infer a time — copy the bracket string exactly."
                                 }
                             },
                         },
@@ -122,7 +122,7 @@ GOAL: Book estimates naturally. Sound 100% human.
 - LOCATION: 4907 Elm St, Bethesda, MD 20814.
 - Nearby Landmarks: Across from a Matchbox Restaurant, a public parking lot is in front of it, and under an Equinox Gym.
 - HOURS: 8am-4pm, M-F.
-- Current Date: ${new Date(Date.now()).toLocaleString()}
+- Current Date/Time (EST): ${new Date(Date.now()).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true })}
 - SERVICES: Collision, paint, dents (PDR), frame work.
 - PRICING: No phone quotes. "Come in for a free estimate."
 - APPOINTMENTS: 30-min slots. Hour or half-hour only. 
@@ -195,10 +195,18 @@ GOAL: Book estimates naturally. Sound 100% human.
             if (!this.call.paymentMethod) missingFields.push("paymentMethod");
             if (!this.call.appointmentTime) missingFields.push("appointmentTime");
 
+            const aptDisplayEst = this.call.appointmentTime
+                ? new Date(this.call.appointmentTime).toLocaleString("en-US", {
+                    weekday: "short", month: "short", day: "numeric",
+                    hour: "numeric", minute: "2-digit", hour12: true,
+                    timeZone: "America/New_York"
+                }) + " EST"
+                : "UNKNOWN";
+
             const systemContext = `
 [INTERNAL STATE]
 MISSING_FIELDS: ${missingFields.length > 0 ? missingFields.join(", ") : "NONE - Ready to Schedule"}
-CURRENT_APPOINTMENT_TIME: ${this.call.appointmentTime || "UNKNOWN"}
+CURRENT_APPOINTMENT_TIME: ${aptDisplayEst}
 KNOWN_DATA: Name=${this.call.customerName || "?"}, Car=${this.call.vehicleModel || "?"}, Email=${this.call.customerEmail || "?"}, Pay=${this.call.paymentMethod || "?"}
 
 [PRIORITY DECISION LOGIC]

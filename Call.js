@@ -175,9 +175,11 @@ class Call {
                 // console.log("This is week three", weekThree)
                 // console.log("This is week four", weekFour)
                 // const totalAvailability = weekOne.concat(weekTwo).concat(weekThree).concat(weekFour)
-                // Slots are real UTC — convert to EST for display using proper timezone conversion
+                // Slots are real UTC. Show EST time to user, embed the exact UTC ISO string in
+                // brackets — the AI must copy that bracketed string verbatim into appointmentTime,
+                // eliminating all timezone conversion from the validation path.
                 const readableSlots = availability.map(slot => {
-                    return new Date(slot).toLocaleString("en-US", {
+                    const estDisplay = new Date(slot).toLocaleString("en-US", {
                         weekday: "short",
                         month: "short",
                         day: "numeric",
@@ -185,9 +187,10 @@ class Call {
                         minute: "2-digit",
                         hour12: true,
                         timeZone: "America/New_York"
-                    }) + " EST";
+                    });
+                    return `${estDisplay} EST [${slot}]`;
                 });
-                const systemMessage = `System Update: Available appointment slots (EST). You MUST ONLY offer times from this exact list — do NOT invent, approximate, or suggest any time not shown here:\n${readableSlots.join("\n")}\nOffer these options to the user.`;
+                const systemMessage = `System Update: Available appointment slots. Present the user ONLY the EST time shown before each bracket. When the user selects a slot, copy the bracketed UTC string EXACTLY (unchanged) into appointmentTime — do NOT retype or modify it. Only offer times from this list:\n${readableSlots.join("\n")}`;
                 this.currentlyCheckingAvailability = false;
                 await this.processLLM(systemMessage);
                 return;
@@ -209,7 +212,7 @@ class Call {
                 stream.write({ input: { text: cannedResponse } });
                 stream.end();
 
-                const { isValid, formattedTime } = this.tools.validateTimeSlot(timeToCheck, true);
+                const { isValid, formattedTime } = this.tools.validateTimeSlot(timeToCheck);
                 if (isValid) {
                     this.appointmentTime = formattedTime;
                     this.appointmentTimeValidated = true;
