@@ -301,15 +301,15 @@ KNOWN_DATA: Name=${this.call.customerName || "?"}, Car=${this.call.vehicleModel 
             }
         }
 
-        if (missing.length == 0) {
+        if (missing.length == 0 && this.call.confirmationStatus !== "PENDING_USER_APPROVAL") {
             // We should start confirming details anyway here:
 
-            cannedMessage = `Okay, just to confirm, I have you set for an appointment on ${this.convertUtcToEst(this.call.appointmentTime)} for your ${this.call.vehicleModel}. ${this.customerName}'s email is ${this.formatEmail(this.call.customerEmail)} and I have you for ${this.call.paymentMethod}. Is this all correct?`
+            cannedMessage = `Okay, just to confirm, I have you set for an appointment on ${this.convertUtcToEst(this.call.appointmentTime)} for your ${this.call.vehicleModel}. ${this.call.customerName}'s email is ${this.formatEmail(this.call.customerEmail)} and I have you for ${this.call.paymentMethod}. Is this all correct?`
 
             shouldUseCannedResponse = true;
             this.call.confirmationStatus = "PENDING_USER_APPROVAL";
 
-            this.updateAgentWithoutTriggeringResponse(`System: User has NOT confirmed yet. I asked them to confirm details. Wait for 'Yes'.`)
+            await this.updateAgentWithoutTriggeringResponse(`System: User has NOT confirmed yet. I asked them to confirm details. Wait for 'Yes'.`)
 
 
         }
@@ -320,6 +320,12 @@ KNOWN_DATA: Name=${this.call.customerName || "?"}, Car=${this.call.vehicleModel 
             }
             this.call.voices.ttsStream = null;
             this.call.sendClear();
+
+            // Actually speak the canned message via TTS
+            const cannedStream = this.call.voices.setupGoogleTTSStream();
+            cannedStream.write({ input: { text: cannedMessage } });
+            cannedStream.end();
+
             await this.updateAgentWithoutTriggeringResponse(cannedMessage);
             return;
         }
