@@ -197,7 +197,7 @@ class Call {
                 stream.write({ input: { text: cannedResponse } });
                 stream.end();
 
-                const { isValid, formattedTime } = this.tools.validateTimeSlot(timeToCheck, false);
+                const { isValid, formattedTime } = this.tools.validateTimeSlot(timeToCheck, true);
                 if (isValid) {
                     this.appointmentTime = formattedTime;
                     this.appointmentTimeValidated = true;
