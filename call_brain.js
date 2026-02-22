@@ -23,6 +23,25 @@ class BrainService {
         this.initModel();
     }
 
+    parsingAppointmentTimeToReadableFormat(appointmentTime) {
+        // Appointment time is in UNIX format (seconds since epoch)
+        // 2026-01-29T14:30:00.000Z
+
+        const newDate = new Date(appointmentTime).toLocaleString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "numeric",
+            minute: "numeric",
+            hour12: true,
+            timeZone: "America/New_York",
+        });
+
+        console.log("This is the parsed date", newDate);
+
+        return newDate;
+    }
+
     initModel() {
         this.model = this.genAI.getGenerativeModel({
             model: "gemini-2.5-flash-lite",
@@ -339,7 +358,7 @@ KNOWN_DATA: Name=${this.call.customerName || "?"}, Car=${this.call.vehicleModel 
                 parsed.appointmentTime = this.call.appointmentTime;
             } else {
                 // Time is validated — show confirmation
-                cannedMessage = `Okay, just to confirm, I have you set for an appointment on ${this.convertUtcToEst(this.call.appointmentTime)} for your ${this.call.vehicleModel}. ${this.call.customerName}'s email is ${this.formatEmail(this.call.customerEmail)} and I have you for ${this.call.paymentMethod}. Is this all correct?`
+                cannedMessage = `Okay, just to confirm, I have you set for an appointment on ${this.parsingAppointmentTimeToReadableFormat(this.call.appointmentTime)} for your ${this.call.vehicleModel}. ${this.call.customerName}'s email is ${this.formatEmail(this.call.customerEmail)} and I have you for ${this.call.paymentMethod}. Is this all correct?`
 
                 shouldUseCannedResponse = true;
                 this.call.confirmationStatus = "PENDING_USER_APPROVAL";

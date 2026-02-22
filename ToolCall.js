@@ -7,19 +7,19 @@ class ToolCall {
         this.callSid = parentCall.callSid;
     }
 
-    parsingAppointmentTimeToReadableFormat(appointmentTime) {
-        const newDate = new Date(appointmentTime).toLocaleString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-            hour: "numeric",
-            minute: "numeric",
-            hour12: true,
-            timeZone: "America/New_York",
-        });
-        console.log(`[${this.callSid}] Parsed date: ${newDate}`);
-        return newDate;
-    }
+    // parsingAppointmentTimeToReadableFormat(appointmentTime) {
+    //     const newDate = new Date(appointmentTime).toLocaleString("en-US", {
+    //         year: "numeric",
+    //         month: "long",
+    //         day: "numeric",
+    //         hour: "numeric",
+    //         minute: "numeric",
+    //         hour12: true,
+    //         timeZone: "America/New_York",
+    //     });
+    //     console.log(`[${this.callSid}] Parsed date: ${newDate}`);
+    //     return newDate;
+    // }
 
     convertEstToRealUtc(estDateString) {
         if (estDateString && estDateString.length > 0) {
@@ -38,6 +38,24 @@ class ToolCall {
         } else {
             throw new Error("Empty date string provided to convertUtcToEst");
         }
+    }
+    parsingAppointmentTimeToReadableFormat(appointmentTime) {
+        // Appointment time is in UNIX format (seconds since epoch)
+        // 2026-01-29T14:30:00.000Z
+
+        const newDate = new Date(appointmentTime).toLocaleString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "numeric",
+            minute: "numeric",
+            hour12: true,
+            timeZone: "America/New_York",
+        });
+
+        console.log("This is the parsed date", newDate);
+
+        return newDate;
     }
 
     async checkValid(fedToTwilio) {
