@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say>Thank you for calling Quat tro Auto Body. You are speaking with our automated assistant. This call may be recorded for quality assurance.</Say>
+    <Say>Thank you for calling sniphomes.</Say>
 
     <Connect>
         <Stream url="wss://api.sniphomes.com/"/>

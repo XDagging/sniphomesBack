@@ -1,6 +1,8 @@
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
 const StreamParser = require("./stream_parser");
 // const { getAvailability } = require("./calendly");
+const { fromZonedTime } = require('date-fns-tz');
+
 const { ToolCall } = require("./ToolCall")
 class BrainService {
     constructor(parentCall) {
