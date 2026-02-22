@@ -304,7 +304,7 @@ KNOWN_DATA: Name=${this.call.customerName || "?"}, Car=${this.call.vehicleModel 
         if (missing.length == 0) {
             // We should start confirming details anyway here:
 
-            cannedMessage = `Okay, just to confirm, I have you set for an appointment on ${this.convertUtcToEst(this.call.appointmentTime)} for your ${this.call.vehicleModel}. ${this.customerName}'s email is ${formatEmail(this.call.customerEmail)} and I have you for ${this.call.paymentMethod}. Is this all correct?`
+            cannedMessage = `Okay, just to confirm, I have you set for an appointment on ${this.convertUtcToEst(this.call.appointmentTime)} for your ${this.call.vehicleModel}. ${this.customerName}'s email is ${this.formatEmail(this.call.customerEmail)} and I have you for ${this.call.paymentMethod}. Is this all correct?`
 
             shouldUseCannedResponse = true;
             this.call.confirmationStatus = "PENDING_USER_APPROVAL";
