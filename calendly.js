@@ -183,7 +183,7 @@ async function scheduleAppointment(eventData) {
 
 
 
-async function getAvailability(startDate) {
+async function getAvailability(startDate = Date.now()) {
     // 1. Get User
     console.log("This is what startDate looks like", startDate)
     const user = await getCurrentUser();

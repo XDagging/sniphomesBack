@@ -163,6 +163,8 @@ class ToolCall {
 
     async getAvailability(isCheckIfPossible = false) {
         try {
+
+
             const slots = await getAvailability();
             this.call.availableSlots = slots;
             if (isCheckIfPossible) {
