@@ -163,12 +163,14 @@ class ToolCall {
 
     async getAvailability() {
         try {
+
             const today = new Date(Date.now() + 10000);
 
-            const weekOne = await getAvailability(Math.floor(today.getTime() / 1000));
-            const weekTwo = await getAvailability(Math.floor((today.getTime() + 7 * 24 * 60 * 60 * 1000) / 1000));
-            const weekThree = await getAvailability(Math.floor((today.getTime() + 14 * 24 * 60 * 60 * 1000) / 1000));
-            const weekFour = await getAvailability(Math.floor((today.getTime() + 21 * 24 * 60 * 60 * 1000) / 1000));
+            const weekOne = await getAvailability(today.toISOString());
+            const weekTwo = await getAvailability(new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString());
+            const weekThree = await getAvailability(new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString());
+            const weekFour = await getAvailability(new Date(today.getTime() + 21 * 24 * 60 * 60 * 1000).toISOString());
+
 
 
             const slots = weekOne.concat(weekTwo, weekThree, weekFour);
