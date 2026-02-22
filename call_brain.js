@@ -1,7 +1,7 @@
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
 const StreamParser = require("./stream_parser");
 // const { getAvailability } = require("./calendly");
-
+const { ToolCall } = require("./ToolCall")
 class BrainService {
     constructor(parentCall) {
         this.call = parentCall;
@@ -234,6 +234,13 @@ KNOWN_DATA: Name=${this.call.customerName || "?"}, Car=${this.call.vehicleModel 
         }
     }
 
+
+    resetStatus = (resetStatus) => {
+        if (resetStatus) {
+            this.call.confirmationStatus = "PENDING_USER_APPROVAL";
+        }
+    }
+
     async processBrainResponse(completeObject) {
         const parsed = completeObject;
         let shouldUseCannedResponse = false;
@@ -247,20 +254,41 @@ KNOWN_DATA: Name=${this.call.customerName || "?"}, Car=${this.call.vehicleModel 
                     console.log(`[${this.callSid}] 🟢 Real-time Time Extraction: ${formattedTime}`);
                 }
             }
-            if (parsed.extracted_data.customerName) this.call.customerName = parsed.extracted_data.customerName;
-            if (parsed.extracted_data.customerEmail) this.call.customerEmail = parsed.extracted_data.customerEmail;
-            if (parsed.extracted_data.paymentMethod) this.call.paymentMethod = parsed.extracted_data.paymentMethod;
-            if (parsed.extracted_data.vehicleModel) this.call.vehicleModel = parsed.extracted_data.vehicleModel;
+
+            const shouldResetStatus = this.confirmationStatus !== "PENDING_USER_APPROVAL"
+            if (parsed.extracted_data.customerName) {
+                this.call.customerName = parsed.extracted_data.customerName;
+                this.resetStatus(shouldResetStatus)
+            }
+            if (parsed.extracted_data.customerEmail) {
+                this.call.customerEmail = parsed.extracted_data.customerEmail
+                this.resetStatus(shouldResetStatus);
+            }
+
+            if (parsed.extracted_data.paymentMethod) {
+                this.call.paymentMethod = parsed.extracted_data.paymentMethod
+                this.resetStatus(shouldResetStatus)
+            }
+
+            if (parsed.extracted_data.vehicleModel) {
+                this.call.vehicleModel = parsed.extracted_data.vehicleModel
+                this.resetStatus(shouldResetStatus)
+            }
         }
 
+
+
+
         // Hallucination Guards
+
+        const missing = [];
+        if (!this.call.appointmentTime) missing.push("time");
+        if (!this.call.customerName) missing.push("name");
+        if (!this.call.vehicleModel) missing.push("vehicle model");
+        if (!this.call.customerEmail) missing.push("email");
+        if (!this.call.paymentMethod) missing.push("payment method");
         if (parsed.conversation_state === "confirming_details") {
-            const missing = [];
-            if (!this.call.appointmentTime) missing.push("time");
-            if (!this.call.customerName) missing.push("name");
-            if (!this.call.vehicleModel) missing.push("vehicle model");
-            if (!this.call.customerEmail) missing.push("email");
-            if (!this.call.paymentMethod) missing.push("payment method");
+
 
             if (missing.length > 0) {
                 console.log(`[${this.callSid}] 🛑 HALLUCINATION GUARD: Missing ${missing.join(", ")}`);
@@ -269,6 +297,19 @@ KNOWN_DATA: Name=${this.call.customerName || "?"}, Car=${this.call.vehicleModel 
             } else {
                 this.call.logAllMeaningfulStats();
             }
+        }
+
+        if (missing.length == 0) {
+            // We should start confirming details anyway here:
+
+            cannedMessage = `Okay, just to confirm, I have you set for an appointment on ${this.convertUtcToEst(this.call.appointmentTime)} for your ${this.call.vehicleModel}. ${this.customerName}'s email is ${formatEmail(this.call.customerEmail)} and I have you for ${this.call.paymentMethod}. Is this all correct?`
+
+            shouldUseCannedResponse = true;
+            this.call.confirmationStatus = "PENDING_USER_APPROVAL";
+
+            this.updateAgentWithoutTriggeringResponse(`System: User has NOT confirmed yet. I asked them to confirm details. Wait for 'Yes'.`)
+
+
         }
 
         if (shouldUseCannedResponse) {
@@ -284,6 +325,35 @@ KNOWN_DATA: Name=${this.call.customerName || "?"}, Car=${this.call.vehicleModel 
         // Action Handling
         await this.call.processResponse(JSON.stringify(parsed));
     }
+
+    formatEmail(customerEmail) {
+        let newEmail = "";
+
+
+        for (let i = 0; i < customerEmail.length; i++) {
+
+            newEmail += customerEmail[i]
+
+            if (i == customerEmail.length - 1) {
+                newEmail += " ";
+            }
+
+        }
+        return newEmail;
+
+
+    }
+
+    convertUtcToEst(utcDateString) {
+        if (utcDateString && utcDateString.length > 0) {
+            const cleanIso = utcDateString.replace('Z', '');
+            const utcDate = fromZonedTime(cleanIso, 'UTC');
+            return utcDate.toISOString();
+        } else {
+            throw new Error("Empty date string provided to convertUtcToEst");
+        }
+    }
+
 
     async updateAgentWithoutTriggeringResponse(newMessage) {
         try {

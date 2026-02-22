@@ -126,6 +126,8 @@ class Call {
         return this.brain.processLLM(transcript);
     }
 
+
+
     async processResponse(geminiResponse) {
         try {
             const cleanJson = geminiResponse.replace(/```json\s*/g, "").replace(/```/g, "").trim();
@@ -144,6 +146,8 @@ class Call {
                 this.isTransferring = true;
                 return;
             }
+
+
 
             if (fedToTwilio.action === "check_availability") {
                 this.currentlyCheckingAvailability = true;
@@ -211,8 +215,11 @@ class Call {
                         paymentMethod: this.paymentMethod,
                         appointmentTime: this.appointmentTime
                     });
+                    console.log("we are scheduling an appointment right now")
                     await this.processLLM(`System Update: Appointment result: ${result}`);
                     return;
+                } else {
+                    console.log("We tried scheduling an appointment here")
                 }
             }
 
