@@ -148,12 +148,18 @@ class Call {
             if (fedToTwilio.action === "check_availability") {
                 this.currentlyCheckingAvailability = true;
 
+                // Stop Gemini TTS stream first to prevent voice overlap with canned response
+                if (this.voices.ttsStream && !this.voices.ttsStream.destroyed) {
+                    this.voices.ttsStream.destroy();
+                    this.voices.ttsStream = null;
+                }
+                this.sendClear();
+
                 // --- CANNED RESPONSE ---
                 const cannedResponse = "Give me one second to check the calendar for you.";
                 const stream = this.voices.setupGoogleTTSStream();
                 stream.write({ input: { text: cannedResponse } });
                 stream.end();
-                this.sendClear();
 
                 const availability = await this.tools.getAvailability();
                 const systemMessage = `System Update: Available slots: ${JSON.stringify(availability.slice(0, 5))}. Offer options.`;
@@ -165,12 +171,18 @@ class Call {
             if (fedToTwilio.action === "check_if_time_is_valid") {
                 const timeToCheck = fedToTwilio.appointmentTime || this.appointmentTime;
 
+                // Stop Gemini TTS stream first to prevent voice overlap with canned response
+                if (this.voices.ttsStream && !this.voices.ttsStream.destroyed) {
+                    this.voices.ttsStream.destroy();
+                    this.voices.ttsStream = null;
+                }
+                this.sendClear();
+
                 // --- CANNED RESPONSE ---
                 const cannedResponse = "Let me see if that time is open for you.";
                 const stream = this.voices.setupGoogleTTSStream();
                 stream.write({ input: { text: cannedResponse } });
                 stream.end();
-                this.sendClear();
 
                 const { isValid, formattedTime } = this.tools.validateTimeSlot(timeToCheck, false);
                 if (isValid) {
