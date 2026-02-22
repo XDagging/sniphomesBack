@@ -210,8 +210,20 @@ async function getAvailability(startDate = Date.now() + 10000) {
     console.log("eventType URI", eventTypeUri);
     console.log("startDate", startDate)
     const availability = await getEventAvailability(userUri, eventTypeUri, startDate);
+
+    const parsedData = []
+
+    for (let i = 0; i < availability.collection.length; i++) {
+        parsedData.push(availability.collection[i].start_time);
+    }
+
+
+
+    // We should convert this to just what we want
+
+
     // console.log("Available Slots:", JSON.stringify(availability, null, 2));
-    return availability;
+    return parsedData;
     // console.log("Available Slots:", JSON.stringify(availability, null, 2));
 }
 
