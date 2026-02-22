@@ -4,9 +4,10 @@
   "description": "",
   "main": "app.ts",
   "scripts": {
-    "start": "ts-node app.ts",
-    "dev": "ts-node app.ts",
-    "test": "ts-node simulate_call.ts"
+    "start": "ts-node --transpile-only app.ts",
+    "dev": "ts-node --transpile-only app.ts",
+    "test": "ts-node --transpile-only simulate_call.ts",
+    "typecheck": "tsc --noEmit"
   },
   "author": "",
   "license": "ISC",
