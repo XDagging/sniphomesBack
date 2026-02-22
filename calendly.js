@@ -84,36 +84,9 @@ async function getEventAvailability(_, eventTypeUri, startDate) {
 
         const data = await response.json();
 
-        // --- ADD THIS LOG ---
-        // console.log("RAW DATA FROM CALENDLY:", JSON.stringify(data, null, 2));
-
-        function convertToEstISO(dateString) {
-            const date = new Date(dateString);
-
-            // 1. Get the wall-clock time in New York as a string
-            const estString = date.toLocaleString("en-US", { timeZone: "America/New_York" });
-
-            // 2. Parse that string back into a Date object
-            // (This creates a "fake" UTC date that actually holds EST values)
-            const estDate = new Date(estString);
-
-            // 3. Return ISO string
-            // This outputs: "2025-12-12T13:00:00.000Z" (where 13:00 is the EST time)
-            return estDate.toISOString();
-        }
-        // --------------------
+        // Keep real UTC times — conversion to EST happens only at the display layer
         if (data.collection) {
-
             data.collection = data.collection.filter(slot => slot.status === "available");
-
-            data.collection = data.collection.map((slot) => {
-                return {
-                    ...slot, // Keep other properties
-                    start_time: convertToEstISO(slot.start_time)
-                };
-            });
-
-
         }
 
 

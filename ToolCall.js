@@ -69,7 +69,7 @@ class ToolCall {
             });
 
             if (isDirectMatch) {
-                console.log(`[${this.callSid}] ✅ Direct match found (Fake UTC preserved). Valid.`);
+                console.log(`[${this.callSid}] ✅ Direct match found. Valid.`);
                 return true;
             }
 
@@ -95,18 +95,19 @@ class ToolCall {
         }
     }
 
-    validateTimeSlot(inputTime, fromAction = false) {
+    validateTimeSlot(inputTime) {
         if (!this.call.availableSlots || this.call.availableSlots.length === 0) {
             console.error(`[${this.callSid}] Validation Failed: NO AVAILABLE SLOTS loaded.`);
             return { isValid: false, formattedTime: null };
         }
 
         try {
-            const inputDate = new Date(inputTime);
-            const inputTimestamp = inputDate.getTime();
+            const inputTimestamp = new Date(inputTime).getTime();
 
+            // Step 1: Direct match — handles case where inputTime is already real UTC
+            // (e.g. re-validating this.call.appointmentTime which was set from a previous validation)
             const directMatch = this.call.availableSlots.find(slot => {
-                return slot === inputTime || new Date(slot).getTime() === inputTimestamp;
+                return slot === inputTime || Math.abs(new Date(slot).getTime() - inputTimestamp) < 60000;
             });
 
             if (directMatch) {
@@ -114,22 +115,23 @@ class ToolCall {
                 return { isValid: true, formattedTime: directMatch };
             }
 
-            console.log(`[${this.callSid}] No direct match, validating via conversion...`);
-            const formattedTime = !fromAction ? this.convertEstToRealUtc(inputTime) : inputTime;
-            const targetTimestamp = new Date(formattedTime).getTime();
+            // Step 2: Convert from EST (AI sends EST wall-clock with Z) to real UTC, then match.
+            // The AI expresses times as EST local hours with a Z suffix (or no suffix).
+            // convertEstToRealUtc strips Z and treats the remainder as America/New_York time.
+            console.log(`[${this.callSid}] No direct match, converting EST→UTC and retrying...`);
+            const realUtc = this.convertEstToRealUtc(inputTime);
+            const realTimestamp = new Date(realUtc).getTime();
 
             const match = this.call.availableSlots.find(slot => {
-                const slotTimestamp = new Date(slot).getTime();
-                const diff = Math.abs(slotTimestamp - targetTimestamp);
-                return diff < 60000;
+                return Math.abs(new Date(slot).getTime() - realTimestamp) < 60000;
             });
 
             if (match) {
-                console.log(`[${this.callSid}] ✅ MATCH FOUND: ${match}`);
+                console.log(`[${this.callSid}] ✅ MATCH FOUND after EST→UTC conversion: ${match}`);
                 return { isValid: true, formattedTime: match };
             } else {
                 console.log(`[${this.callSid}] ❌ NO MATCH FOUND in ${this.call.availableSlots.length} slots.`);
-                return { isValid: false, formattedTime: formattedTime };
+                return { isValid: false, formattedTime: realUtc };
             }
         } catch (e) {
             console.error(`[${this.callSid}] Validation Error:`, e);
@@ -140,13 +142,13 @@ class ToolCall {
     async handleAppointment(details) {
         console.log(`[${this.callSid}] handleAppointment called with: `, JSON.stringify(details, null, 2));
         try {
-            let appointmentTime = details.appointmentTime;
-            if (appointmentTime) {
-                appointmentTime = this.convertEstToRealUtc(appointmentTime);
-                console.log(`[${this.callSid}] Resulting UTC Time: ${appointmentTime}`);
-            } else {
+            const appointmentTime = details.appointmentTime;
+            if (!appointmentTime) {
                 return "STATUS: FAILED: You must send an appointment time before continuing.";
             }
+            // appointmentTime is already real UTC — it was set from validateTimeSlot which
+            // returns the matched slot string directly from availableSlots (real UTC).
+            console.log(`[${this.callSid}] Sending UTC time to Calendly: ${appointmentTime}`);
 
             const payload = {
                 email: details.customerEmail,

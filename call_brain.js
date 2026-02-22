@@ -74,7 +74,7 @@ class BrainService {
                                 },
                                 appointmentTime: {
                                     type: "STRING",
-                                    description: "The requested appointment time in 'YYYY-MM-DDTHH:MM:SS.00Z' 24-hour format, in the business's local time (EST). ONLY include if the user explicitly provided it this turn. Do NOT guess or infer."
+                                    description: "The requested appointment time in EST local time, formatted as 'YYYY-MM-DDTHH:MM:SS' (24-hour, no timezone suffix). Example: 1:00 PM EST on Dec 12 2025 = '2025-12-12T13:00:00'. Use the date and time the user stated, expressed in EST. ONLY include if the user explicitly provided a time this turn. Do NOT guess or infer."
                                 }
                             },
                         },

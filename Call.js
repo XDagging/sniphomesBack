@@ -175,18 +175,17 @@ class Call {
                 // console.log("This is week three", weekThree)
                 // console.log("This is week four", weekFour)
                 // const totalAvailability = weekOne.concat(weekTwo).concat(weekThree).concat(weekFour)
-                // Convert fake-UTC ISO strings to readable EST labels for the LLM.
-                // Slots are stored with EST wall-clock hours in a Z-suffix string,
-                // so reading UTC hours/minutes directly gives the correct EST display time.
+                // Slots are real UTC — convert to EST for display using proper timezone conversion
                 const readableSlots = availability.map(slot => {
-                    const d = new Date(slot);
-                    const h = d.getUTCHours();
-                    const m = d.getUTCMinutes();
-                    const ampm = h >= 12 ? "PM" : "AM";
-                    const display = `${h > 12 ? h - 12 : h === 0 ? 12 : h}:${String(m).padStart(2, "0")} ${ampm}`;
-                    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-                    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-                    return `${days[d.getUTCDay()]} ${months[d.getUTCMonth()]} ${d.getUTCDate()} at ${display} EST`;
+                    return new Date(slot).toLocaleString("en-US", {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                        hour12: true,
+                        timeZone: "America/New_York"
+                    }) + " EST";
                 });
                 const systemMessage = `System Update: Available appointment slots (EST). You MUST ONLY offer times from this exact list — do NOT invent, approximate, or suggest any time not shown here:\n${readableSlots.join("\n")}\nOffer these options to the user.`;
                 this.currentlyCheckingAvailability = false;
