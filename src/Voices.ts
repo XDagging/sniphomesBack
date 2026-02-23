@@ -1,6 +1,6 @@
 import * as speech from '@google-cloud/speech';
 import { TextToSpeechClient } from '@google-cloud/text-to-speech';
-import waveResampler from 'wave-resampler';
+import * as waveResampler from 'wave-resampler';
 import { mulaw } from 'alawmulaw';
 import fs from 'fs';
 import type { Call } from './Call';
