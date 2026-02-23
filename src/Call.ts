@@ -1,10 +1,11 @@
 import 'dotenv/config';
 import twilio from 'twilio';
 import type WebSocket from 'ws';
-import type { BookingConfig, ToolConfig } from './types/index';
+import type { CalendlyBookingConfig, ToolConfig } from './types/index';
 
 import Voices from './Voices';
 import ToolCall from './ToolCall';
+import WorkflowExecutor from './WorkflowExecutor';
 import BrainService from './BrainService';
 import type { AgentConfig } from './types/index';
 
@@ -45,12 +46,16 @@ export class Call {
   hasScheduledAppointment:         boolean;
   sendingBackgroundAudio:          boolean;
   noStart:                         boolean;
-  callingTool: boolean;
-  toolCalled: BookingConfig | ToolConfig | null;
+  callingTool:                     boolean;
+  toolCalled:                      CalendlyBookingConfig | ToolConfig | null;
+  workflowReadyToBook:             boolean;
+  transferTarget?:                 string;
+
   // Services
-  voices: Voices;
-  tools:  ToolCall;
-  brain:  BrainService;
+  voices:   Voices;
+  executor: WorkflowExecutor;
+  tools:    ToolCall;
+  brain:    BrainService;
 
   initializationPromise: Promise<void>;
 
@@ -60,7 +65,7 @@ export class Call {
     this.phoneNumber = phoneNumber;
     this.config      = config;
 
-    // Generic collected data map (replaces customerName, vehicleModel, etc.)
+    // Generic collected data map
     this.collectedData = {};
 
     // State
@@ -87,14 +92,15 @@ export class Call {
     this.hasScheduledAppointment         = false;
     this.sendingBackgroundAudio          = false;
     this.noStart                         = false;
-    this.toolCalled = null;
+    this.callingTool                     = false;
+    this.toolCalled                      = null;
+    this.workflowReadyToBook             = false;
 
-    // Services
-    this.voices = new Voices(this);
-    this.tools  = new ToolCall(this);
-    this.brain  = new BrainService(this);
-
-    this.callingTool = false;
+    // Services — executor must be created before brain (brain reads it)
+    this.voices   = new Voices(this);
+    this.executor = new WorkflowExecutor(this);
+    this.tools    = new ToolCall(this);
+    this.brain    = new BrainService(this);
 
     this.initializationPromise = this.brain.init();
   }
@@ -108,7 +114,6 @@ export class Call {
     if (!this.noStart) {
       this.streamSid = streamSid;
       console.log(`[${this.callSid}] Twilio stream started (${this.streamSid}).`);
-      this.voices.startGoogleSpeechStream();
       this.startConversation();
       this.noStart = true;
     }
@@ -139,22 +144,11 @@ export class Call {
 
   startConversation(): void {
     this.aiTalking = true;
-    const greeting = this.config.greeting ?? `Hi this is ${this.config.businessName}, how may we help you today?`;
-
-    const initialResponseJSON = {
-      thought:            'Initial greeting.',
-      conversation_state: 'gathering_data',
-      response:           greeting,
-      rating:             5,
-      hangup:             false,
-      action:             'respond',
-    };
-
     try {
-      const stream = this.voices.setupGoogleTTSStream();
-      stream.write({ input: { text: initialResponseJSON.response } });
-      stream.end();
-      void this.processResponse(JSON.stringify(initialResponseJSON));
+      // Run immediate steps (speaks greeting and processes leading say/branch steps).
+      // Then ensure STT is active for the first collect/llm step.
+      void this.executor.runImmediateSteps(this.collectedData);
+      this.voices.startGoogleSpeechStream();
     } catch (e) {
       console.error(`[${this.callSid}] Error in startConversation:`, e);
     }
@@ -166,7 +160,7 @@ export class Call {
 
   async processResponse(geminiResponse: string): Promise<void> {
     try {
-      const cleanJson  = geminiResponse.replace(/```json\s*/g, '').replace(/```/g, '').trim();
+      const cleanJson   = geminiResponse.replace(/```json\s*/g, '').replace(/```/g, '').trim();
       const fedToTwilio = JSON.parse(cleanJson) as {
         response?:        string;
         action?:          string;
@@ -186,52 +180,41 @@ export class Call {
         return;
       }
 
-    
       if (fedToTwilio.action === 'check_if_time_is_valid') {
         if (this.availableSlots.length === 0) {
-          fedToTwilio.action = "check_availability"
-
-          // continue, since we cant do that right now.
-          // We need to fetch some of our shit.
-          // We can proceed
+          fedToTwilio.action = 'check_availability';
+          // Fall through to check_availability below
         } else {
-           const apptKey = this.config.fields.find(f => f.type === 'appointment_time')?.key;
-        const timeToCheck = fedToTwilio.appointmentTime ?? (apptKey ? this.collectedData[apptKey] : undefined);
+          const apptKey     = this.executor.getAllFields().find(f => f.type === 'appointment_time')?.key;
+          const timeToCheck = fedToTwilio.appointmentTime ?? (apptKey ? this.collectedData[apptKey] : undefined);
 
-        
-
-        
-        if (this.voices.ttsStream && !this.voices.ttsStream.destroyed) {
-          this.voices.ttsStream.destroy();
-          this.voices.ttsStream = null;
-        }
-        this.sendClear();
-
-        
-        
-        const cannedStream = this.voices.setupGoogleTTSStream();
-        cannedStream.write({ input: { text: 'Let me see if that time is open for you.' } });
-        cannedStream.end();
-// We need to fetch from the calendar if we dont know
-        if (timeToCheck) {
-          const { isValid, formattedTime } = this.tools.validateTimeSlot(timeToCheck);
-          if (isValid && formattedTime) {
-            if (apptKey) this.collectedData[apptKey] = formattedTime;
-            this.appointmentTimeValidated = true;
-            await this.processLLM('System: The requested time IS available. Proceed to confirmation.');
-          } else {
-            await this.processLLM('System: The requested time is NOT available. Offer alternatives.');
+          if (this.voices.ttsStream && !this.voices.ttsStream.destroyed) {
+            this.voices.ttsStream.destroy();
+            this.voices.ttsStream = null;
           }
-        } else {
-          await this.processLLM('System: No appointment time found. Ask the user for a time.');
+          this.sendClear();
+
+          const cannedStream = this.voices.setupGoogleTTSStream();
+          cannedStream.write({ input: { text: 'Let me see if that time is open for you.' } });
+          cannedStream.end();
+
+          if (timeToCheck) {
+            const { isValid, formattedTime } = this.tools.validateTimeSlot(timeToCheck);
+            if (isValid && formattedTime) {
+              if (apptKey) this.collectedData[apptKey] = formattedTime;
+              this.appointmentTimeValidated = true;
+              await this.processLLM('System: The requested time IS available. Proceed to confirmation.');
+            } else {
+              await this.processLLM('System: The requested time is NOT available. Offer alternatives.');
+            }
+          } else {
+            await this.processLLM('System: No appointment time found. Ask the user for a time.');
+          }
+          return;
         }
-        return;
-          
-        }
-       
       }
 
-        if (fedToTwilio.action === 'check_availability') {
+      if (fedToTwilio.action === 'check_availability') {
         this.currentlyCheckingAvailability = true;
 
         if (this.voices.ttsStream && !this.voices.ttsStream.destroyed) {
@@ -250,12 +233,12 @@ export class Call {
         const tz = this.config.timezone ?? 'America/New_York';
         const readableSlots = availability.map(slot => {
           const estDisplay = new Date(slot).toLocaleString('en-US', {
-            weekday: 'short',
-            month:   'short',
-            day:     'numeric',
-            hour:    'numeric',
-            minute:  '2-digit',
-            hour12:  true,
+            weekday:  'short',
+            month:    'short',
+            day:      'numeric',
+            hour:     'numeric',
+            minute:   '2-digit',
+            hour12:   true,
             timeZone: tz,
           });
           return `${estDisplay} EST [${slot}]`;
@@ -271,29 +254,28 @@ export class Call {
         return;
       }
 
-
-        if (fedToTwilio.action === 'schedule_appointment') {
-
-
+      if (fedToTwilio.action === 'schedule_appointment') {
         const missingFields = this.brain.getMissingFields(this.collectedData);
-        if (missingFields.length === 0 && this.confirmationStatus !== 'NOT_READY' && !this.hasScheduledAppointment) {
-          // Just shut up until the other guy has finished speaking
-
+        if (
+          missingFields.length === 0 &&
+          this.confirmationStatus !== 'NOT_READY' &&
+          !this.hasScheduledAppointment &&
+          this.workflowReadyToBook
+        ) {
           this.sendClear();
           this.voices.ttsStream?.end();
           this.voices.ttsStream?.destroy();
 
-          this.toolCalled = this.config.booking
+          this.toolCalled  = this.config.booking ?? null;
           this.callingTool = true;
           const result = await this.tools.handleAppointment(this.collectedData);
           console.log('Scheduling appointment now');
           await this.processLLM(`System Update: Appointment result: ${result}`);
           return;
-        } else if (this.confirmationStatus !== "NOT_READY" && this.hasScheduledAppointment && missingFields.length === 0) {
-          // The user has already scheduled their appointment
-          await this.processLLM(`System Update: The user has already booked an appointment. That can no longer book anymore appointments during this call.`)
+        } else if (this.confirmationStatus !== 'NOT_READY' && this.hasScheduledAppointment && missingFields.length === 0) {
+          await this.processLLM(`System Update: The user has already booked an appointment. That can no longer book anymore appointments during this call.`);
           return;
-        } else {  
+        } else {
           console.log('Tried scheduling but fields still missing or not confirmed:', missingFields);
         }
       }
@@ -335,13 +317,14 @@ export class Call {
   }
 
   async transferCall(): Promise<void> {
-    console.log(`[${this.callSid}] Transferring call to ${this.config.transferNumber}`);
+    const targetNumber = this.transferTarget ?? this.config.transferNumber;
+    console.log(`[${this.callSid}] Transferring call to ${targetNumber}`);
     this.sendClear();
     this.isTransferring = true;
 
     try {
       await twilioClient.calls(this.callSid).update({
-        twiml: `<Response><Dial>${this.config.transferNumber}</Dial></Response>`,
+        twiml: `<Response><Dial>${targetNumber}</Dial></Response>`,
       });
       console.log(`[${this.callSid}] Call transferred successfully.`);
     } catch (e) {

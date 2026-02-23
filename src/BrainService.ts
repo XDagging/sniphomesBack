@@ -7,6 +7,7 @@ import {
 } from '@google/generative-ai';
 import { StreamParser } from './StreamParser';
 import type { Call } from './Call';
+import type { WorkflowExecutor } from './WorkflowExecutor';
 import type { AgentConfig, FieldDefinition, ValidationRule } from './types/index';
 
 // ─── Field Validation ─────────────────────────────────────────────────────────
@@ -47,6 +48,7 @@ export class BrainService {
   private call:            Call;
   private callSid:         string;
   private config:          AgentConfig;
+  private executor:        WorkflowExecutor;
   private genAI:           GoogleGenerativeAI;
   private model:           GenerativeModel | null;
   private chat:            ChatSession | null;
@@ -63,6 +65,7 @@ export class BrainService {
     this.call            = parentCall;
     this.callSid         = parentCall.callSid;
     this.config          = parentCall.config;
+    this.executor        = parentCall.executor;
     this.genAI           = new GoogleGenerativeAI(process.env.GEMINI_KEY ?? '');
     this.model           = null;
     this.chat            = null;
@@ -76,11 +79,7 @@ export class BrainService {
   private buildSchema(): Record<string, unknown> {
     const fieldProperties: Record<string, unknown> = {};
 
-    for (const field of this.config.fields) {
-      const condNote = field.condition
-        ? ` Only include if ${field.condition.field} equals "${field.condition.equals}".`
-        : '';
-
+    for (const field of this.executor.getAllFields()) {
       if (field.type === 'appointment_time') {
         fieldProperties[field.key] = {
           type: 'STRING',
@@ -91,13 +90,13 @@ export class BrainService {
         fieldProperties[field.key] = {
           type:        'STRING',
           enum:        field.enumValues,
-          description: field.description + condNote,
+          description: field.description,
         };
       } else {
         const validHints = field.validations?.map(v => v.message).join('. ') ?? '';
         fieldProperties[field.key] = {
           type:        'STRING',
-          description: field.description + (validHints ? ` ${validHints}.` : '') + condNote,
+          description: field.description + (validHints ? ` ${validHints}.` : ''),
         };
       }
     }
@@ -151,6 +150,7 @@ export class BrainService {
 
   async init(): Promise<void> {
     const systemPrompt = this.buildSystemPrompt();
+    const greeting     = this.executor.getGreeting() ?? `Hi this is ${this.config.businessName}, how may we help you today?`;
 
     this.chat = this.model!.startChat({
       history: [
@@ -159,12 +159,12 @@ export class BrainService {
           role:  'model',
           parts: [{
             text: JSON.stringify({
-              thought:             'Initial greeting.',
-              conversation_state:  'gathering_data',
-              response:            this.config.greeting ?? `Hi this is ${this.config.businessName}, how may we help you today?`,
-              rating:              5,
-              hangup:              false,
-              action:              'respond',
+              thought:            'Initial greeting.',
+              conversation_state: 'gathering_data',
+              response:           greeting,
+              rating:             5,
+              hangup:             false,
+              action:             'respond',
             }),
           }],
         },
@@ -189,17 +189,25 @@ export class BrainService {
       hour12:    true,
     });
 
-    const nonApptFields = cfg.fields.filter(f => f.type !== 'appointment_time');
+    const allFields    = this.executor.getAllFields();
+    const nonApptFields = allFields.filter(f => f.type !== 'appointment_time');
     const collectionOrder = nonApptFields.map(f => f.label).join(' -> ');
 
-    const validationRules = cfg.fields
+    const validationRules = allFields
       .filter(f => f.validations && f.validations.length > 0)
       .map(f => `- **${f.label}**: ${f.validations!.map(v => v.message).join('. ')}`)
       .join('\n');
 
-    const conditionalRules = cfg.fields
-      .filter(f => f.condition)
-      .map(f => `- **${f.label}**: Only collect if ${f.condition!.field} is "${f.condition!.equals}".`)
+    const conditionalRules = this.executor.getConditionalRules()
+      .map(({ field, condition }) => {
+        if ('equals' in condition) {
+          return `- **${field.label}**: Only collect if ${condition.field} is "${condition.equals}".`;
+        } else if ('notEquals' in condition) {
+          return `- **${field.label}**: Only collect if ${condition.field} is NOT "${condition.notEquals}".`;
+        } else {
+          return `- **${field.label}**: Only collect if ${condition.field} is one of [${(condition as { field: string; in: string[] }).in.join(', ')}].`;
+        }
+      })
       .join('\n');
 
     const extraRules = cfg.additionalRules?.map(r => `- ${r}`).join('\n') ?? '';
@@ -255,12 +263,9 @@ ${conditionalRules ? `[CONDITIONAL FIELD RULES]\n${conditionalRules}` : ''}
 
   getMissingFields(collectedData: Record<string, string>): string[] {
     const missing: string[] = [];
-    for (const field of this.config.fields) {
+    // Use active fields (follows current branch path) instead of all fields.
+    for (const field of this.executor.getActiveFields(collectedData)) {
       if (!field.required) continue;
-      if (field.condition) {
-        const condValue = collectedData[field.condition.field];
-        if (condValue !== field.condition.equals) continue;
-      }
       if (!collectedData[field.key]) missing.push(field.key);
     }
     return missing;
@@ -300,7 +305,7 @@ ${conditionalRules ? `[CONDITIONAL FIELD RULES]\n${conditionalRules}` : ''}
       const collectedData = this.call.collectedData;
       const missingFields = this.getMissingFields(collectedData);
 
-      const apptKey   = this.config.fields.find(f => f.type === 'appointment_time')?.key;
+      const apptKey   = this.executor.getAllFields().find(f => f.type === 'appointment_time')?.key;
       const apptTime  = apptKey ? collectedData[apptKey] : null;
 
       const aptDisplayEst = apptTime
@@ -315,16 +320,18 @@ ${conditionalRules ? `[CONDITIONAL FIELD RULES]\n${conditionalRules}` : ''}
           }) + ' EST'
         : 'UNKNOWN';
 
-      const knownDataStr = this.config.fields
+      const knownDataStr = this.executor.getAllFields()
         .map(f => `${f.label}=${collectedData[f.key] ?? '?'}`)
         .join(', ');
+
+      const stepContext = this.executor.getStepContext();
 
       const systemContext = `
 [INTERNAL STATE]
 MISSING_FIELDS: ${missingFields.length > 0 ? missingFields.join(', ') : 'NONE - Ready to Schedule'}
 CURRENT_APPOINTMENT_TIME: ${aptDisplayEst}
 KNOWN_DATA: ${knownDataStr}
-
+${stepContext ? `${stepContext}\n` : ''}
 [PRIORITY DECISION LOGIC]
 1. **CHECK AVAILABILITY**: If user asks about times, set 'action': "check_availability".
 2. **BOOKING**: If MISSING_FIELDS is "NONE - Ready to Schedule" and confirmed, set 'action': "schedule_appointment".
@@ -339,17 +346,19 @@ KNOWN_DATA: ${knownDataStr}
       const stream = result.stream;
       const parser = new StreamParser();
 
-      this.call.voices.ttsStream = this.call.voices.setupGoogleTTSStream();
-
+      // ── Lazy TTS: create the stream only on the first audio token ──────────
+      let ttsReady  = false;
       let firstToken = true;
 
       for await (const chunk of stream) {
 
-        if (this.call.callingTool && (this.call.toolCalled !== null) && this.call.toolCalled.provider !== "none" && (this.call.toolCalled as any).speakBeforeAction) {
-          // Clear all the audio because we want the person to shut up during this tool call.
+        if (this.call.callingTool && this.call.toolCalled && (this.call.toolCalled as unknown as { speakBeforeAction: boolean }).speakBeforeAction) {
+          // Stop streaming — tool call is running and prefers silence.
           this.call.sendClear();
-          this.call.voices.ttsStream?.end();
-          this.call.voices.ttsStream?.destroy();
+          if (ttsReady) {
+            this.call.voices.ttsStream?.end();
+            this.call.voices.ttsStream?.destroy();
+          }
           return;
         }
 
@@ -363,12 +372,16 @@ KNOWN_DATA: ${knownDataStr}
           }
         }
 
-        
-
         const chunkText = chunk.text();
         const { newAudioText, completeObject } = parser.process(chunkText);
 
         if (newAudioText.length > 0) {
+          if (!ttsReady) {
+            // Create TTS stream lazily on the first audio token so it doesn't
+            // time out while waiting for Gemini to produce its first token.
+            this.call.voices.ttsStream = this.call.voices.setupGoogleTTSStream();
+            ttsReady = true;
+          }
           console.log(`[${this.callSid}] Streaming TTS: "${newAudioText}"`);
           this.call.voices.ttsStream!.write({ input: { text: newAudioText } });
           this.call.messageNumber += 1;
@@ -384,6 +397,14 @@ KNOWN_DATA: ${knownDataStr}
         this.call.voices.ttsStream.end();
         this.call.voices.ttsStream = null;
       }
+
+      // After a real user turn, advance the workflow and run any immediate steps
+      // (e.g. book step sets flag, hangup/transfer speak their sayBefore text).
+      if (!isSystemCall) {
+        this.executor.afterTurn(this.call.collectedData);
+        await this.executor.runImmediateSteps(this.call.collectedData);
+      }
+
     } catch (e) {
       console.error(`[${this.callSid}] Error in processLLM:`, e);
       this.call.aiTalking = false;
@@ -407,11 +428,11 @@ KNOWN_DATA: ${knownDataStr}
   };
 
   async processBrainResponse(completeObject: Record<string, unknown>): Promise<void> {
-    const parsed        = completeObject as Record<string, unknown> & {
-      extracted_data?:  Record<string, string>;
+    const parsed = completeObject as Record<string, unknown> & {
+      extracted_data?:    Record<string, string>;
       conversation_state?: string;
-      action?:          string;
-      appointmentTime?: string;
+      action?:            string;
+      appointmentTime?:   string;
     };
     let shouldUseCannedResponse = false;
     let cannedMessage           = '';
@@ -420,7 +441,7 @@ KNOWN_DATA: ${knownDataStr}
 
     // ── Extract and validate each field ──────────────────────────────────────
     if (parsed.extracted_data) {
-      for (const field of this.config.fields) {
+      for (const field of this.executor.getAllFields()) {
         const value = parsed.extracted_data[field.key];
         if (!value) continue;
 
@@ -428,7 +449,7 @@ KNOWN_DATA: ${knownDataStr}
           const { isValid, formattedTime } = this.call.tools.validateTimeSlot(value);
           if (isValid && formattedTime) {
             if (formattedTime !== collectedData[field.key]) {
-              collectedData[field.key]         = formattedTime;
+              collectedData[field.key]           = formattedTime;
               this.call.appointmentTimeValidated = false;
               this.resetStatus();
               console.log(`[${this.callSid}] 🟢 Time Extraction (new): ${formattedTime}`);
@@ -452,14 +473,14 @@ KNOWN_DATA: ${knownDataStr}
 
     // ── Compute state ─────────────────────────────────────────────────────────
     const missingFields = this.getMissingFields(collectedData);
-    const apptKey       = this.config.fields.find(f => f.type === 'appointment_time')?.key;
+    const apptKey       = this.executor.getAllFields().find(f => f.type === 'appointment_time')?.key;
     const hasApptField  = !!apptKey;
     const apptTime      = apptKey ? collectedData[apptKey] : null;
 
     // ── Hallucination guard ───────────────────────────────────────────────────
     if (parsed.conversation_state === 'confirming_details') {
       if (missingFields.length > 0) {
-        const missingFieldDef = this.config.fields.find(f => f.key === missingFields[0]);
+        const missingFieldDef = this.executor.getAllFields().find(f => f.key === missingFields[0]);
         console.log(`[${this.callSid}] 🛑 HALLUCINATION GUARD: Missing ${missingFields.join(', ')}`);
         shouldUseCannedResponse = true;
         cannedMessage           = `I apologize, I missed ${missingFieldDef?.label ?? missingFields[0]}. Could you please repeat it?`;
@@ -468,8 +489,14 @@ KNOWN_DATA: ${knownDataStr}
       }
     }
 
-    // ── Drive toward confirmation ─────────────────────────────────────────────
+    // ── Drive toward confirmation (only when workflow has reached book step) ──
     if (missingFields.length === 0 && this.call.confirmationStatus !== 'PENDING_USER_APPROVAL') {
+      if (!this.call.workflowReadyToBook) {
+        // Workflow hasn't reached the book step yet — let the LLM respond normally.
+        await this.call.processResponse(JSON.stringify(parsed));
+        return;
+      }
+
       if (hasApptField && this.call.availableSlots.length === 0) {
         console.log(`[${this.callSid}] All fields present but no slots loaded. Forcing check_availability.`);
         parsed.action = 'check_availability';
@@ -483,30 +510,19 @@ KNOWN_DATA: ${knownDataStr}
           ? this.parsingAppointmentTimeToReadableFormat(apptTime)
           : 'UNKNOWN';
 
-
-        const spellOutFunction = (value: string) : string => {
-          let newString = "";
-
-          for (let i=0; i<value.length; i++) {
-
-            newString += value[i]
-
-            if (i-1 !== value.length) {
-              newString += " ";
-            }
+        const spellOutFunction = (value: string): string => {
+          let newString = '';
+          for (let i = 0; i < value.length; i++) {
+            newString += value[i];
+            if (i - 1 !== value.length) newString += ' ';
           }
-
           return newString;
+        };
 
-
-        }
-
-        const fieldSummaries = this.config.fields
+        // Summarise only the active (branch-resolved) non-appointment fields.
+        const activeFields = this.executor.getActiveFields(collectedData);
+        const fieldSummaries = activeFields
           .filter(f => f.type !== 'appointment_time' && (f.required || collectedData[f.key]))
-          .filter(f => {
-            if (f.condition) return collectedData[f.condition.field] === f.condition.equals;
-            return true;
-          })
           .map(f => `${f.label}: ${f.spellOut ? spellOutFunction(collectedData[f.key] ?? 'UNKNOWN') : collectedData[f.key] ?? 'UNKNOWN'}`)
           .join(', ');
 

@@ -1,7 +1,7 @@
 import { fromZonedTime } from 'date-fns-tz';
 import { getAvailability, scheduleAppointment } from './Calendly';
 import type { Call } from './Call';
-import type { CalendlyBookingConfig, CalendlySchedulePayload } from './types/index';
+import type { CalendlySchedulePayload } from './types/index';
 
 export class ToolCall {
   private call:    Call;
@@ -44,7 +44,7 @@ export class ToolCall {
 
       // Fuzzy fallback: Z-suffix UTC strings only (handles minor formatting differences).
       if (inputTime && inputTime.endsWith('Z')) {
-        const inputTs   = new Date(inputTime).getTime();
+        const inputTs    = new Date(inputTime).getTime();
         const fuzzyMatch = this.call.availableSlots.find(
           slot => Math.abs(new Date(slot).getTime() - inputTs) < 60000,
         );
@@ -67,12 +67,11 @@ export class ToolCall {
     try {
       const booking = this.call.config.booking;
 
-      if (booking.provider === 'none') {
+      if (!booking) {
         return 'STATUS: SUCCESS. No external booking needed.';
       }
 
-      const calendlyBooking = booking as CalendlyBookingConfig;
-      const apptKey         = this.call.config.fields.find(f => f.type === 'appointment_time')?.key;
+      const apptKey         = this.call.executor.getAllFields().find(f => f.type === 'appointment_time')?.key;
       const appointmentTime = apptKey ? collectedData[apptKey] : null;
 
       if (!appointmentTime) {
@@ -81,9 +80,9 @@ export class ToolCall {
 
       console.log(`[${this.callSid}] Sending UTC time to Calendly: ${appointmentTime}`);
 
-      const emailKey = calendlyBooking.inviteeFieldMapping.email;
-      const nameKey  = calendlyBooking.inviteeFieldMapping.name;
-      const phoneKey = calendlyBooking.inviteeFieldMapping.phone;
+      const emailKey = booking.inviteeFieldMapping.email;
+      const nameKey  = booking.inviteeFieldMapping.name;
+      const phoneKey = booking.inviteeFieldMapping.phone;
 
       const email = collectedData[emailKey] ?? '';
       const name  = collectedData[nameKey]  ?? '';
@@ -91,7 +90,7 @@ export class ToolCall {
         ? (collectedData[phoneKey] ?? this.call.phoneNumber ?? '000-000-0000')
         : (this.call.phoneNumber ?? '000-000-0000');
 
-      const questionsAndAnswers = calendlyBooking.questionMapping.map(q => ({
+      const questionsAndAnswers = booking.questionMapping.map(q => ({
         question: q.question,
         answer:   q.fieldKey ? (collectedData[q.fieldKey] ?? q.default ?? 'N/A') : (q.default ?? 'N/A'),
         position: q.position,
@@ -128,8 +127,8 @@ export class ToolCall {
   async getAvailability(): Promise<string[]> {
     try {
       const booking = this.call.config.booking;
-      if (booking.provider !== 'calendly') {
-        console.log(`[${this.callSid}] No calendly booking configured — no slots to fetch.`);
+      if (!booking) {
+        console.log(`[${this.callSid}] No booking configured — no slots to fetch.`);
         return [];
       }
 

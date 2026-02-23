@@ -18,19 +18,34 @@ export interface FieldDefinition {
   enumValues?:       string[];
   enumDescriptions?: Record<string, string>;
   validations?:      ValidationRule[];
-  spellOut: boolean;
+  spellOut:          boolean;
   required:          boolean;
-  condition?: {
-    field:  string;
-    equals: string;
-  };
 }
+
+// ─── Workflow Types ───────────────────────────────────────────────────────────
+
+export type WorkflowCondition =
+  | { field: string; equals: string }
+  | { field: string; notEquals: string }
+  | { field: string; in: string[] };
+
+export type SayStep      = { type: 'say';      text: string };
+export type CollectStep  = { type: 'collect';  field: FieldDefinition };
+export type LLMStep      = { type: 'llm';      systemPrompt: string };
+export type BranchStep   = { type: 'branch';   condition: WorkflowCondition; then: WorkflowStep[]; else?: WorkflowStep[] };
+export type BookStep     = { type: 'book' };
+export type TransferStep = { type: 'transfer'; number?: string; sayBefore?: string };
+export type HangupStep   = { type: 'hangup';   sayBefore?: string };
+
+export type WorkflowStep =
+  | SayStep | CollectStep | LLMStep | BranchStep
+  | BookStep | TransferStep | HangupStep;
 
 // ─── Booking Config ───────────────────────────────────────────────────────────
 
 export interface CalendlyBookingConfig {
-  provider:     'calendly';
-  eventName:    string;
+  provider:          'calendly';
+  eventName:         string;
   speakBeforeAction: boolean;
   inviteeFieldMapping: {
     email:  string;
@@ -44,10 +59,6 @@ export interface CalendlyBookingConfig {
     default?: string;
   }>;
 }
-
-export interface NoBookingConfig { provider: 'none'; }
-
-export type BookingConfig = CalendlyBookingConfig | NoBookingConfig;
 
 // ─── Agent Config ─────────────────────────────────────────────────────────────
 
@@ -65,18 +76,17 @@ export interface AgentConfig {
 
   // Call behavior
   transferNumber: string;
-  greeting?:      string;
   timezone?:      string;
 
   // AI / voice
   geminiModel?: string;
   ttsVoice?:    string;
 
-  // Data collection schema
-  fields: FieldDefinition[];
+  // Workflow
+  workflow: WorkflowStep[];
 
-  // Booking
-  booking: BookingConfig;
+  // Booking (optional — omit if no external booking needed)
+  booking?: CalendlyBookingConfig;
 }
 
 // ─── Calendly payload (internal) ─────────────────────────────────────────────
@@ -93,13 +103,61 @@ export interface CalendlySchedulePayload {
   }>;
 }
 
-export interface ToolConfig { 
-  provider: string;
+export interface ToolConfig {
+  provider:          string;
   speakBeforeAction: boolean;
-
 }
 
 // ─── Example Configs ─────────────────────────────────────────────────────────
+
+// ── Quattro Autobody field definitions ────────────────────────────────────────
+
+const customerName: FieldDefinition = {
+  key:         'customerName',
+  label:       'your name',
+  description: "The customer's proper name (first, last, or both). NEVER extract pronouns, generic words, or phrases like 'myself', 'me', 'I', 'us', 'the customer'. If the user has not clearly stated their name, omit this field and ask.",
+  type:        'text',
+  required:    true,
+  spellOut:    false,
+};
+
+const vehicleModel: FieldDefinition = {
+  key:         'vehicleModel',
+  label:       'your vehicle year, make, and model',
+  description: 'The vehicle year/make/model.',
+  type:        'text',
+  required:    true,
+  spellOut:    false,
+};
+
+const customerEmail: FieldDefinition = {
+  key:         'customerEmail',
+  label:       'your email address',
+  description: "The customer's email. RECONSTRUCT spoken emails: 'john dot doe at gmail' -> 'john.doe@gmail.com'.",
+  type:        'text',
+  required:    true,
+  validations: [{ type: 'email', message: 'Must be a valid email address' }],
+  spellOut:    true,
+};
+
+const paymentMethodAutobody: FieldDefinition = {
+  key:         'paymentMethod',
+  label:       'your payment method',
+  description: "Payment method. STRICT MAPPING: If 'cash', 'credit', 'debit', 'myself', 'private' -> use 'out-of-pocket'. If 'State Farm', 'Geico', 'claim', 'deductible', or anything that sounds like insurance -> use 'insurance'. If the user is confused, give them the option of insurance or paying out of pocket.",
+  type:        'enum',
+  enumValues:  ['insurance', 'out-of-pocket'],
+  required:    true,
+  spellOut:    false,
+};
+
+const appointmentTimeField: FieldDefinition = {
+  key:         'appointmentTime',
+  label:       'appointment time',
+  description: "The exact UTC ISO string from the bracketed portion of the available slots list — copy it character-for-character (e.g. '2026-02-22T18:00:00.000Z'). ONLY include when the user has explicitly chosen a specific slot from the list this turn. Do NOT generate, retype, or infer a time — copy the bracket string exactly.",
+  type:        'appointment_time',
+  required:    true,
+  spellOut:    false,
+};
 
 export const QUATTRO_AUTOBODY_CONFIG: AgentConfig = {
   agentName:           'John',
@@ -116,69 +174,80 @@ export const QUATTRO_AUTOBODY_CONFIG: AgentConfig = {
   geminiModel:         'gemini-2.5-flash-lite',
   ttsVoice:            'en-US-Chirp3-HD-Puck',
 
-  fields: [
-    {
-      key:         'customerName',
-      label:       'your name',
-      description: "The customer's proper name (first, last, or both). NEVER extract pronouns, generic words, or phrases like 'myself', 'me', 'I', 'us', 'the customer'. If the user has not clearly stated their name, omit this field and ask.",
-      type:        'text',
-      required:    true,
-      spellOut: false,
-    },
-    {
-      key:         'vehicleModel',
-      label:       'your vehicle year, make, and model',
-      description: 'The vehicle year/make/model.',
-      type:        'text',
-      required:    true,
-      spellOut: false,
-    },
-    {
-      key:         'customerEmail',
-      label:       'your email address',
-      description: "The customer's email. RECONSTRUCT spoken emails: 'john dot doe at gmail' -> 'john.doe@gmail.com'.",
-      type:        'text',
-      required:    true,
-      validations: [{ type: 'email', message: 'Must be a valid email address' }],
-      spellOut: true,
-    },
-    {
-      key:         'paymentMethod',
-      label:       'your payment method',
-      description: "Payment method. STRICT MAPPING: If 'cash', 'credit', 'debit', 'myself', 'private' -> use 'out-of-pocket'. If 'State Farm', 'Geico', 'claim', 'deductible', or anything that sounds like insurance -> use 'insurance'. If the user is confused, give them the option of insurance or paying out of pocket.",
-      type:        'enum',
-      enumValues:  ['insurance', 'out-of-pocket'],
-      required:    true,
-      spellOut: true,
-    },
-    {
-      key:         'appointmentTime',
-      label:       'appointment time',
-      description: "The exact UTC ISO string from the bracketed portion of the available slots list — copy it character-for-character (e.g. '2026-02-22T18:00:00.000Z'). ONLY include when the user has explicitly chosen a specific slot from the list this turn. Do NOT generate, retype, or infer a time — copy the bracket string exactly.",
-      type:        'appointment_time',
-      required:    true,
-      spellOut: false,
-    },
+  workflow: [
+    { type: 'say', text: 'Hi, this is John at Snip Homes Autobody! How can I help you today?' },
+    { type: 'collect', field: customerName },
+    { type: 'collect', field: vehicleModel },
+    { type: 'collect', field: customerEmail },
+    { type: 'collect', field: paymentMethodAutobody },
+    { type: 'collect', field: appointmentTimeField },
+    { type: 'book' },
+    { type: 'hangup', sayBefore: 'Perfect! Your estimate appointment is all set. We look forward to seeing you!' },
   ],
 
-
-  
   booking: {
-
-    // Do you want the tool to shut up as it is happening yes or no?
     speakBeforeAction: false,
-    provider:  'calendly',
-    eventName: 'Quattro Autobody',
+    provider:          'calendly',
+    eventName:         'Quattro Autobody',
     inviteeFieldMapping: {
       email: 'customerEmail',
       name:  'customerName',
     },
     questionMapping: [
-      { question: 'Model',           fieldKey: 'vehicleModel',   position: 0 },
-      { question: 'Make',            fieldKey: 'vehicleModel',   position: 1, default: 'N/A' },
-      { question: 'Insurance Claim', fieldKey: 'paymentMethod',  position: 2 },
+      { question: 'Model',           fieldKey: 'vehicleModel',  position: 0 },
+      { question: 'Make',            fieldKey: 'vehicleModel',  position: 1, default: 'N/A' },
+      { question: 'Insurance Claim', fieldKey: 'paymentMethod', position: 2 },
     ],
   },
+};
+
+// ── Dental Clinic field definitions ───────────────────────────────────────────
+
+const patientName: FieldDefinition = {
+  key:         'patientName',
+  label:       'your name',
+  description: "The patient's full name.",
+  type:        'text',
+  required:    true,
+  spellOut:    false,
+};
+
+const patientEmail: FieldDefinition = {
+  key:         'patientEmail',
+  label:       'your email address',
+  description: "The patient's email address.",
+  type:        'text',
+  required:    true,
+  validations: [{ type: 'email', message: 'Must be a valid email address' }],
+  spellOut:    true,
+};
+
+const paymentMethodDental: FieldDefinition = {
+  key:         'paymentMethod',
+  label:       'your payment method',
+  description: "Payment method: 'insurance' or 'out-of-pocket'. If the patient mentions a dental insurance plan, use 'insurance'. Otherwise use 'out-of-pocket'.",
+  type:        'enum',
+  enumValues:  ['insurance', 'out-of-pocket'],
+  required:    true,
+  spellOut:    false,
+};
+
+const insuranceProvider: FieldDefinition = {
+  key:         'insuranceProvider',
+  label:       'your insurance provider',
+  description: "The name of the patient's dental insurance provider (e.g. Delta Dental, Cigna). Only collect if paymentMethod is 'insurance'.",
+  type:        'text',
+  required:    false,
+  spellOut:    false,
+};
+
+const dentalAppointmentTime: FieldDefinition = {
+  key:         'appointmentTime',
+  label:       'appointment time',
+  description: "The exact UTC ISO string from the bracketed portion of the available slots list — copy it character-for-character. ONLY include when the user has explicitly chosen a specific slot this turn.",
+  type:        'appointment_time',
+  required:    true,
+  spellOut:    false,
 };
 
 export const DENTAL_CLINIC_CONFIG: AgentConfig = {
@@ -192,51 +261,16 @@ export const DENTAL_CLINIC_CONFIG: AgentConfig = {
   transferNumber:      '301-555-0100',
   timezone:            'America/New_York',
 
-  fields: [
-    {
-      key:         'patientName',
-      label:       'your name',
-      description: "The patient's full name.",
-      type:        'text',
-      required:    true,
-      spellOut: false,
-    },
-    {
-      key:         'patientEmail',
-      label:       'your email address',
-      description: "The patient's email address.",
-      type:        'text',
-      required:    true,
-      validations: [{ type: 'email', message: 'Must be a valid email address' }],
-      spellOut: true,
-    },
-    {
-      key:         'paymentMethod',
-      label:       'your payment method',
-      description: "Payment method: 'insurance' or 'out-of-pocket'. If the patient mentions a dental insurance plan, use 'insurance'. Otherwise use 'out-of-pocket'.",
-      type:        'enum',
-      enumValues:  ['insurance', 'out-of-pocket'],
-      required:    true,
-      spellOut: false,
-    },
-    {
-      key:         'insuranceProvider',
-      label:       'your insurance provider',
-      description: "The name of the patient's dental insurance provider (e.g. Delta Dental, Cigna). Only collect if paymentMethod is 'insurance'.",
-      type:        'text',
-      required:    false,
-      condition:   { field: 'paymentMethod', equals: 'insurance' },
-      spellOut: false,
-    },
-    {
-      key:         'appointmentTime',
-      label:       'appointment time',
-      description: "The exact UTC ISO string from the bracketed portion of the available slots list — copy it character-for-character. ONLY include when the user has explicitly chosen a specific slot this turn.",
-      type:        'appointment_time',
-      required:    true,
-      spellOut: false,
-    },
+  workflow: [
+    { type: 'say', text: 'Hi, this is Maya at Bright Smile Dental! How can I help you today?' },
+    { type: 'collect', field: patientName },
+    { type: 'collect', field: patientEmail },
+    { type: 'collect', field: paymentMethodDental },
+    { type: 'branch', condition: { field: 'paymentMethod', equals: 'insurance' }, then: [
+      { type: 'collect', field: insuranceProvider },
+    ]},
+    { type: 'collect', field: dentalAppointmentTime },
+    { type: 'book' },
+    { type: 'hangup' },
   ],
-
-  booking: { provider: 'none' },
 };

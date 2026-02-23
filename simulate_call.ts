@@ -241,7 +241,7 @@ async function runASingleTest(test: typeof testCases[number]): Promise<TestResul
 
         // Build variables summary from collectedData
         const allVariables: Record<string, string | undefined> = {};
-        for (const field of QUATTRO_AUTOBODY_CONFIG.fields) {
+        for (const field of call.executor.getAllFields()) {
             allVariables[field.key] = call.collectedData[field.key];
         }
 
