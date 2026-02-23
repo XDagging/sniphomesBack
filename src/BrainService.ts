@@ -346,8 +346,20 @@ ${stepContext ? `${stepContext}\n` : ''}
       const stream = result.stream;
       const parser = new StreamParser();
 
-      // ── Lazy TTS: create the stream only on the first audio token ──────────
-      let ttsReady  = false;
+      // ── Audio buffering vs. streaming ─────────────────────────────────────
+      // When we're in confirmation-pending state (workflowReadyToBook +
+      // PENDING_USER_APPROVAL), the next user turn will almost certainly trigger
+      // schedule_appointment. We buffer audio text instead of streaming it to TTS
+      // so we can discard it if a tool call fires — preventing the LLM's "Great,
+      // booking now!" from playing over the booking process.
+      // For all other turns we stream normally (lazy TTS, minimal latency).
+      const mightSchedule =
+        !isSystemCall &&
+        this.call.workflowReadyToBook &&
+        this.call.confirmationStatus === 'PENDING_USER_APPROVAL';
+
+      const audioBuffer: string[] = [];
+      let ttsReady   = false;
       let firstToken = true;
 
       for await (const chunk of stream) {
@@ -376,19 +388,44 @@ ${stepContext ? `${stepContext}\n` : ''}
         const { newAudioText, completeObject } = parser.process(chunkText);
 
         if (newAudioText.length > 0) {
-          if (!ttsReady) {
-            // Create TTS stream lazily on the first audio token so it doesn't
-            // time out while waiting for Gemini to produce its first token.
-            this.call.voices.ttsStream = this.call.voices.setupGoogleTTSStream();
-            ttsReady = true;
+          if (mightSchedule) {
+            // Hold audio until we know the action after seeing the complete object.
+            audioBuffer.push(newAudioText);
+          } else {
+            if (!ttsReady) {
+              // Create TTS stream lazily on the first audio token so it doesn't
+              // time out while waiting for Gemini to produce its first token.
+              this.call.voices.ttsStream = this.call.voices.setupGoogleTTSStream();
+              ttsReady = true;
+            }
+            console.log(`[${this.callSid}] Streaming TTS: "${newAudioText}"`);
+            this.call.voices.ttsStream!.write({ input: { text: newAudioText } });
+            this.call.messageNumber += 1;
           }
-          console.log(`[${this.callSid}] Streaming TTS: "${newAudioText}"`);
-          this.call.voices.ttsStream!.write({ input: { text: newAudioText } });
-          this.call.messageNumber += 1;
         }
 
         if (completeObject) {
           await this.processBrainResponse(completeObject, isSystemCall);
+
+          // Flush or discard the audio buffer now that we know the action.
+          if (mightSchedule && audioBuffer.length > 0) {
+            // Discard if: a tool call was triggered (callingTool), OR a canned
+            // response already set up its own TTS stream.
+            const shouldDiscard =
+              this.call.callingTool || this.call.voices.ttsStream !== null;
+
+            if (!shouldDiscard) {
+              this.call.voices.ttsStream = this.call.voices.setupGoogleTTSStream();
+              ttsReady = true;
+              for (const text of audioBuffer) {
+                console.log(`[${this.callSid}] Flushing buffered TTS: "${text}"`);
+                this.call.voices.ttsStream!.write({ input: { text } });
+                this.call.messageNumber += 1;
+              }
+            } else {
+              console.log(`[${this.callSid}] Audio buffer discarded (tool call or canned response).`);
+            }
+          }
         }
       }
 

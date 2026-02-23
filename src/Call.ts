@@ -341,6 +341,8 @@ export class Call {
             this.voices.ttsStream?.end();
             this.voices.ttsStream?.destroy();
 
+            
+
             this.toolCalled = this.config.booking ?? null;
             this.callingTool = true;
             const result = await this.tools.handleAppointment(
