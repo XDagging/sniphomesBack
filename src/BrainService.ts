@@ -446,6 +446,9 @@ ${stepContext ? `${stepContext}\n` : ''}
         if (!value) continue;
 
         if (field.type === 'appointment_time') {
+          
+
+
           const { isValid, formattedTime } = this.call.tools.validateTimeSlot(value);
           if (isValid && formattedTime) {
             if (formattedTime !== collectedData[field.key]) {
@@ -471,6 +474,8 @@ ${stepContext ? `${stepContext}\n` : ''}
       }
     }
 
+
+
     // ── Compute state ─────────────────────────────────────────────────────────
     const missingFields = this.getMissingFields(collectedData);
     const apptKey       = this.executor.getAllFields().find(f => f.type === 'appointment_time')?.key;
@@ -483,7 +488,7 @@ ${stepContext ? `${stepContext}\n` : ''}
         const missingFieldDef = this.executor.getAllFields().find(f => f.key === missingFields[0]);
         console.log(`[${this.callSid}] 🛑 HALLUCINATION GUARD: Missing ${missingFields.join(', ')}`);
         shouldUseCannedResponse = true;
-        cannedMessage           = `I apologize, I missed ${missingFieldDef?.label ?? missingFields[0]}. Could you please repeat it?`;
+        cannedMessage           = `I apologize, I missed your ${missingFieldDef?.label ?? missingFields[0]}. Could you please repeat it?`;
       } else {
         this.call.logAllMeaningfulStats();
       }
@@ -549,6 +554,13 @@ ${stepContext ? `${stepContext}\n` : ''}
       cannedStream.end();
 
       await this.updateAgentWithoutTriggeringResponse(cannedMessage);
+      
+      // Lets make an appointment special here, we can fix this later
+
+      if (parsed.action === "check_availability") {
+        await this.call.processResponse(JSON.stringify(parsed));
+      }
+
       return;
     }
 
