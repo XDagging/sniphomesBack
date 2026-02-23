@@ -414,7 +414,7 @@ wss.on("connection", function (ws) {
 
                     if (!dynamicCalls[callSid]) {
                         // Inbound call — use QUATTRO_AUTOBODY_CONFIG
-                        const newCallInstance = await Call.create(callSid, phoneNum, DENTAL_CLINIC_CONFIG);
+                        const newCallInstance = await Call.create(callSid, phoneNum, QUATTRO_AUTOBODY_CONFIG);
                         dynamicCalls[callSid] = newCallInstance;
                         newCallInstance.setWebsocket(ws, streamId);
                         ws.removeListener("message", startListener);

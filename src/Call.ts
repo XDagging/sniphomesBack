@@ -252,6 +252,7 @@ export class Call {
 
           console.log("Booking doesn't work here.");
           fedToTwilio.action = "respond";
+          await this.processLLM("System: Give anytime is available between company hours of " + this.config.businessHours)
           // This means it doesn't exist
 
           // Lets just make the readable slots times of the next hour or so
