@@ -186,7 +186,52 @@ export class Call {
         return;
       }
 
-      if (fedToTwilio.action === 'check_availability') {
+    
+      if (fedToTwilio.action === 'check_if_time_is_valid') {
+        if (this.availableSlots.length === 0) {
+          fedToTwilio.action = "check_availability"
+
+          // continue, since we cant do that right now.
+          // We need to fetch some of our shit.
+          // We can proceed
+        } else {
+           const apptKey = this.config.fields.find(f => f.type === 'appointment_time')?.key;
+        const timeToCheck = fedToTwilio.appointmentTime ?? (apptKey ? this.collectedData[apptKey] : undefined);
+
+        
+
+        
+        if (this.voices.ttsStream && !this.voices.ttsStream.destroyed) {
+          this.voices.ttsStream.destroy();
+          this.voices.ttsStream = null;
+        }
+        this.sendClear();
+
+        
+        
+        const cannedStream = this.voices.setupGoogleTTSStream();
+        cannedStream.write({ input: { text: 'Let me see if that time is open for you.' } });
+        cannedStream.end();
+// We need to fetch from the calendar if we dont know
+        if (timeToCheck) {
+          const { isValid, formattedTime } = this.tools.validateTimeSlot(timeToCheck);
+          if (isValid && formattedTime) {
+            if (apptKey) this.collectedData[apptKey] = formattedTime;
+            this.appointmentTimeValidated = true;
+            await this.processLLM('System: The requested time IS available. Proceed to confirmation.');
+          } else {
+            await this.processLLM('System: The requested time is NOT available. Offer alternatives.');
+          }
+        } else {
+          await this.processLLM('System: No appointment time found. Ask the user for a time.');
+        }
+        return;
+          
+        }
+       
+      }
+
+        if (fedToTwilio.action === 'check_availability') {
         this.currentlyCheckingAvailability = true;
 
         if (this.voices.ttsStream && !this.voices.ttsStream.destroyed) {
@@ -226,36 +271,8 @@ export class Call {
         return;
       }
 
-      if (fedToTwilio.action === 'check_if_time_is_valid') {
-        const apptKey = this.config.fields.find(f => f.type === 'appointment_time')?.key;
-        const timeToCheck = fedToTwilio.appointmentTime ?? (apptKey ? this.collectedData[apptKey] : undefined);
 
-        if (this.voices.ttsStream && !this.voices.ttsStream.destroyed) {
-          this.voices.ttsStream.destroy();
-          this.voices.ttsStream = null;
-        }
-        this.sendClear();
-
-        const cannedStream = this.voices.setupGoogleTTSStream();
-        cannedStream.write({ input: { text: 'Let me see if that time is open for you.' } });
-        cannedStream.end();
-
-        if (timeToCheck) {
-          const { isValid, formattedTime } = this.tools.validateTimeSlot(timeToCheck);
-          if (isValid && formattedTime) {
-            if (apptKey) this.collectedData[apptKey] = formattedTime;
-            this.appointmentTimeValidated = true;
-            await this.processLLM('System: The requested time IS available. Proceed to confirmation.');
-          } else {
-            await this.processLLM('System: The requested time is NOT available. Offer alternatives.');
-          }
-        } else {
-          await this.processLLM('System: No appointment time found. Ask the user for a time.');
-        }
-        return;
-      }
-
-      if (fedToTwilio.action === 'schedule_appointment') {
+        if (fedToTwilio.action === 'schedule_appointment') {
 
 
         const missingFields = this.brain.getMissingFields(this.collectedData);
