@@ -143,6 +143,35 @@ export class WorkflowExecutor {
     }
   }
 
+  // Advance state through branch/book steps without firing any TTS.
+  // Called inside processBrainResponse (after field extraction) so that
+  // workflowReadyToBook is set on the same turn the last field is collected,
+  // before the drive-toward-confirmation check runs.
+  advanceStateOnly(data: Record<string, string>): void {
+    while (true) {
+      const step = this.getCurrentStep();
+      if (!step) return;
+      switch (step.type) {
+        case 'branch': {
+          const branchSteps = evaluateCondition(step.condition, data) ? step.then : (step.else ?? []);
+          this.advance();
+          if (branchSteps.length > 0) this.enterBranch(branchSteps);
+          break; // continue loop
+        }
+        case 'book': {
+          if (this.call.hasScheduledAppointment) {
+            this.advance();
+            break; // continue — may reach hangup/transfer
+          }
+          this.call.workflowReadyToBook = true;
+          return;
+        }
+        default:
+          return; // stop at say/collect/llm/transfer/hangup
+      }
+    }
+  }
+
   // ── Immediate step execution ──────────────────────────────────────────────────
 
   // Process say/branch/book/transfer/hangup steps synchronously until hitting

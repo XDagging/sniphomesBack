@@ -388,7 +388,7 @@ ${stepContext ? `${stepContext}\n` : ''}
         }
 
         if (completeObject) {
-          await this.processBrainResponse(completeObject);
+          await this.processBrainResponse(completeObject, isSystemCall);
         }
       }
 
@@ -398,10 +398,10 @@ ${stepContext ? `${stepContext}\n` : ''}
         this.call.voices.ttsStream = null;
       }
 
-      // After a real user turn, advance the workflow and run any immediate steps
-      // (e.g. book step sets flag, hangup/transfer speak their sayBefore text).
+      // After a real user turn, run any remaining immediate steps
+      // (e.g. after booking completes, advance past book to hangup/transfer).
+      // afterTurn was already called inside processBrainResponse.
       if (!isSystemCall) {
-        this.executor.afterTurn(this.call.collectedData);
         await this.executor.runImmediateSteps(this.call.collectedData);
       }
 
@@ -427,7 +427,7 @@ ${stepContext ? `${stepContext}\n` : ''}
     }
   };
 
-  async processBrainResponse(completeObject: Record<string, unknown>): Promise<void> {
+  async processBrainResponse(completeObject: Record<string, unknown>, isSystemCall = false): Promise<void> {
     const parsed = completeObject as Record<string, unknown> & {
       extracted_data?:    Record<string, string>;
       conversation_state?: string;
@@ -452,7 +452,7 @@ ${stepContext ? `${stepContext}\n` : ''}
           const { isValid, formattedTime } = this.call.tools.validateTimeSlot(value);
           if (isValid && formattedTime) {
             if (formattedTime !== collectedData[field.key]) {
-              collectedData[field.key]           = formattedTime;
+              collectedData[field.key] = formattedTime;
               // this.call.appointmentTimeValidated = false;
               this.resetStatus();
               console.log(`[${this.callSid}] 🟢 Time Extraction (new): ${formattedTime}`);
@@ -474,7 +474,14 @@ ${stepContext ? `${stepContext}\n` : ''}
       }
     }
 
-
+    // ── Advance workflow state eagerly (before confirmation check) ────────────
+    // This ensures workflowReadyToBook is set on the same turn the last field
+    // is collected, so the canned confirmation fires immediately rather than
+    // letting the LLM's own response play first.
+    if (!isSystemCall) {
+      this.executor.afterTurn(collectedData);
+      this.executor.advanceStateOnly(collectedData);
+    }
 
     // ── Compute state ─────────────────────────────────────────────────────────
     const missingFields = this.getMissingFields(collectedData);
