@@ -214,7 +214,7 @@ export class Call {
         const systemMessage =
           `System Update: Available appointment slots. Present the user ONLY the EST time shown before each bracket. ` +
           `When the user selects a slot, copy the bracketed UTC string EXACTLY (unchanged) into appointmentTime — ` +
-          `do NOT retype or modify it. Only offer times from this list:\n${readableSlots.join('\n')}`;
+          `do NOT retype or modify it. At max, offer three items at a time. DO NOT just list all of the times. Only offer times from this list:\n${readableSlots.join('\n')}`;
 
         this.currentlyCheckingAvailability = false;
         await this.processLLM(systemMessage);
