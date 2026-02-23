@@ -18,6 +18,7 @@ export interface FieldDefinition {
   enumValues?:       string[];
   enumDescriptions?: Record<string, string>;
   validations?:      ValidationRule[];
+  spellOut: boolean;
   required:          boolean;
   condition?: {
     field:  string;
@@ -94,8 +95,8 @@ export interface CalendlySchedulePayload {
 // ─── Example Configs ─────────────────────────────────────────────────────────
 
 export const QUATTRO_AUTOBODY_CONFIG: AgentConfig = {
-  agentName:           'Carlos',
-  businessName:        'Quattro Autobody',
+  agentName:           'John',
+  businessName:        'Snip Homes Autobody',
   businessDescription: 'Book estimates for collision repair',
   businessLocation:    '4907 Elm St, Bethesda, MD 20814',
   businessHours:       '8am-4pm, M-F',
@@ -115,6 +116,7 @@ export const QUATTRO_AUTOBODY_CONFIG: AgentConfig = {
       description: "The customer's proper name (first, last, or both). NEVER extract pronouns, generic words, or phrases like 'myself', 'me', 'I', 'us', 'the customer'. If the user has not clearly stated their name, omit this field and ask.",
       type:        'text',
       required:    true,
+      spellOut: false,
     },
     {
       key:         'vehicleModel',
@@ -122,6 +124,7 @@ export const QUATTRO_AUTOBODY_CONFIG: AgentConfig = {
       description: 'The vehicle year/make/model.',
       type:        'text',
       required:    true,
+      spellOut: false,
     },
     {
       key:         'customerEmail',
@@ -130,6 +133,7 @@ export const QUATTRO_AUTOBODY_CONFIG: AgentConfig = {
       type:        'text',
       required:    true,
       validations: [{ type: 'email', message: 'Must be a valid email address' }],
+      spellOut: true,
     },
     {
       key:         'paymentMethod',
@@ -138,6 +142,7 @@ export const QUATTRO_AUTOBODY_CONFIG: AgentConfig = {
       type:        'enum',
       enumValues:  ['insurance', 'out-of-pocket'],
       required:    true,
+      spellOut: true,
     },
     {
       key:         'appointmentTime',
@@ -145,6 +150,7 @@ export const QUATTRO_AUTOBODY_CONFIG: AgentConfig = {
       description: "The exact UTC ISO string from the bracketed portion of the available slots list — copy it character-for-character (e.g. '2026-02-22T18:00:00.000Z'). ONLY include when the user has explicitly chosen a specific slot from the list this turn. Do NOT generate, retype, or infer a time — copy the bracket string exactly.",
       type:        'appointment_time',
       required:    true,
+      spellOut: false,
     },
   ],
 
@@ -181,6 +187,7 @@ export const DENTAL_CLINIC_CONFIG: AgentConfig = {
       description: "The patient's full name.",
       type:        'text',
       required:    true,
+      spellOut: false,
     },
     {
       key:         'patientEmail',
@@ -189,6 +196,7 @@ export const DENTAL_CLINIC_CONFIG: AgentConfig = {
       type:        'text',
       required:    true,
       validations: [{ type: 'email', message: 'Must be a valid email address' }],
+      spellOut: true,
     },
     {
       key:         'paymentMethod',
@@ -197,6 +205,7 @@ export const DENTAL_CLINIC_CONFIG: AgentConfig = {
       type:        'enum',
       enumValues:  ['insurance', 'out-of-pocket'],
       required:    true,
+      spellOut: false,
     },
     {
       key:         'insuranceProvider',
@@ -205,6 +214,7 @@ export const DENTAL_CLINIC_CONFIG: AgentConfig = {
       type:        'text',
       required:    false,
       condition:   { field: 'paymentMethod', equals: 'insurance' },
+      spellOut: false,
     },
     {
       key:         'appointmentTime',
@@ -212,6 +222,7 @@ export const DENTAL_CLINIC_CONFIG: AgentConfig = {
       description: "The exact UTC ISO string from the bracketed portion of the available slots list — copy it character-for-character. ONLY include when the user has explicitly chosen a specific slot this turn.",
       type:        'appointment_time',
       required:    true,
+      spellOut: false,
     },
   ],
 

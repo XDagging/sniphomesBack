@@ -222,7 +222,7 @@ export class Call {
       }
 
       if (fedToTwilio.action === 'check_if_time_is_valid') {
-        const apptKey    = this.config.fields.find(f => f.type === 'appointment_time')?.key;
+        const apptKey = this.config.fields.find(f => f.type === 'appointment_time')?.key;
         const timeToCheck = fedToTwilio.appointmentTime ?? (apptKey ? this.collectedData[apptKey] : undefined);
 
         if (this.voices.ttsStream && !this.voices.ttsStream.destroyed) {
@@ -252,12 +252,16 @@ export class Call {
 
       if (fedToTwilio.action === 'schedule_appointment') {
         const missingFields = this.brain.getMissingFields(this.collectedData);
-        if (missingFields.length === 0 && this.confirmationStatus !== 'NOT_READY') {
+        if (missingFields.length === 0 && this.confirmationStatus !== 'NOT_READY' && !this.hasScheduledAppointment) {
           const result = await this.tools.handleAppointment(this.collectedData);
           console.log('Scheduling appointment now');
           await this.processLLM(`System Update: Appointment result: ${result}`);
           return;
-        } else {
+        } else if (this.confirmationStatus !== "NOT_READY" && this.hasScheduledAppointment && missingFields.length === 0) {
+          // The user has already scheduled their appointment
+          await this.processLLM(`System Update: The user has already booked an appointment. That can no longer book anymore appointments during this call.`)
+          return;
+        } else {  
           console.log('Tried scheduling but fields still missing or not confirmed:', missingFields);
         }
       }

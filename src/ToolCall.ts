@@ -110,6 +110,7 @@ export class ToolCall {
 
       const r = result as { resource?: { uri?: string }; error?: string };
       if (r.resource?.uri) {
+        this.call.hasScheduledAppointment = true;
         return `STATUS: SUCCESS.URI: ${r.resource.uri}`;
       }
 

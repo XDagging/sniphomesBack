@@ -472,13 +472,31 @@ KNOWN_DATA: ${knownDataStr}
           ? this.parsingAppointmentTimeToReadableFormat(apptTime)
           : 'UNKNOWN';
 
+
+        const spellOutFunction = (value: string) : string => {
+          let newString = "";
+
+          for (let i=0; i<value.length; i++) {
+
+            newString += value[i]
+
+            if (i-1 !== value.length) {
+              newString += " ";
+            }
+          }
+
+          return newString;
+
+
+        }
+
         const fieldSummaries = this.config.fields
           .filter(f => f.type !== 'appointment_time' && (f.required || collectedData[f.key]))
           .filter(f => {
             if (f.condition) return collectedData[f.condition.field] === f.condition.equals;
             return true;
           })
-          .map(f => `${f.label}: ${collectedData[f.key] ?? 'UNKNOWN'}`)
+          .map(f => `${f.label}: ${f.spellOut ? spellOutFunction(collectedData[f.key] ?? 'UNKNOWN') : collectedData[f.key] ?? 'UNKNOWN'}`)
           .join(', ');
 
         cannedMessage           = `Okay, just to confirm, I have you set for an appointment on ${apptReadable}. ${fieldSummaries}. Is this all correct?`;
