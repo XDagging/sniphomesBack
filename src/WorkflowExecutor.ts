@@ -221,6 +221,7 @@ export class WorkflowExecutor {
 
         case 'hangup': {
           if (step.sayBefore) {
+            // const stream = this.call.voices.ttsClient
             const stream = this.call.voices.setupGoogleTTSStream();
             stream.write({ input: { text: step.sayBefore } });
             stream.end();

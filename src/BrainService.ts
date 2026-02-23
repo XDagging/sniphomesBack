@@ -412,7 +412,9 @@ ${stepContext ? `${stepContext}\n` : ''}
             // Discard if: a tool call was triggered (callingTool), OR a canned
             // response already set up its own TTS stream.
             const shouldDiscard =
-              this.call.callingTool || this.call.voices.ttsStream !== null;
+              this.call.callingTool ||
+              this.call.hasScheduledAppointment ||
+              this.call.voices.ttsStream !== null;
 
             if (!shouldDiscard) {
               this.call.voices.ttsStream = this.call.voices.setupGoogleTTSStream();

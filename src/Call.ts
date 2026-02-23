@@ -138,7 +138,7 @@ export class Call {
       };
       switch (msg.event) {
         case "media":
-          if (this.voices.googleSpeechStream?.writable) {
+          if (this.voices.googleSpeechStream?.writable && !this.voices.googleSpeechStream.destroyed) {
             this.voices.googleSpeechStream.write(msg.media!.payload);
             this.userSpeaking = true;
             if (this.speechTimeout) clearTimeout(this.speechTimeout);
