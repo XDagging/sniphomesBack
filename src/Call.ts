@@ -349,9 +349,16 @@ export class Call {
               this.collectedData,
             );
             console.log("Scheduling appointment now");
-            await this.processLLM(
-              `System Update: Appointment result: ${result}`,
-            );
+            this.callingTool = false;
+
+            if (!result.startsWith("STATUS: SUCCESS")) {
+              // Failure — LLM communicates what went wrong and offers alternatives.
+              await this.processLLM(
+                `System Update: Appointment result: ${result}`,
+              );
+            }
+            // Success — the outer processLLM's runImmediateSteps will advance
+            // past the book step and fire the workflow hangup/transfer sayBefore.
             return;
           } else if (
             this.confirmationStatus !== "NOT_READY" &&
