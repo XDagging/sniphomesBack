@@ -453,7 +453,7 @@ ${stepContext ? `${stepContext}\n` : ''}
           if (isValid && formattedTime) {
             if (formattedTime !== collectedData[field.key]) {
               collectedData[field.key]           = formattedTime;
-              this.call.appointmentTimeValidated = false;
+              // this.call.appointmentTimeValidated = false;
               this.resetStatus();
               console.log(`[${this.callSid}] 🟢 Time Extraction (new): ${formattedTime}`);
             }
@@ -505,11 +505,13 @@ ${stepContext ? `${stepContext}\n` : ''}
       if (hasApptField && this.call.availableSlots.length === 0) {
         console.log(`[${this.callSid}] All fields present but no slots loaded. Forcing check_availability.`);
         parsed.action = 'check_availability';
-      } else if (hasApptField && !this.call.appointmentTimeValidated) {
-        console.log(`[${this.callSid}] All fields present but time not validated. Forcing check_if_time_is_valid.`);
-        parsed.action          = 'check_if_time_is_valid';
-        parsed.appointmentTime = apptTime ?? undefined;
-      } else {
+      } 
+      // else if (hasApptField && !this.callappointmentTimeValidated.) {
+      //   console.log(`[${this.callSid}] All fields present but time not validated. Forcing check_if_time_is_valid.`);
+      //   parsed.action          = 'check_if_time_is_valid';
+      //   parsed.appointmentTime = apptTime ?? undefined;
+      // } 
+      else {
         // All ready — build dynamic confirmation message
         const apptReadable = apptTime
           ? this.parsingAppointmentTimeToReadableFormat(apptTime)

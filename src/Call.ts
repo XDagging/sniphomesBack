@@ -28,7 +28,7 @@ export class Call {
   listOfWaitTimes: bigint[];
   currentlyCheckingAvailability: boolean;
   confirmationStatus: string;
-  appointmentTimeValidated: boolean;
+  // appointmentTimeValidated: boolean;
   alreadySending: boolean;
   streamSid: string;
   ws: WebSocket | null;
@@ -79,7 +79,7 @@ export class Call {
     this.listOfWaitTimes = [];
     this.currentlyCheckingAvailability = false;
     this.confirmationStatus = "NOT_READY";
-    this.appointmentTimeValidated = false;
+    // this.appointmentTimeValidated = false;
     this.alreadySending = false;
     this.streamSid = "";
     this.ws = null;
@@ -228,7 +228,7 @@ export class Call {
               this.tools.validateTimeSlot(timeToCheck);
             if (isValid && formattedTime) {
               if (apptKey) this.collectedData[apptKey] = formattedTime;
-              this.appointmentTimeValidated = true;
+              // this.appointmentTimeValidated = true;
               await this.processLLM(
                 "System: The requested time IS available. Proceed to confirmation.",
               );
@@ -274,13 +274,13 @@ export class Call {
           }
           this.sendClear();
 
-          const cannedStream = this.voices.setupGoogleTTSStream();
-          cannedStream.write({
-            input: {
-              text: "Give me one second to check the calendar for you.",
-            },
-          });
-          cannedStream.end();
+          // const cannedStream = this.voices.setupGoogleTTSStream();
+          // cannedStream.write({
+          //   input: {
+          //     text: "Give me one second to check the calendar for you.",
+          //   },
+          // });
+          // cannedStream.end();
 
           const availability = await this.tools.getAvailability();
           this.availableSlots = availability;
