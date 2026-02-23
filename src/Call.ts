@@ -273,7 +273,7 @@ export class Call {
           await this.processLLM(`System Update: Appointment result: ${result}`);
           return;
         } else if (this.confirmationStatus !== 'NOT_READY' && this.hasScheduledAppointment && missingFields.length === 0) {
-          await this.processLLM(`System Update: The user has already booked an appointment. That can no longer book anymore appointments during this call.`);
+          await this.brain.updateAgentWithoutTriggeringResponse(`System Update: The user has already booked an appointment. That can no longer book anymore appointments during this call.`);
           return;
         } else {
           console.log('Tried scheduling but fields still missing or not confirmed:', missingFields);
