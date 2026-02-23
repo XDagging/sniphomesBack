@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import twilio from 'twilio';
 import type WebSocket from 'ws';
+import type { BookingConfig, ToolConfig } from './types/index';
 
 import Voices from './Voices';
 import ToolCall from './ToolCall';
@@ -44,7 +45,8 @@ export class Call {
   hasScheduledAppointment:         boolean;
   sendingBackgroundAudio:          boolean;
   noStart:                         boolean;
-
+  callingTool: boolean;
+  toolCalled: BookingConfig | ToolConfig | null;
   // Services
   voices: Voices;
   tools:  ToolCall;
@@ -85,11 +87,14 @@ export class Call {
     this.hasScheduledAppointment         = false;
     this.sendingBackgroundAudio          = false;
     this.noStart                         = false;
+    this.toolCalled = null;
 
     // Services
     this.voices = new Voices(this);
     this.tools  = new ToolCall(this);
     this.brain  = new BrainService(this);
+
+    this.callingTool = false;
 
     this.initializationPromise = this.brain.init();
   }
@@ -251,8 +256,18 @@ export class Call {
       }
 
       if (fedToTwilio.action === 'schedule_appointment') {
+
+
         const missingFields = this.brain.getMissingFields(this.collectedData);
         if (missingFields.length === 0 && this.confirmationStatus !== 'NOT_READY' && !this.hasScheduledAppointment) {
+          // Just shut up until the other guy has finished speaking
+
+          this.sendClear();
+          this.voices.ttsStream?.end();
+          this.voices.ttsStream?.destroy();
+
+          this.toolCalled = this.config.booking
+          this.callingTool = true;
           const result = await this.tools.handleAppointment(this.collectedData);
           console.log('Scheduling appointment now');
           await this.processLLM(`System Update: Appointment result: ${result}`);

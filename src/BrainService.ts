@@ -344,6 +344,15 @@ KNOWN_DATA: ${knownDataStr}
       let firstToken = true;
 
       for await (const chunk of stream) {
+
+        if (this.call.callingTool && (this.call.toolCalled !== null) && this.call.toolCalled.provider !== "none" && (this.call.toolCalled as any).speakBeforeAction) {
+          // Clear all the audio because we want the person to shut up during this tool call.
+          this.call.sendClear();
+          this.call.voices.ttsStream?.end();
+          this.call.voices.ttsStream?.destroy();
+          return;
+        }
+
         if (firstToken) {
           console.log(`[${this.callSid}][${Date.now()}] Gemini First Token Received`);
           firstToken = false;
@@ -353,6 +362,8 @@ KNOWN_DATA: ${knownDataStr}
             this.call.timeWhenUserHasFinishedSpeaking = 0n;
           }
         }
+
+        
 
         const chunkText = chunk.text();
         const { newAudioText, completeObject } = parser.process(chunkText);

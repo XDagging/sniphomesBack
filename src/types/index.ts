@@ -31,6 +31,7 @@ export interface FieldDefinition {
 export interface CalendlyBookingConfig {
   provider:     'calendly';
   eventName:    string;
+  speakBeforeAction: boolean;
   inviteeFieldMapping: {
     email:  string;
     name:   string;
@@ -90,6 +91,12 @@ export interface CalendlySchedulePayload {
     answer:   string;
     position: number;
   }>;
+}
+
+export interface ToolConfig { 
+  provider: string;
+  speakBeforeAction: boolean;
+
 }
 
 // ─── Example Configs ─────────────────────────────────────────────────────────
@@ -154,7 +161,12 @@ export const QUATTRO_AUTOBODY_CONFIG: AgentConfig = {
     },
   ],
 
+
+  
   booking: {
+
+    // Do you want the tool to shut up as it is happening yes or no?
+    speakBeforeAction: false,
     provider:  'calendly',
     eventName: 'Quattro Autobody',
     inviteeFieldMapping: {
