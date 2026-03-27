@@ -17,7 +17,7 @@ const https = require("https")
 const http = require("http");
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 import Call from './src/Call';
-import { QUATTRO_AUTOBODY_CONFIG, DENTAL_CLINIC_CONFIG } from './src/types/index';
+import { QUATTRO_AUTOBODY_CONFIG, DENTAL_CLINIC_CONFIG, S_AND_M_POWERWASHING_CONFIG } from './src/types/index';
 const WebSocket = require("ws");
 
 const { CronJob } = require("cron");
@@ -375,7 +375,7 @@ function callSomeone(phoneNumber: string, uuid: string): void {
         to: `+1${phoneNumber}`,
         from: `+12403660377`,
     }).then(async (call) => {
-        dynamicCalls[call.sid] = await Call.create(call.sid, phoneNumber, QUATTRO_AUTOBODY_CONFIG, uuid);
+        dynamicCalls[call.sid] = await Call.create(call.sid, phoneNumber, S_AND_M_POWERWASHING_CONFIG, uuid);
         console.log(call);
     });
 }
