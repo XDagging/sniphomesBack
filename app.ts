@@ -17,7 +17,7 @@ const https = require("https")
 const http = require("http");
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 import Call from './src/Call';
-import { QUATTRO_AUTOBODY_CONFIG, DENTAL_CLINIC_CONFIG, S_AND_M_POWERWASHING_CONFIG } from './src/types/index';
+import { DENTAL_CLINIC_CONFIG, S_AND_M_POWERWASHING_CONFIG } from './src/types/index';
 const WebSocket = require("ws");
 
 const { CronJob } = require("cron");
@@ -414,7 +414,7 @@ wss.on("connection", function (ws) {
 
                     if (!dynamicCalls[callSid]) {
                         // Inbound call — use QUATTRO_AUTOBODY_CONFIG
-                        const newCallInstance = await Call.create(callSid, phoneNum, QUATTRO_AUTOBODY_CONFIG);
+                        const newCallInstance = await Call.create(callSid, phoneNum, S_AND_M_POWERWASHING_CONFIG);
                         dynamicCalls[callSid] = newCallInstance;
                         newCallInstance.setWebsocket(ws, streamId);
                         ws.removeListener("message", startListener);
