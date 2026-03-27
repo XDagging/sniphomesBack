@@ -1,5 +1,6 @@
 import { fromZonedTime } from 'date-fns-tz';
 import { getAvailability, scheduleAppointment } from './Calendly';
+import { sendBookingEmail } from './EmailService';
 import type { Call } from './Call';
 import type { CalendlySchedulePayload } from './types/index';
 
@@ -71,6 +72,23 @@ export class ToolCall {
         return 'STATUS: SUCCESS. No external booking needed.';
       }
 
+      // ── Email booking ──────────────────────────────────────────────────────
+      if (booking.provider === 'email') {
+        console.log(`[${this.callSid}] Sending booking email to ${booking.recipientEmail}`);
+        const { success, error } = await sendBookingEmail(
+          booking,
+          collectedData,
+          this.call.phoneNumber ?? '',
+        );
+        if (success) {
+          this.call.hasScheduledAppointment = true;
+          return 'STATUS: SUCCESS. Booking email sent.';
+        }
+        this.call.sendClear();
+        return `STATUS: FAILED.Reason: Could not send booking email (${error ?? 'unknown error'}). Offer transfer to ${this.call.config.transferNumber}.`;
+      }
+
+      // ── Calendly booking ───────────────────────────────────────────────────
       const apptKey         = this.call.executor.getAllFields().find(f => f.type === 'appointment_time')?.key;
       const appointmentTime = apptKey ? collectedData[apptKey] : null;
 
@@ -129,6 +147,11 @@ export class ToolCall {
       const booking = this.call.config.booking;
       if (!booking) {
         console.log(`[${this.callSid}] No booking configured — no slots to fetch.`);
+        return [];
+      }
+
+      if (booking.provider !== 'calendly') {
+        console.log(`[${this.callSid}] Non-Calendly booking provider — no slots to fetch.`);
         return [];
       }
 

@@ -579,7 +579,9 @@ ${stepContext ? `${stepContext}\n` : ''}
           .map(f => `${f.label}: ${f.spellOut ? spellOutFunction(collectedData[f.key] ?? 'UNKNOWN') : collectedData[f.key] ?? 'UNKNOWN'}`)
           .join(', ');
 
-        cannedMessage           = `Okay, just to confirm, I have you set for an appointment on ${apptReadable}. ${fieldSummaries}. Is this all correct?`;
+        cannedMessage = hasApptField
+          ? `Okay, just to confirm, I have you set for an appointment on ${apptReadable}. ${fieldSummaries}. Is this all correct?`
+          : `Okay, just to confirm, here's what I have: ${fieldSummaries}. Is this all correct?`;
         shouldUseCannedResponse = true;
         this.call.confirmationStatus = 'PENDING_USER_APPROVAL';
 

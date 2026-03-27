@@ -60,6 +60,20 @@ export interface CalendlyBookingConfig {
   }>;
 }
 
+export interface EmailBookingConfig {
+  provider:          'email';
+  speakBeforeAction: boolean;
+  recipientEmail:    string;
+  fieldMapping: {
+    name:           string;
+    phone:          string;
+    jobDescription: string;
+    address?:       string;
+  };
+}
+
+export type BookingConfig = CalendlyBookingConfig | EmailBookingConfig;
+
 // ─── Agent Config ─────────────────────────────────────────────────────────────
 
 export interface AgentConfig {
@@ -86,7 +100,7 @@ export interface AgentConfig {
   workflow: WorkflowStep[];
 
   // Booking (optional — omit if no external booking needed)
-  booking?: CalendlyBookingConfig;
+  booking?: BookingConfig;
 }
 
 // ─── Calendly payload (internal) ─────────────────────────────────────────────
@@ -273,4 +287,86 @@ export const DENTAL_CLINIC_CONFIG: AgentConfig = {
     { type: 'book' },
     { type: 'hangup' },
   ],
+};
+
+// ── S and M Powerwashing field definitions ────────────────────────────────────
+
+const powerwashingCustomerName: FieldDefinition = {
+  key:         'customerName',
+  label:       'your name',
+  description: "The customer's full name (first, last, or both). NEVER extract pronouns or generic words like 'myself', 'me', 'I'. If not clearly stated, omit and ask.",
+  type:        'text',
+  required:    true,
+  spellOut:    false,
+};
+
+const powerwashingCustomerPhone: FieldDefinition = {
+  key:         'customerPhone',
+  label:       'your phone number',
+  description: "The customer's callback phone number. Reconstruct spoken numbers as digits (e.g. 'three oh one' -> '301').",
+  type:        'text',
+  required:    true,
+  spellOut:    true,
+  validations: [{ type: 'phone', message: 'Must be a valid phone number (digits, spaces, dashes, parentheses)' }],
+};
+
+const powerwashingJobDescription: FieldDefinition = {
+  key:         'jobDescription',
+  label:       'a brief description of what you need done',
+  description: "A short description of the powerwashing job (e.g. 'driveway and front walkway', 'house exterior', 'deck and patio'). Capture what the customer says naturally.",
+  type:        'text',
+  required:    true,
+  spellOut:    false,
+};
+
+const powerwashingAddress: FieldDefinition = {
+  key:         'address',
+  label:       'the address of the property',
+  description: "The service address. Optional — if the customer says they will provide it later or declines, do not force it. Capture street, city, and state if given.",
+  type:        'text',
+  required:    false,
+  spellOut:    false,
+};
+
+
+const S_and_M_agent_name = "Alex"
+
+export const S_AND_M_POWERWASHING_CONFIG: AgentConfig = {
+  agentName:           S_and_M_agent_name,
+  businessName:        'S and M Powerwashing',
+  businessDescription: 'Collect customer information and job details for powerwashing service bookings',
+  businessLocation:    'Serving the local area',
+  businessHours:       '8am-6pm, Mon-Sat',
+  services:            ['House exterior washing', 'Driveway cleaning', 'Deck and patio washing', 'Sidewalk cleaning', 'Fence washing', 'Roof soft washing'],
+  pricingPolicy:       'Pricing depends on the job. A team member will follow up with a quote after you submit your request.',
+  additionalRules:     [
+    'Address is optional but strongly encouraged so we can provide an accurate quote.',
+    'Let the customer know someone from the team will reach out to confirm details and schedule a time.',
+  ],
+  transferNumber:      '301-272-7224',
+  timezone:            'America/New_York',
+  geminiModel:         'gemini-2.5-flash-lite',
+  ttsVoice:            'en-US-Chirp3-HD-Puck',
+
+  workflow: [
+    { type: 'say', text: `Hi, thank you for calling S and M Powerwashing! I'm ${S_and_M_agent_name}, how can I help you today?` },
+    { type: 'collect', field: powerwashingCustomerName },
+    { type: 'collect', field: powerwashingCustomerPhone },
+    { type: 'collect', field: powerwashingJobDescription },
+    { type: 'collect', field: powerwashingAddress },
+    { type: 'book' },
+    { type: 'hangup', sayBefore: "Perfect! We've got your request. Someone from our team will reach out soon to confirm the details and get you scheduled. Have a great day!" },
+  ],
+
+  booking: {
+    provider:          'email',
+    speakBeforeAction: false,
+    recipientEmail:    process.env.BOOKING_RECIPIENT_EMAIL ?? '',
+    fieldMapping: {
+      name:           'customerName',
+      phone:          'customerPhone',
+      jobDescription: 'jobDescription',
+      address:        'address',
+    },
+  },
 };

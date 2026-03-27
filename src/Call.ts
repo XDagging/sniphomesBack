@@ -1,7 +1,7 @@
 import "dotenv/config";
 import twilio from "twilio";
 import type WebSocket from "ws";
-import type { CalendlyBookingConfig, ToolConfig } from "./types/index";
+import type { BookingConfig, ToolConfig } from "./types/index";
 
 import Voices from "./Voices";
 import ToolCall from "./ToolCall";
@@ -47,7 +47,7 @@ export class Call {
   sendingBackgroundAudio: boolean;
   noStart: boolean;
   callingTool: boolean;
-  toolCalled: CalendlyBookingConfig | ToolConfig | null;
+  toolCalled: BookingConfig | ToolConfig | null;
   workflowReadyToBook: boolean;
   transferTarget?: string;
 
