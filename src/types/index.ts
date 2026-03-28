@@ -353,7 +353,7 @@ export const S_AND_M_POWERWASHING_CONFIG: AgentConfig = {
     { type: 'collect', field: powerwashingCustomerName },
     { type: 'collect', field: powerwashingCustomerPhone },
     { type: 'collect', field: powerwashingJobDescription },
-    { type: 'collect', field: powerwashingAddress },
+    // { type: 'collect', field: powerwashingAddress },
     { type: 'book' },
     { type: 'hangup', sayBefore: "Perfect! We've got your request. Someone from our team will reach out soon to confirm the details and get you scheduled. Have a great day!" },
   ],
@@ -366,7 +366,7 @@ export const S_AND_M_POWERWASHING_CONFIG: AgentConfig = {
       name:           'customerName',
       phone:          'customerPhone',
       jobDescription: 'jobDescription',
-      address:        'address',
+      // address:        'address',
     },
   },
 };

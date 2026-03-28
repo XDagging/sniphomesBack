@@ -331,6 +331,7 @@ export class Call {
           // return;
         } else {
           const missingFields = this.brain.getMissingFields(this.collectedData);
+          
           if (
             missingFields.length === 0 &&
             this.confirmationStatus !== "NOT_READY" &&
