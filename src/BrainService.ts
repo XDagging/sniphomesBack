@@ -524,6 +524,19 @@ ${stepContext ? `${stepContext}\n` : ''}
 
     // ── Compute state ─────────────────────────────────────────────────────────
     const missingFields = this.getMissingFields(collectedData);
+
+    // When user is in confirmation-pending state and hasn't changed any fields,
+    // force schedule_appointment — the LLM may generate a closing message and
+    // set action:"respond", skipping the booking step entirely.
+    if (
+      !isSystemCall &&
+      missingFields.length === 0 &&
+      this.call.confirmationStatus === 'PENDING_USER_APPROVAL' &&
+      this.call.workflowReadyToBook &&
+      (parsed.action === 'respond' || parsed.action === undefined)
+    ) {
+      parsed.action = 'schedule_appointment';
+    }
     const apptKey       = this.executor.getAllFields().find(f => f.type === 'appointment_time')?.key;
     const hasApptField  = !!apptKey;
     const apptTime      = apptKey ? collectedData[apptKey] : null;
