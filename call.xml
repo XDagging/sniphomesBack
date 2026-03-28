@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say>Thank you for calling sniphomes.</Say>
+    <Say>This call may be recorded for quality assurance.</Say>
 
     <Connect>
         <Stream url="wss://api.sniphomes.com/"/>
